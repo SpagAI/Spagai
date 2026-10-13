@@ -21,6 +21,19 @@ A platform where businesses in Nigeria and Africa build and run AI voice agents,
 
 ## How to run it
 
+### Easiest: one click in GitHub Codespaces (nothing to install)
+
+Codespaces runs the whole project on a GitHub computer, and you use it in your browser.
+
+1. Click **[Open Spag AI Studio in Codespaces](https://codespaces.new/SpagAI/Spagai/tree/claude/hello-l9zr41?quickstart=1)** (sign in to GitHub if asked).
+2. Click **Create new codespace**. The first start takes about 3 to 5 minutes. It sets everything up: database, packages, tables and demo data.
+3. When the terminal at the bottom says **Ready**, a browser tab opens with the app. If it does not, open the **Ports** tab and click the globe icon next to **Spag AI Studio (3000)**.
+4. Sign in with `demo@spagai.local`, click **Email me a sign-in link**, then **Open my sign-in link**, then **Sign in**.
+
+Codespaces is free for personal accounts up to a monthly limit. When you finish, stop it at https://github.com/codespaces (click ⋯ then **Stop codespace**). Next time, open it from the same page; it keeps your data.
+
+### On your own computer
+
 ### One-time setup
 
 1. Install **Node.js 20 or newer** from https://nodejs.org (choose "LTS").
@@ -47,7 +60,7 @@ pnpm dev
 
 Then open **http://localhost:3000** in your browser.
 
-**To sign in:** type any email address and click "Email me a sign-in link". Open the fake inbox at **http://localhost:8025**, click the link, then click "Sign in". (The link is also printed in the terminal where `pnpm dev` is running.)
+**To sign in:** type any email address and click "Email me a sign-in link". Then click **Open my sign-in link** (a shortcut shown only during development), then "Sign in". The email also arrives in the fake inbox at **http://localhost:8025**, and the link is printed in the terminal.
 
 - New email address: you get your own new organisation as its Owner.
 - With demo data: sign in as `demo@spagai.local` (Owner, has a Zara agent), or `viewer@spagai.local` (read-only).

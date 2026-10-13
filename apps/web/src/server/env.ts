@@ -14,6 +14,11 @@ const schema = z.object({
   EMAIL_FROM: z.string().default("Spag AI Studio <no-reply@spagai.local>"),
   /** "smtp" sends real email (Mailpit locally). "console" prints emails to the terminal (localhost only). */
   EMAIL_TRANSPORT: z.enum(["smtp", "console"]).optional(),
+  /** Development only: show the sign-in link on the page after requesting it. Refused in production. */
+  DEV_SHOW_LOGIN_LINK: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -30,6 +35,10 @@ export const env = {
 const isLocalhost = ["localhost", "127.0.0.1"].includes(new URL(env.APP_URL).hostname);
 if (env.EMAIL_TRANSPORT === "console" && !isLocalhost) {
   throw new Error("EMAIL_TRANSPORT=console is only allowed when APP_URL is localhost. Configure SMTP.");
+}
+
+if (env.NODE_ENV === "production" && env.DEV_SHOW_LOGIN_LINK) {
+  throw new Error("DEV_SHOW_LOGIN_LINK must not be enabled in production.");
 }
 
 if (env.NODE_ENV === "production" && env.SESSION_SECRET.startsWith("dev-only")) {

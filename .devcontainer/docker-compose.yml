@@ -1,0 +1,28 @@
+# Services for the Codespaces / Dev Container environment.
+# All three share one network, so the app reaches the database at localhost:5432
+# and the fake inbox at localhost:1025, exactly like a local setup.
+services:
+  app:
+    image: mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm
+    volumes:
+      - ../..:/workspaces:cached
+    command: sleep infinity
+    network_mode: service:db
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: spagai
+      POSTGRES_PASSWORD: spagai
+      POSTGRES_DB: spagai
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    network_mode: service:db
+
+volumes:
+  pgdata:

@@ -5,14 +5,15 @@ import { sendEmail } from "../mailer";
 import { defaultOrganisationName } from "./naming";
 import { generateToken, hashToken, LOGIN_TOKEN_TTL_MINUTES, normaliseEmail } from "./tokens";
 
-/** Create a one-time login link and email it. */
-export async function sendLoginLink(rawEmail: string, opts: { invitedTo?: string } = {}): Promise<void> {
+/** Create a one-time login link and email it. Returns the link's path (/auth/verify?token=...). */
+export async function sendLoginLink(rawEmail: string, opts: { invitedTo?: string } = {}): Promise<string> {
   const email = normaliseEmail(rawEmail);
   const token = generateToken();
   await db.loginToken.create({
     data: { email, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + LOGIN_TOKEN_TTL_MINUTES * 60_000) },
   });
-  const link = `${env.APP_URL}/auth/verify?token=${encodeURIComponent(token)}`;
+  const path = `/auth/verify?token=${encodeURIComponent(token)}`;
+  const link = `${env.APP_URL}${path}`;
   const intro = opts.invitedTo
     ? `You have been invited to join ${opts.invitedTo} on Spag AI Studio.`
     : "Here is your sign-in link for Spag AI Studio.";
@@ -22,6 +23,7 @@ export async function sendLoginLink(rawEmail: string, opts: { invitedTo?: string
     text: `${intro}\n\nSign in: ${link}\n\nThis link works once and expires in ${LOGIN_TOKEN_TTL_MINUTES} minutes. If you did not ask for it, ignore this email.`,
     html: `<p>${intro}</p><p><a href="${link}">Sign in to Spag AI Studio</a></p><p>This link works once and expires in ${LOGIN_TOKEN_TTL_MINUTES} minutes. If you did not ask for it, ignore this email.</p>`,
   });
+  return path;
 }
 
 export type ConsumeResult =

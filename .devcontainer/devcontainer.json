@@ -1,0 +1,23 @@
+{
+  // One-click development environment for GitHub Codespaces (and VS Code Dev Containers).
+  // It starts PostgreSQL and the Mailpit fake inbox, installs packages, creates the
+  // database tables, adds demo data, then starts the website on port 3000.
+  "name": "Spag AI Studio",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "forwardPorts": [3000, 8025],
+  "portsAttributes": {
+    "3000": { "label": "Spag AI Studio", "onAutoForward": "openBrowser" },
+    "8025": { "label": "Fake email inbox (Mailpit)", "onAutoForward": "silent" },
+    "5432": { "label": "Database", "onAutoForward": "ignore" },
+    "1025": { "label": "SMTP", "onAutoForward": "ignore" }
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postAttachCommand": "bash .devcontainer/start.sh",
+  "hostRequirements": { "cpus": 2, "memory": "4gb" },
+  "customizations": {
+    "codespaces": { "openFiles": ["README.md"] },
+    "vscode": { "extensions": ["Prisma.prisma", "bradlc.vscode-tailwindcss"] }
+  }
+}

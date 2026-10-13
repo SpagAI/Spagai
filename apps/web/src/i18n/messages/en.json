@@ -27,6 +27,8 @@
     "submit": "Email me a sign-in link",
     "sent": "Check your email. If the address is valid, a sign-in link is on its way. It expires in 15 minutes.",
     "devHint": "Running locally? Open the fake inbox at http://localhost:8025, or look for the link in the terminal where the app is running.",
+    "devShortcut": "Development shortcut: open your sign-in link directly. This button never appears on the live site.",
+    "devOpenLink": "Open my sign-in link",
     "rateLimited": "Too many attempts. Please wait a few minutes and try again.",
     "invalidEmail": "Enter a valid email address.",
     "noOrganisation": "Your account is not part of any organisation. Ask an admin to invite you."

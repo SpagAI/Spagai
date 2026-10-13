@@ -20,7 +20,16 @@ export function LoginForm({ showDevHint }: { showDevHint: boolean }) {
           <Mail />
           {t("login.sent")}
         </Alert>
-        {showDevHint && <p className="text-sm text-muted-foreground">{t("login.devHint")}</p>}
+        {state.devLink ? (
+          <Alert>
+            <p className="font-medium">{t("login.devShortcut")}</p>
+            <Button asChild className="mt-3 w-full">
+              <a href={state.devLink}>{t("login.devOpenLink")}</a>
+            </Button>
+          </Alert>
+        ) : (
+          showDevHint && <p className="text-sm text-muted-foreground">{t("login.devHint")}</p>
+        )}
       </div>
     );
   }
