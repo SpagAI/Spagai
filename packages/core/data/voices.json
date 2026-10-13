@@ -1,0 +1,12 @@
+{
+  "status": "Starter catalogue. Only the mock voices work today. Real provider voices are placeholders until a provider is connected.",
+  "voices": [
+    { "id": "mock-en-ng-female-1", "name": "Adaeze", "language": "en-NG", "gender": "female", "provider": "mock", "providerVoiceId": "mock-female-1", "sampleText": "Good morning. My name is Adaeze. How may I help you today?", "status": "available" },
+    { "id": "mock-en-ng-male-1", "name": "Tunde", "language": "en-NG", "gender": "male", "provider": "mock", "providerVoiceId": "mock-male-1", "sampleText": "Good afternoon. My name is Tunde. Is this a good time to talk?", "status": "available" },
+    { "id": "mock-pcm-female-1", "name": "Blessing", "language": "pcm", "gender": "female", "provider": "mock", "providerVoiceId": "mock-female-2", "sampleText": "Good morning o. Na Blessing dey talk. How I fit help you today?", "status": "available" },
+    { "id": "mock-yo-female-1", "name": "Folake", "language": "yo", "gender": "female", "provider": "mock", "providerVoiceId": "mock-female-3", "sampleText": "Ẹ kú àárọ̀. Orúkọ mi ni Folake.", "status": "available" },
+    { "id": "mock-ha-male-1", "name": "Musa", "language": "ha", "gender": "male", "provider": "mock", "providerVoiceId": "mock-male-2", "sampleText": "Ina kwana. Sunana Musa.", "status": "available" },
+    { "id": "mock-ig-male-1", "name": "Obinna", "language": "ig", "gender": "male", "provider": "mock", "providerVoiceId": "mock-male-3", "sampleText": "Ụtụtụ ọma. Aha m bụ Obinna.", "status": "available" },
+    { "id": "local-provider-en-ng-1", "name": "Local provider voice (placeholder)", "language": "en-NG", "gender": "female", "provider": "openai_compatible", "providerVoiceId": "", "sampleText": "Good morning. How may I help you today?", "status": "not_configured" }
+  ]
+}

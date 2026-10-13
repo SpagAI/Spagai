@@ -18,7 +18,7 @@ export const SECTION_TITLES: Record<SectionId, string> = {
 };
 
 /** Order of parts inside each section. Parts not listed come last. */
-const PART_ORDER: BlockPart[] = [
+export const PART_ORDER: BlockPart[] = [
   "main",
   "understand", "solution", "reassure",
   "booking", "routing", "tools", "other", "guardrail",

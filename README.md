@@ -4,20 +4,20 @@ A platform where businesses in Nigeria and Africa build and run AI voice agents,
 
 > **Status: prototype skeleton.** Everything runs locally with **mock** providers. No paid API keys are needed. Nothing here is legal advice. All regulatory text is a draft that **needs legal review**.
 
-## What works today (Milestone 1)
+## What works today (Milestones 1 and 2)
 
 | Area | Where | Status |
 |---|---|---|
-| Address builder (Mr, Miss, Sir, Ma, Mode A and B) | `packages/core/src/address` | Done + tests |
-| Spoken-text sanitiser (no "slash", money, dates and times as words) | `packages/core/src/speech` | Done + tests |
-| Spoken-email normaliser ("ada dot obi gmail" becomes ada.obi@gmail.com) | `packages/core/src/email` | Done + tests |
-| Nigerian phone tools (E.164, read-back) | `packages/core/src/phone` | Done + tests |
-| Time tools (calling window, booking window, greetings, goodbyes) | `packages/core/src/time` | Done + tests |
-| Prompt compiler (five-part framework, locked guardrails) | `packages/core/src/prompt/compiler.ts` | Done + tests |
-| Prompt linter | `packages/core/src/prompt/linter.ts` | Done + tests |
+| Core rules: addressing, voice cleaner, emails, phones, Lagos time | `packages/core/src` | Done + tests |
+| Prompt compiler (five-part framework, locked guardrails) and linter | `packages/core/src/prompt` | Done + tests |
 | 8 preset agents as data files | `packages/core/presets/*.json` | Done (Zara is a placeholder) |
-| Names pronunciation starter list | `packages/core/data/names-pronunciation.json` | Done (to be verified) |
-| Website, database, voice, billing | — | Coming in M2 to M5 |
+| Website with email sign-in (magic link) | `apps/web` | Done |
+| Organisations, members, roles (Owner, Admin, Member, Viewer), invites | `apps/web/src/app/(app)/settings` | Done |
+| Agent Builder: presets, business details, blocks, live preview, lint, variables, tools, silence, voice picker | `apps/web/src/components/agent-builder` | Done |
+| Translation files (English now; Pidgin, Yoruba, Hausa, Igbo ready to fill) | `apps/web/src/i18n/messages` | Structure done |
+| Voice previews, simulator | — | M3 |
+| Leads, campaigns, compliance engine, calls, dashboard | — | M4 |
+| Billing, voice worker | — | M5 |
 
 ## How to run it
 
@@ -25,37 +25,71 @@ A platform where businesses in Nigeria and Africa build and run AI voice agents,
 
 1. Install **Node.js 20 or newer** from https://nodejs.org (choose "LTS").
 2. Install **pnpm**: open a terminal and run `npm install -g pnpm`.
-3. Get the code and install packages:
+3. Install **Docker Desktop** from https://www.docker.com/products/docker-desktop and start it. (It runs the database and a fake email inbox.)
+4. Get the code and install packages:
    ```bash
    git clone <this repository URL>
    cd Spagai
    pnpm install
    ```
+5. Create your settings file by copying the example:
+   - Mac or Linux: `cp .env.example apps/web/.env`
+   - Windows (PowerShell): `Copy-Item .env.example apps/web/.env`
+6. Start the database and fake inbox: `pnpm services:up`
+7. Create the database tables: `pnpm db:migrate`
+8. (Optional) Add demo data: `pnpm db:seed`
+
+### Start the website
+
+```bash
+pnpm dev
+```
+
+Then open **http://localhost:3000** in your browser.
+
+**To sign in:** type any email address and click "Email me a sign-in link". Open the fake inbox at **http://localhost:8025**, click the link, then click "Sign in". (The link is also printed in the terminal where `pnpm dev` is running.)
+
+- New email address: you get your own new organisation as its Owner.
+- With demo data: sign in as `demo@spagai.local` (Owner, has a Zara agent), or `viewer@spagai.local` (read-only).
 
 ### Everyday commands (run from the project folder)
 
 | Command | What it does | What you should see |
 |---|---|---|
-| `pnpm test` | Runs all automatic checks | `Tests  159 passed` and no red text |
+| `pnpm dev` | Runs the website at http://localhost:3000 | "Ready" in the terminal |
+| `pnpm test` | Runs all automatic checks | Two lines ending `passed` (core and web), no red text |
 | `pnpm typecheck` | Checks the code for type mistakes | No errors |
-| `pnpm demo` | Shows the core logic in action, including a full compiled Zara prompt and lint score | Seven numbered sections ending with `Score 100/100` |
-| `pnpm demo clinic-booking` | Same demo, with a different preset | The clinic prompt |
+| `pnpm demo` | Shows the core logic in the terminal | Seven numbered sections ending `Score 100/100` |
+| `pnpm services:up` / `pnpm services:down` | Start or stop the database and fake inbox | — |
+| `pnpm db:studio` | Opens a simple database browser | A web page listing tables |
 
 Preset ids you can pass to `pnpm demo`: `fintech-outbound-zara`, `fintech-support`, `repayment-reminders`, `kyc-follow-up`, `telecom-churn-complaint`, `real-estate-lead-qualifier`, `clinic-booking`, `delivery-confirmation`.
+
+### If something goes wrong
+
+- **"Can't reach database server"**: Docker is not running, or you skipped `pnpm services:up`.
+- **No email in the inbox**: copy the link from the terminal where `pnpm dev` is running.
+- **"Too many attempts"**: sign-in links are limited to 5 per email per 15 minutes. Wait, or restart `pnpm dev`.
 
 ## Project layout
 
 ```
+apps/web/             The website (Next.js)
+  src/app/            Pages: login, dashboard, agents, settings
+  src/components/     Screen building blocks (shadcn/ui style) and the Agent Builder
+  src/server/         Sign-in, sessions, database access, permissions, rate limiting
+  src/i18n/messages/  Interface text: en.json (+ pcm, yo, ha, ig to fill in)
+  prisma/             Database tables (schema.prisma), migrations, demo data
+  test/               Automatic tests
 packages/core/        Pure business rules (no internet, no database) + tests
   src/                The logic, one folder per topic
   presets/            Preset agents as JSON data files
-  data/               Names pronunciation starter list
-  test/               Automatic tests (Vitest)
-  scripts/demo.ts     The `pnpm demo` script
+  data/               Names pronunciation list and starter voice list
 docs/                 Architecture, decisions, compliance to-do, developer handoff
+docker-compose.yml    Local database and fake email inbox
 ```
 
-Coming next: `apps/web` (website, M2), `services/voice-worker` (Python stub, M5), `docker-compose.yml` (database, M2).
+Coming next: `services/voice-worker` (Python stub, M5).
 
 ## Docs
 

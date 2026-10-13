@@ -11,6 +11,22 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "check": "pnpm typecheck && pnpm test",
-    "demo": "pnpm --filter @spagai/core demo"
+    "demo": "pnpm --filter @spagai/core demo",
+    "dev": "pnpm --filter @spagai/web dev",
+    "build": "pnpm --filter @spagai/web build",
+    "start": "pnpm --filter @spagai/web start",
+    "services:up": "docker compose up -d",
+    "services:down": "docker compose down",
+    "db:migrate": "pnpm --filter @spagai/web db:migrate",
+    "db:seed": "pnpm --filter @spagai/web db:seed",
+    "db:studio": "pnpm --filter @spagai/web db:studio"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma"
+    ]
   }
 }

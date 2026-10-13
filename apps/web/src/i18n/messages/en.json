@@ -1,0 +1,208 @@
+{
+  "app": {
+    "name": "Spag AI Studio",
+    "tagline": "AI voice agents for Nigerian businesses",
+    "prototype": "Prototype: mock providers only"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "agents": "Agents",
+    "voices": "Voices",
+    "simulator": "Simulator",
+    "leads": "Leads",
+    "campaigns": "Campaigns",
+    "calls": "Calls",
+    "billing": "Billing",
+    "settings": "Settings",
+    "signOut": "Sign out",
+    "menu": "Menu",
+    "comingSoon": "Coming soon",
+    "organisation": "Organisation"
+  },
+  "login": {
+    "title": "Sign in",
+    "subtitle": "We will email you a one-time sign-in link. No password needed.",
+    "email": "Work email",
+    "emailPlaceholder": "you@company.com",
+    "submit": "Email me a sign-in link",
+    "sent": "Check your email. If the address is valid, a sign-in link is on its way. It expires in 15 minutes.",
+    "devHint": "Running locally? Open the fake inbox at http://localhost:8025, or look for the link in the terminal where the app is running.",
+    "rateLimited": "Too many attempts. Please wait a few minutes and try again.",
+    "invalidEmail": "Enter a valid email address.",
+    "noOrganisation": "Your account is not part of any organisation. Ask an admin to invite you."
+  },
+  "verify": {
+    "title": "Finish signing in",
+    "body": "Click the button to finish signing in to Spag AI Studio.",
+    "submit": "Sign in",
+    "invalid": "This sign-in link is not valid.",
+    "expired": "This sign-in link has expired.",
+    "used": "This sign-in link has already been used.",
+    "again": "Request a new link"
+  },
+  "dashboard": {
+    "title": "Welcome",
+    "intro": "Build an AI voice agent, test it, then run a call campaign.",
+    "agents": "Agents",
+    "createAgent": "Create an agent",
+    "nextSteps": "Next steps",
+    "step1": "Create an agent from a preset",
+    "step2": "Fill in your business details and check the lint score",
+    "step3": "Test it in the simulator (coming in M3)",
+    "step4": "Upload leads and start a campaign (coming in M4)"
+  },
+  "agents": {
+    "title": "Agents",
+    "new": "New agent",
+    "empty": "No agents yet. Start from a preset.",
+    "choosePreset": "Choose a starting point",
+    "choosePresetIntro": "Each preset is a ready-made agent you can edit. Guardrails are always included.",
+    "use": "Use this preset",
+    "updated": "Updated",
+    "status": { "DRAFT": "Draft", "READY": "Ready" },
+    "presetStatus": { "ready": "Ready", "draft": "Draft", "placeholder": "Placeholder" },
+    "direction": { "outbound": "Outbound", "inbound": "Inbound" },
+    "delete": "Delete",
+    "deleteConfirm": "Delete this agent? This cannot be undone.",
+    "readOnly": "You have view-only access. Ask an admin to change your role to edit agents."
+  },
+  "builder": {
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "unsaved": "Unsaved changes",
+    "markReady": "Mark as ready",
+    "markDraft": "Back to draft",
+    "agentName": "Agent name",
+    "tabs": {
+      "business": "Business details",
+      "blocks": "Prompt blocks",
+      "firstMessage": "First message",
+      "tools": "Tools",
+      "silence": "Silence",
+      "voice": "Voice"
+    },
+    "business": {
+      "intro": "These details are filled into the prompt. Fields marked * are required.",
+      "addressMode": "How to address people",
+      "modeA": "Title and surname (Mr Okafor)",
+      "modeB": "First name only (Chinedu)"
+    },
+    "blocks": {
+      "intro": "Your prompt follows the five-part framework. Edit, reorder, switch off or add blocks. Locked guardrails can be reworded but not removed.",
+      "add": "Add block",
+      "newTitle": "New block",
+      "enabled": "On",
+      "locked": "Locked guardrail",
+      "lockedHelp": "Always included. You can reword it, but not remove it.",
+      "resetGuardrail": "Reset wording",
+      "remove": "Remove",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "title": "Block title",
+      "content": "Instructions",
+      "part": "Part"
+    },
+    "sections": {
+      "beginning": "1. Beginning",
+      "adjunct": "2. Adjunct (context)",
+      "body": "3. Body",
+      "anything_else": "4. Anything else",
+      "end": "5. End"
+    },
+    "parts": {
+      "main": "General",
+      "understand": "Phase 1: Understand the problem",
+      "solution": "Phase 2: Solution and what makes us different",
+      "reassure": "Phase 3: Reassurance or polite exit",
+      "booking": "Booking",
+      "routing": "Routing",
+      "tools": "Tools",
+      "guardrail": "Guardrail",
+      "other": "Other",
+      "before_you_go": "Before you go",
+      "goodbye": "Goodbye",
+      "end_call": "End the call"
+    },
+    "firstMessage": {
+      "intro": "The first thing the agent says when the call connects. Ask only one question.",
+      "spokenAs": "The voice will say"
+    },
+    "tools": {
+      "intro": "Actions the agent can take during a call. In this prototype, tools are simulated.",
+      "required": "Always on",
+      "params": "Parameters"
+    },
+    "silence": {
+      "intro": "What happens when the caller goes quiet.",
+      "checkInAfter": "Check in after (seconds)",
+      "checkInMessage": "Check-in message",
+      "maxCheckIns": "Number of check-ins",
+      "endAfter": "End the call after (seconds of silence)",
+      "closingMessage": "Closing message"
+    },
+    "voice": {
+      "intro": "Pick the voice for this agent. Voice previews arrive in M3. Only mock voices work for now.",
+      "language": "Language",
+      "none": "No voice selected",
+      "notConfigured": "Not configured"
+    },
+    "preview": {
+      "title": "Live preview",
+      "prompt": "Prompt",
+      "issues": "Issues",
+      "variables": "Variables",
+      "sampleLead": "Fill with a sample lead",
+      "placeholders": "Show placeholders",
+      "score": "Lint score",
+      "tokens": "Approx. tokens",
+      "noIssues": "No issues found.",
+      "compileErrors": "Fix before use",
+      "latencyOk": "Length is fine for a voice call.",
+      "latencyWarn": "Getting long: replies may feel slow.",
+      "latencyBad": "Too long: replies will be slow.",
+      "line": "Line"
+    },
+    "variables": {
+      "intro": "Variables are written as {{name}} in blocks and the first message.",
+      "scope": { "agent": "Agent", "call": "Per call", "system": "Automatic" },
+      "used": "Used",
+      "unused": "Not used",
+      "missing": "Missing value",
+      "undeclared": "Used but not defined",
+      "addTitle": "Add a variable",
+      "name": "Name",
+      "label": "Label",
+      "required": "Required",
+      "add": "Add"
+    }
+  },
+  "settings": {
+    "title": "Organisation settings",
+    "name": "Organisation name",
+    "save": "Save",
+    "timezone": "Time zone",
+    "currency": "Currency",
+    "members": "Members",
+    "invite": "Invite a member",
+    "inviteEmail": "Email",
+    "inviteRole": "Role",
+    "inviteSubmit": "Send invite",
+    "invited": "Invite sent.",
+    "remove": "Remove",
+    "you": "you",
+    "roles": { "OWNER": "Owner", "ADMIN": "Admin", "MEMBER": "Member", "VIEWER": "Viewer" },
+    "roleHelp": "Owner: everything. Admin: manage members and agents. Member: build agents. Viewer: read only.",
+    "language": "Interface language",
+    "languageSoon": "More languages coming soon",
+    "audit": "Recent activity"
+  },
+  "common": {
+    "required": "Required",
+    "optional": "Optional",
+    "cancel": "Cancel",
+    "back": "Back",
+    "error": "Something went wrong.",
+    "notFound": "Not found."
+  }
+}

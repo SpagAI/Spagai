@@ -13,3 +13,4 @@ export * from "./agent";
 export * from "./names";
 export * from "./shared/numberWords";
 export { PRESETS, getPreset, presetToTemplate } from "./presets";
+export * from "./voices";

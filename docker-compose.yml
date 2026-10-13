@@ -1,0 +1,26 @@
+# Local services for Spag AI Studio. Start with:  docker compose up -d
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: spagai
+      POSTGRES_PASSWORD: spagai
+      POSTGRES_DB: spagai
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spagai"]
+      interval: 5s
+      retries: 10
+
+  # A fake email inbox. Login emails land here. Open http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025" # web inbox
+      - "1025:1025" # SMTP
+
+volumes:
+  pgdata:

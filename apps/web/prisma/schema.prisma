@@ -1,0 +1,114 @@
+// Spag AI Studio database schema.
+// Money is stored as integer kobo. Times are stored in UTC and shown in Africa/Lagos.
+// Never add columns for card numbers, PINs, one-time passwords or BVNs.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+model User {
+  id          String       @id @default(cuid())
+  email       String       @unique
+  name        String?
+  createdAt   DateTime     @default(now())
+  lastLoginAt DateTime?
+  memberships Membership[]
+  sessions    Session[]
+}
+
+model Organisation {
+  id          String       @id @default(cuid())
+  name        String
+  timezone    String       @default("Africa/Lagos")
+  currency    String       @default("NGN")
+  createdAt   DateTime     @default(now())
+  memberships Membership[]
+  agents      Agent[]
+  auditLogs   AuditLog[]
+}
+
+model Membership {
+  id             String       @id @default(cuid())
+  userId         String
+  organisationId String
+  role           Role         @default(MEMBER)
+  createdAt      DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organisationId])
+  @@index([organisationId])
+}
+
+/// A signed-in browser. The cookie holds a random token; only its SHA-256 hash is stored.
+model Session {
+  id                   String   @id @default(cuid())
+  tokenHash            String   @unique
+  userId               String
+  activeOrganisationId String?
+  expiresAt            DateTime
+  createdAt            DateTime @default(now())
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// One-time email login link. Only the hash of the token is stored.
+model LoginToken {
+  id        String    @id @default(cuid())
+  email     String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+}
+
+enum AgentStatus {
+  DRAFT
+  READY
+}
+
+model Agent {
+  id             String       @id @default(cuid())
+  organisationId String
+  name           String
+  presetId       String?
+  status         AgentStatus  @default(DRAFT)
+  /// The full AgentConfig from @spagai/core (blocks, variables, tools, silence, voice...).
+  config         Json
+  createdById    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId])
+}
+
+/// Who did what. Extended for call compliance in M4.
+model AuditLog {
+  id             String       @id @default(cuid())
+  organisationId String
+  actorUserId    String?
+  action         String
+  targetType     String?
+  targetId       String?
+  details        Json?
+  createdAt      DateTime     @default(now())
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, createdAt])
+}

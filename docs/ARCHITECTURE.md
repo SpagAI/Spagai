@@ -10,11 +10,11 @@ flowchart LR
         UI[Business user<br/>Agent Builder, Leads,<br/>Campaigns, Dashboard]
     end
 
-    subgraph web["apps/web (Next.js) (planned M2)"]
+    subgraph web["apps/web (Next.js, M2)"]
         Pages[Pages and API routes]
         Auth[Email login]
-        Compliance[Compliance gate<br/>every call attempt]
-        Providers[Provider adapters<br/>mock by default]
+        Compliance[Compliance gate<br/>every call attempt<br/>planned M4]
+        Providers[Provider adapters<br/>mock by default<br/>planned M3]
     end
 
     subgraph core["packages/core (pure logic, M1)"]
@@ -28,7 +28,7 @@ flowchart LR
         Presets[(Preset JSON files)]
     end
 
-    DB[(PostgreSQL via Prisma<br/>planned M2)]
+    DB[(PostgreSQL via Prisma)]
     Worker["services/voice-worker (Python)<br/>planned M5: plug in LiveKit Agents or Pipecat"]
     Ext["Real providers (later)<br/>LLM, ASR, TTS, telephony,<br/>Paystack, Flutterwave"]
 
@@ -73,4 +73,50 @@ flowchart TD
     O --> V[Fill variables<br/>agent values now;<br/>call and system values at dial time]
     V --> R[Compiled prompt + first message<br/>+ length estimate + variable report]
     R --> L[Linter: questions per turn, symbols,<br/>Sir/Ma placement, guardrails, length,<br/>repeats, after-hours wording]
+```
+
+## Signing in (magic link)
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant W as apps/web
+    participant DB as PostgreSQL
+    participant M as Email (Mailpit locally)
+    U->>W: Enter email on /login
+    W->>W: Rate limit (per email, per IP)
+    W->>DB: Save SHA-256 hash of a random token (15 min, single use)
+    W->>M: Email link /auth/verify?token=...
+    U->>W: Open link, click "Sign in"
+    W->>DB: Mark token used, find or create user and organisation
+    W->>DB: Create session (hash only)
+    W-->>U: httpOnly session cookie, go to /dashboard
+```
+
+## apps/web layout
+
+| Folder | Purpose |
+|---|---|
+| `src/app/login`, `src/app/auth/verify` | Public sign-in pages (server actions) |
+| `src/app/(app)/…` | Signed-in pages. The layout calls `requireOrg()`, which redirects to /login if needed. |
+| `src/app/(app)/agents/actions.ts` | Create, save (server-side guardrail enforcement and readiness check) and delete agents |
+| `src/app/(app)/settings/actions.ts` | Rename organisation, invite, change roles, remove members |
+| `src/server/auth` | Tokens, login links, sessions |
+| `src/server/permissions.ts` | Role rules (pure, tested) |
+| `src/server/rate-limit.ts` | In-memory rate limiter (pure, tested) |
+| `src/components/agent-builder` | The Agent Builder: tabs, blocks editor, live preview panel |
+| `src/i18n` | Translation files and helpers |
+
+## Data model (M2)
+
+```mermaid
+erDiagram
+    User ||--o{ Membership : has
+    Organisation ||--o{ Membership : has
+    User ||--o{ Session : has
+    Organisation ||--o{ Agent : owns
+    Organisation ||--o{ AuditLog : records
+    Membership { string role "OWNER ADMIN MEMBER VIEWER" }
+    Agent { json config "AgentConfig from core" string status "DRAFT READY" }
+    LoginToken { string tokenHash "hash only" datetime expiresAt }
 ```

@@ -39,3 +39,29 @@ Every technical or product choice made while building the prototype, with the re
 | D26 | **Zara preset is a placeholder** (status `placeholder`) until the founder adds `docs/zara-prompt.md` | The real prompt was not available at M1. |
 | D27 | **Names dictionary hints** use simple English-style syllables with the stressed syllable in capitals. Tones are not shown. All entries are `verified: false`. | A starting point only. Native speakers must review it, and a production system should use proper phoneme or SSML input per TTS provider. |
 | D28 | TypeScript source is consumed directly (no build step) by tests and, later, by Next.js via `transpilePackages` | Fewer moving parts in a prototype. |
+
+## M2: Web shell, login, organisations, Agent Builder
+
+| # | Decision | Why |
+|---|---|---|
+| D29 | **Next.js 16.4, React 19, Tailwind CSS 4** | Current stable versions at the time of building. |
+| D30 | **Prisma 6.19 (not 7 or 8)** | Prisma's "latest" tag was a pre-release (8.0 RC), and 7 changed the setup significantly. 6.x is stable and widely documented. Upgrade later as one focused task. |
+| D31 | **Custom magic-link sign-in instead of the Auth.js library** (this replaces D2's library choice; the magic-link approach is unchanged) | About 150 lines we fully control: random token, only its SHA-256 hash stored, 15-minute expiry, single use, sessions in the database with a 30-day expiry and an httpOnly cookie. Avoids a beta dependency. |
+| D32 | **The emailed link opens a page with a "Sign in" button** rather than signing in immediately | Email security scanners open links automatically and would otherwise use up the one-time link. |
+| D33 | **First sign-in creates the user and their own organisation** (as Owner), named after their company email domain, or "Name's organisation" for Gmail, Yahoo and similar | Fastest path to a working account. Invited people join the inviting organisation instead. |
+| D34 | **Roles: Owner, Admin, Member, Viewer.** Only owners can create or change owners. Nobody can change their own role. The last owner cannot be removed or demoted. | Standard, safe defaults. Rules are pure functions with tests (`apps/web/src/server/permissions.ts`). |
+| D35 | **Rate limits:** sign-in links limited to 5 per email and 20 per IP address per 15 minutes, in memory | Protects the only public endpoint. Production with several servers needs Redis (see handoff). |
+| D36 | **Same reply whether or not an email has an account** | Stops people discovering which emails are registered. |
+| D37 | **`EMAIL_TRANSPORT` setting** (`smtp` or `console`). Console mode prints emails to the terminal and is only allowed when `APP_URL` is localhost. In development, emails are always also printed. | Sign-in works even when the fake inbox is not running, without risking links being logged in production. |
+| D38 | **Agent configuration is stored as one validated JSON document** (`Agent.config`), checked by `agentConfigSchema` in core on every save and load | The builder edits many nested parts (blocks, variables, tools, silence). One validated document keeps the database simple while the format is still changing. Searchable fields (name, status, preset) are separate columns. |
+| D39 | **Guardrails are enforced on the server too**: every save runs `normaliseAgentConfig`, which puts back any removed guardrail, switches disabled ones back on, and always adds the `end_call` tool | The screen hides the remove button, but the server must not trust the browser. |
+| D40 | **"Mark as ready" requires**: no compile errors (all required business details filled), no lint errors, and a voice chosen. Warnings are allowed. | Prevents half-finished agents going into campaigns (M4). |
+| D41 | **The live preview runs in the browser** using the same core compiler and linter | Instant feedback with no server round trip. The same code runs on the server at save time. |
+| D42 | **Preview "sample lead"** is Chinedu Okafor (male), with a fixed sample time of Tuesday 13 October 2026, 10:30 WAT | A fixed time keeps the server and browser pages identical. A switch shows the raw `{{placeholders}}` instead. |
+| D43 | **shadcn/ui components were written by hand** in the standard shadcn style (`components.json` included) | The shadcn download site was blocked from the build environment. The code is the same kind that the shadcn CLI copies in, so later `npx shadcn add …` works normally. |
+| D44 | **Native `<select>` for dropdowns** | Best behaviour on phones, and accessible by default. |
+| D45 | **Translations**: one JSON file per language; missing text falls back to English. The language picker shows Pidgin, Yoruba, Hausa and Igbo as "coming soon". | Translators fill a JSON file. No code changes are needed to add a language. |
+| D46 | **Audit log** records organisation creation, renames, invites, role changes, removals, and agent create, save and delete | Basis for the compliance audit trail in M4. Visible to Owners and Admins in Settings. |
+| D47 | **Security headers** (no framing, no MIME sniffing, strict referrer, microphone same-origin only) set in `next.config.ts` | Cheap protection from common web attacks. |
+| D48 | **Starter voice list** lives in `packages/core/data/voices.json` (mock voices for en-NG, pcm, yo, ha, ig, plus one placeholder for a local provider). The database table and preview player come in M3. | Lets the voice picker work in M2 without building M3 early. Non-English sample lines need native-speaker checks. |
+| D49 | `AGENTS.md` in `apps/web` is generated by Next.js for AI coding assistants and is committed | Next.js re-creates it on every `pnpm dev`; committing it keeps the working tree clean. |

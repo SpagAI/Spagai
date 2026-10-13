@@ -2,11 +2,21 @@
 
 > Started in M1, completed in M5. This document tells a senior developer what the prototype does, what is fake, and what must be built for production.
 
-## What exists now (M1)
+## What exists now (M2)
 
-- `packages/core`: pure TypeScript rules with 159 Vitest tests. Run `pnpm test`.
+- `packages/core`: pure TypeScript rules with Vitest tests. Run `pnpm test`.
 - Presets as JSON in `packages/core/presets`, validated by `presetSchema` (`src/agent`).
 - `pnpm demo` prints the core logic in action.
+- `apps/web`: Next.js 16 app with magic-link sign-in, organisations, roles, invites, audit log and the Agent Builder. Prisma 6 + PostgreSQL.
+
+## Production hardening already noted (web)
+
+- **Rate limiting** is in memory (`src/server/rate-limit.ts`). With more than one server, move it to Redis or the hosting platform's limiter.
+- **Email**: set real SMTP (or a transactional email provider) and `EMAIL_TRANSPORT=smtp`. Console mode refuses to run unless `APP_URL` is localhost.
+- **Sessions**: 30-day database sessions with httpOnly cookies. Consider shorter sessions or re-authentication for admin actions, and a "sign out everywhere" button.
+- **Client IP** comes from `x-forwarded-for`. Trust it only behind your own proxy.
+- **Content Security Policy** is not set yet. Add one when the final set of scripts and providers is known.
+- **Agent config** is a JSON column validated by `agentConfigSchema`. If the format changes, write a migration that re-validates every saved agent.
 
 ## Integration contract for the voice pipeline (draft)
 

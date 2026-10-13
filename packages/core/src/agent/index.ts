@@ -4,6 +4,8 @@
  */
 
 import { z } from "zod";
+import { compilePrompt, withGuardrails } from "../prompt/compiler";
+import { lintPrompt } from "../prompt/linter";
 
 // ---------------------------------------------------------------------------
 // Tools
@@ -184,3 +186,98 @@ export const presetSchema = z.object({
 });
 
 export type AgentPreset = z.infer<typeof presetSchema>;
+
+// ---------------------------------------------------------------------------
+// Saved agent configuration (what the Agent Builder edits and saves)
+// ---------------------------------------------------------------------------
+
+export const silenceSchema = z
+  .object({
+    checkInAfterSeconds: z.number().int().min(3).max(60),
+    checkInMessage: z.string().trim().min(1).max(300),
+    maxCheckIns: z.number().int().min(0).max(3),
+    endCallAfterSeconds: z.number().int().min(5).max(120),
+    closingMessage: z.string().trim().min(1).max(300),
+  })
+  .refine((s) => s.endCallAfterSeconds > s.checkInAfterSeconds, {
+    message: "The call must end later than the check-in.",
+    path: ["endCallAfterSeconds"],
+  });
+
+export const agentConfigSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  language: z.string().min(2).max(10),
+  voiceId: z.string().max(100).nullable(),
+  addressMode: z.enum(["A", "B"]),
+  firstMessage: z.string().trim().min(1).max(1000),
+  blocks: z.array(promptBlockSchema.extend({ content: z.string().max(8000) })).min(1).max(60),
+  variables: z.array(variableDefSchema).max(50),
+  /** Values for agent-scope variables (company_name, product_name, ...). */
+  variableValues: z.record(z.string(), z.string().max(500)),
+  tools: z.array(z.enum(["check_calendar", "book_appointment", "reschedule_appointment", "save_lead_data", "end_call"])),
+  silence: silenceSchema,
+});
+
+export type AgentConfig = z.infer<typeof agentConfigSchema>;
+
+/** Tools every agent must have. */
+export const REQUIRED_TOOLS: ToolId[] = ["end_call"];
+
+/**
+ * Server-side safety net before saving: validates, re-adds any locked guardrail
+ * that was removed, forces guardrails on, and makes sure required tools are present.
+ * Returns the cleaned config, or the validation errors.
+ */
+export function normaliseAgentConfig(
+  input: unknown,
+): { ok: true; config: AgentConfig } | { ok: false; errors: string[] } {
+  const parsed = agentConfigSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      errors: parsed.error.issues.map((i) => `${i.path.join(".") || "config"}: ${i.message}`),
+    };
+  }
+  const config = parsed.data;
+  const { blocks } = withGuardrails(config.blocks);
+  const ids = new Set<string>();
+  for (const b of blocks) {
+    if (ids.has(b.id)) return { ok: false, errors: [`blocks: duplicate block id "${b.id}"`] };
+    ids.add(b.id);
+  }
+  const tools = [...new Set([...config.tools, ...REQUIRED_TOOLS])];
+  return { ok: true, config: { ...config, blocks, tools } };
+}
+
+/** Turn a preset into a starting config for a new agent. */
+export function presetToAgentConfig(preset: AgentPreset): AgentConfig {
+  const variableValues: Record<string, string> = {};
+  for (const v of preset.variables) if (v.scope === "agent" && v.defaultValue) variableValues[v.name] = v.defaultValue;
+  return {
+    name: preset.agentName,
+    language: preset.language,
+    voiceId: null,
+    addressMode: preset.addressMode,
+    firstMessage: preset.firstMessage,
+    blocks: withGuardrails(preset.blocks).blocks,
+    variables: preset.variables,
+    variableValues,
+    tools: preset.tools,
+    silence: preset.silence ?? DEFAULT_SILENCE,
+  };
+}
+
+/**
+ * Can this agent be marked "ready"? It must compile with no errors (all required
+ * business details filled in) and have no lint errors. Warnings are allowed.
+ */
+export function agentReadiness(config: AgentConfig): { ready: boolean; problems: string[] } {
+  const compiled = compilePrompt(
+    { blocks: config.blocks, variables: config.variables, firstMessage: config.firstMessage },
+    { values: config.variableValues, mode: "preview" },
+  );
+  const lint = lintPrompt({ prompt: compiled.prompt, firstMessage: compiled.firstMessage });
+  const problems = [...compiled.errors, ...lint.issues.filter((i) => i.severity === "error").map((i) => i.message)];
+  if (!config.voiceId) problems.push("Choose a voice.");
+  return { ready: problems.length === 0, problems };
+}
