@@ -156,6 +156,7 @@ export const variableDefSchema = z.object({
   defaultValue: z.string().optional(),
   example: z.string().optional(),
   description: z.string().optional(),
+  allowEmpty: z.boolean().optional(),
 });
 
 export const presetSchema = z.object({

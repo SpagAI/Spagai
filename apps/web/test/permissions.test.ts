@@ -5,6 +5,14 @@ describe("can", () => {
   it("gives viewers read-only access", () => {
     expect(can("VIEWER", "agent:view")).toBe(true);
     expect(can("VIEWER", "agent:edit")).toBe(false);
+    expect(can("VIEWER", "lead:view")).toBe(true);
+    expect(can("VIEWER", "call:view")).toBe(true);
+    expect(can("VIEWER", "lead:edit")).toBe(false);
+    expect(can("VIEWER", "campaign:run")).toBe(false);
+    expect(can("MEMBER", "lead:edit")).toBe(true);
+    expect(can("MEMBER", "campaign:run")).toBe(true);
+    expect(can("MEMBER", "billing:view")).toBe(false);
+    expect(can("ADMIN", "billing:manage")).toBe(true);
   });
 
   it("lets members edit agents but not manage people", () => {

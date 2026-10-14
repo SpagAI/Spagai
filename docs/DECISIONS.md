@@ -73,3 +73,53 @@ Every technical or product choice made while building the prototype, with the re
 | D50 | **GitHub Codespaces set-up** (`.devcontainer/`): a Node 22 container plus PostgreSQL 16 and Mailpit, sharing one network so `localhost` works as it does locally. On creation it installs pnpm and packages, writes `apps/web/.env` with the codespace's own web address, applies migrations and seeds demo data. Each time it opens, it starts `pnpm dev` and opens the app. | The founder's laptop has hardware virtualisation switched off, so Docker Desktop cannot run there. Codespaces needs nothing installed. |
 | D51 | **Development sign-in shortcut** (`DEV_SHOW_LOGIN_LINK=true`): after requesting a link, the page shows an "Open my sign-in link" button. The app refuses to start in production with it on (tested). | Finding the link in an inbox or terminal was the hardest step for non-developers. |
 | D52 | **Codespaces address trusted exactly**: `allowedDevOrigins` and Server Actions `allowedOrigins` list only `<codespace>-3000.<forwarding domain>`, set only when running inside a codespace | Next.js blocks requests from unexpected origins (protection against cross-site attacks). A wildcard such as `*.app.github.dev` would trust every codespace on GitHub. |
+
+## M3: Voice previews, simulator, provider adapters
+
+| # | Decision | Why |
+|---|---|---|
+| D53 | **Mock voices are spoken by the browser's built-in speech** (Web Speech API). The server cleans the text with `sanitiseForSpeech` first, then the browser picks a local voice by language and gender, with a small pitch change per mock voice. | Free, needs no key, and works offline. It shows wording and timing only; Yoruba, Hausa and Igbo lines may be read with an English accent until a real provider is connected. |
+| D54 | **The voice catalogue stays in `packages/core/data/voices.json`** instead of a database table (this changes D48's plan) | Nothing writes voices yet and every organisation sees the same list. Add a table when organisations can add their own or cloned voices. **(founder may change)** |
+| D55 | **Provider adapters live in `apps/web/src/server/providers`**: a language-model interface (`getLlm`) and a speech function (`synthesise`), each with a mock. The real option is any **OpenAI-compatible** API, chosen with `LLM_PROVIDER` / `TTS_PROVIDER`. | One adapter covers OpenAI, Groq, Together and local servers (Ollama, vLLM). The app refuses to start if a real provider is chosen without its settings. |
+| D56 | **The mock agent brain** (`packages/core/src/simulator`) recognises common replies (stop calling, are you a robot, wrong number, busy, yes, no, a day and time, an email) and answers with fixed, rule-following lines. It does not read the prompt. | Lets the whole call flow be tested for free and repeatably. Opt-out always wins over everything else. A test checks that every mock line passes the spoken-line linter. |
+| D57 | **The simulator compiles the prompt in call mode**, exactly as dialling will, so missing required details stop the test with the same errors | What you test is what will run. |
+| D58 | **Simulated tools use the real checks**: bookings go through `validateAppointment` (booking hours, not in the past), emails through `isValidEmail`. Nothing is stored. | Shows the failures a real call would hit. Tool calls from a real language model are filtered to the agent's own tools, and broken arguments are shown as failures. |
+| D59 | **Calling hours are checked but do not block the simulator**; a warning shows what a real call would do | People often test outside office hours. The blocking gate is M4. |
+| D60 | **The simulator's clock starts at the current Lagos time and can be changed** | Lets you test greetings, goodbyes and after-hours behaviour for any time. |
+| D61 | **The simulator runs the last saved version of an agent**; the builder warns before opening it with unsaved changes | Keeps the simulator honest about what is stored. |
+
+## M4: Leads, compliance gate, campaigns, calls
+
+| # | Decision | Why |
+|---|---|---|
+| D62 | **One compliance function, `checkCallAttempt`**, in core. It returns every reason at once and marks each as permanent (opted out, do-not-call, no consent, no source, bad number, attempt limit) or temporary (calling hours, agent not ready, too soon). | One gate for every call (architecture rule 3), easy to test, and every reason can be logged and shown. |
+| D63 | **Blocked attempts are saved as calls with status BLOCKED** and their reasons | This is the compliance audit trail. A batch stops at the first calling-hours or agent-not-ready block instead of logging the same reason for every lead. |
+| D64 | **A campaign's calling window can only narrow 08:00 to 21:00** (`effectiveCallingWindow`) | Users can choose office hours, but can never widen the legal default. **(founder may change the default)** |
+| D65 | **Every lead needs a lead source; consent is a yes/no record per lead.** Imports take a source and consent from columns, or one value for the whole file. | Matches the compliance to-do (item 7). What counts as proof of consent needs legal review. |
+| D66 | **Sensitive CSV columns are refused by header name** (BVN, NIN, card, PAN, CVV, PIN, OTP, password); their values are never read | The data rules forbid storing them. The import result tells the user which columns were refused. |
+| D67 | **Opt-outs take effect at once, for every campaign**: the lead is marked opted out and the number goes on the do-not-call list in the same database transaction. There is no undo button. | Compliance item 5. Removing a number should be a deliberate, audited admin task (not built). |
+| D68 | **Re-importing a number updates its details but never clears an opt-out** | Stops an old spreadsheet from undoing someone's request. |
+| D69 | **Phone numbers are unique per organisation** (E.164) | One person, one record; imports can safely be re-run. |
+| D70 | **Mock telephony gives each lead a persona** (interested, busy, not interested, curious, opts out, wrong number, no answer, silent) from a hash of the lead and attempt number, then plays the call with the mock agent brain | Free, repeatable end-to-end campaigns. Real telephony replaces only the call step (M5). |
+| D71 | **"Pretend it is" time on a campaign run, only with mock telephony** | Shows the calling-hours rules working at any time of day. Ignored when a real phone line is connected. |
+| D72 | **Retries:** no answer means try again after the campaign's wait (default 240 minutes); a callback is tried at the agreed time; stop after the attempt limit (default 3) | Simple, respectful defaults. **(founder may change)** |
+| D73 | **Leads with missing per-call values are marked "missing details" (FAILED), not blocked** | It is a data problem, not a compliance one, and the reason is shown on the call. |
+| D74 | **Unknown gender: `suffix` may be empty in call mode** (`allowEmpty` on the variable), and the line is tidied ("Is now a good time, ?" becomes "Is now a good time?") | Found while testing: unknown-gender leads could never be called. Matches D11 (never guess Sir or Ma). Preset wording now says what to do when it is empty. |
+| D75 | **New permissions:** `lead:view`, `lead:edit`, `campaign:run`, `call:view`. Members can import leads and run campaigns; viewers can only look. | Follows the role descriptions in `permissions.ts`. |
+
+## M5: Billing, voice worker starter
+
+| # | Decision | Why |
+|---|---|---|
+| D76 | **Prepaid wallet in kobo** (`Organisation.balanceKobo`). Every balance change is written together with a `WalletTransaction` in one database transaction, with the balance after it. | Simple for Nigerian SMEs (no invoices or credit), and the history always adds up. Money is integer kobo (architecture rule 5). |
+| D77 | **Price: ₦150 per started minute of an answered call; unanswered, blocked and failed attempts are free** (`DEFAULT_RATE_PER_MINUTE_KOBO`, stored per organisation) | Easy to understand and to check. **(founder may change the price and the rounding)** |
+| D78 | **A call only starts if the wallet covers at least one minute**; the batch stops with a clear message otherwise | Prevents surprise debt. A long call can take the balance slightly below zero; real telephony should end calls when the balance runs out (handoff). |
+| D79 | **The call, the lead's progress, any opt-out and the charge are saved in one transaction**, and the charge reference is unique per call | A call can never be charged twice, or recorded without its charge. |
+| D80 | **Top-ups: from ₦1,000 to ₦5,000,000.** A top-up is PENDING until paid; crediting is idempotent (only the first PENDING → SUCCESS flip credits), and the amount paid must match exactly. | The return page and the webhook may both arrive; neither can double-credit. |
+| D81 | **Payments provider: Paystack**, behind `PAYMENTS_PROVIDER` (`mock` or `paystack`). The browser return is never trusted: the app verifies with Paystack's API, and the webhook must carry a valid HMAC-SHA512 signature. | Paystack is widely used in Nigeria and settles in naira. Flutterwave can be added the same way. |
+| D82 | **The pretend checkout only exists with `PAYMENTS_PROVIDER=mock`, and the app refuses to start in production with mock payments** | Top-ups can be tried for free, with no risk of a fake payment page going live. |
+| D83 | **Billing is visible to Owners and Admins only** (`billing:view`, `billing:manage`) | Matches the role description (admins manage billing). |
+| D84 | **A ₦10,000 demo credit** is added once by the seed script | Campaigns work straight after setup. |
+| D85 | **Voice worker starter in Python (FastAPI)** with `GET /health` and `POST /calls`. It cleans lines through the web app's `POST /api/voice/sanitise` instead of copying the rules into Python. | One source of truth for speech rules (handoff contract item 2). The audio pipeline (LiveKit Agents or Pipecat) needs real telephony accounts, so it is not built. |
+| D86 | **Worker and web app share one secret** (`WORKER_SHARED_SECRET`, 32+ characters), compared in constant time; with no secret, both sides refuse every request | Simple, safe service-to-service auth for a prototype. Use mTLS or signed tokens later. |
+| D87 | **The local stand-in database must use UTF-8.** A Windows-created database (WIN1252) cannot store "₦". | Found while testing the wallet on a Windows PC. The project's Docker and Codespaces databases already use UTF-8. |

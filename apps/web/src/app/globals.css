@@ -26,8 +26,9 @@
   --ring: oklch(0.48 0.12 158);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
+/* Always white by default. Dark colours only apply if a "dark" class is added to the page. */
+.dark {
+  & {
     --background: oklch(0.16 0.01 160);
     --foreground: oklch(0.96 0.005 160);
     --card: oklch(0.2 0.01 160);

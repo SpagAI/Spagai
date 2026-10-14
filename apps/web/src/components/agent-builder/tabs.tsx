@@ -20,6 +20,8 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { PlayButton } from "@/components/voice/play-button";
+import { useSpeaker } from "@/components/voice/use-speaker";
 import { useT } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 import { sampleValues } from "./shared";
@@ -197,6 +199,7 @@ export function VoiceTab({ config, update }: { config: AgentConfig; update: Upda
     ? (config.language as VoiceLanguage)
     : "en-NG";
   const voices = VOICE_CATALOGUE.filter((v) => v.language === language);
+  const speaker = useSpeaker();
   return (
     <Card>
       <CardHeader>
@@ -212,32 +215,44 @@ export function VoiceTab({ config, update }: { config: AgentConfig; update: Upda
             ))}
           </Select>
         </div>
+        {speaker.error && <p className="text-sm text-destructive">{speaker.error}</p>}
         <div className="grid gap-3 sm:grid-cols-2">
           {voices.map((v) => {
             const selected = config.voiceId === v.id;
             const usable = v.status === "available";
+            // The play button sits beside the choose button (a button cannot contain another button).
             return (
-              <button
-                key={v.id}
-                type="button"
-                disabled={!usable}
-                onClick={() => update({ voiceId: v.id })}
-                className={cn(
-                  "space-y-1 rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60",
-                  selected ? "border-primary bg-primary/5" : "hover:border-primary/50",
+              <div key={v.id} className={cn("relative rounded-lg border transition-colors", selected ? "border-primary bg-primary/5" : "hover:border-primary/50", !usable && "opacity-60")}>
+                <button
+                  type="button"
+                  disabled={!usable}
+                  onClick={() => update({ voiceId: v.id })}
+                  aria-pressed={selected}
+                  className="w-full space-y-1 p-3 pr-14 text-left disabled:cursor-not-allowed"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{v.name}</span>
+                    {selected ? <Check className="size-4 text-primary" /> : <Badge variant="outline">{v.provider}</Badge>}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{v.gender} · {LANGUAGE_NAMES[v.language]}</p>
+                  <p className="text-xs italic text-muted-foreground">“{v.sampleText}”</p>
+                  {!usable && <Badge variant="warning">{t("builder.voice.notConfigured")}</Badge>}
+                </button>
+                {usable && (
+                  <div className="absolute top-3 right-3">
+                    <PlayButton
+                      size="icon"
+                      playing={speaker.playingKey === v.id}
+                      onPlay={() => void speaker.speak(v.id, renderVariables(config.firstMessage, sampleValues(config)))}
+                      onStop={speaker.stop}
+                    />
+                  </div>
                 )}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium">{v.name}</span>
-                  {selected ? <Check className="size-4 text-primary" /> : <Badge variant="outline">{v.provider}</Badge>}
-                </div>
-                <p className="text-xs text-muted-foreground">{v.gender} · {LANGUAGE_NAMES[v.language]}</p>
-                <p className="text-xs italic text-muted-foreground">“{v.sampleText}”</p>
-                {!usable && <Badge variant="warning">{t("builder.voice.notConfigured")}</Badge>}
-              </button>
+              </div>
             );
           })}
         </div>
+        <p className="text-xs text-muted-foreground">{t("builder.voice.playHint")}</p>
         {!config.voiceId && <p className="text-sm text-muted-foreground">{t("builder.voice.none")}</p>}
       </CardContent>
     </Card>

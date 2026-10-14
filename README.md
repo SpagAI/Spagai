@@ -4,7 +4,7 @@ A platform where businesses in Nigeria and Africa build and run AI voice agents,
 
 > **Status: prototype skeleton.** Everything runs locally with **mock** providers. No paid API keys are needed. Nothing here is legal advice. All regulatory text is a draft that **needs legal review**.
 
-## What works today (Milestones 1 and 2)
+## What works today (Milestones 1 to 5)
 
 | Area | Where | Status |
 |---|---|---|
@@ -15,9 +15,16 @@ A platform where businesses in Nigeria and Africa build and run AI voice agents,
 | Organisations, members, roles (Owner, Admin, Member, Viewer), invites | `apps/web/src/app/(app)/settings` | Done |
 | Agent Builder: presets, business details, blocks, live preview, lint, variables, tools, silence, voice picker | `apps/web/src/components/agent-builder` | Done |
 | Translation files (English now; Pidgin, Yoruba, Hausa, Igbo ready to fill) | `apps/web/src/i18n/messages` | Structure done |
-| Voice previews, simulator | — | M3 |
-| Leads, campaigns, compliance engine, calls, dashboard | — | M4 |
-| Billing, voice worker | — | M5 |
+| Voice library with previews (Play buttons, try your own line) | `apps/web/src/app/(app)/voices`, `src/components/voice` | Done |
+| Simulator: pretend calls with any agent, simulated tools, silence, calling-hours check | `apps/web/src/app/(app)/simulator`, `packages/core/src/simulator` | Done + tests |
+| Provider adapters (language model, text-to-speech) with free mock defaults | `apps/web/src/server/providers` | Done + tests |
+| Leads: CSV import (sensitive columns refused), add by hand, opt-out, do-not-call list | `apps/web/src/app/(app)/leads`, `packages/core/src/leads` | Done + tests |
+| Compliance gate before every call attempt (hours, opt-out, do-not-call, consent, source, attempts) | `packages/core/src/compliance` | Done + tests |
+| Campaigns with a mock phone line, retries and callbacks | `apps/web/src/app/(app)/campaigns`, `apps/web/src/server/dialer.ts` | Done |
+| Calls log with transcripts and block reasons; dashboard totals | `apps/web/src/app/(app)/calls`, `dashboard` | Done |
+| Billing: prepaid naira wallet, per-minute call charges, pretend checkout, Paystack ready (verify + signed webhook) | `apps/web/src/app/(app)/billing`, `apps/web/src/server/wallet.ts`, `packages/core/src/billing` | Done + tests |
+| Voice worker starter (Python, FastAPI) and its secure link to the web app | `services/voice-worker`, `apps/web/src/app/api/voice` | Starter (not yet run: see its README) |
+| Real phone calls, Nigerian numbers, real voices | — | Needs accounts: see `docs/DEVELOPER_HANDOFF.md` |
 
 ## How to run it
 
@@ -63,7 +70,7 @@ Then open **http://localhost:3000** in your browser.
 **To sign in:** type any email address and click "Email me a sign-in link". Then click **Open my sign-in link** (a shortcut shown only during development), then "Sign in". The email also arrives in the fake inbox at **http://localhost:8025**, and the link is printed in the terminal.
 
 - New email address: you get your own new organisation as its Owner.
-- With demo data: sign in as `demo@spagai.local` (Owner, has a Zara agent), or `viewer@spagai.local` (read-only).
+- With demo data: sign in as `demo@spagai.local` (Owner, has a Zara agent and ten leads), or `viewer@spagai.local` (read-only).
 
 ### Everyday commands (run from the project folder)
 
@@ -102,7 +109,7 @@ docs/                 Architecture, decisions, compliance to-do, developer hando
 docker-compose.yml    Local database and fake email inbox
 ```
 
-Coming next: `services/voice-worker` (Python stub, M5).
+`services/voice-worker/`  The real-time call worker (Python starter, see its README)
 
 ## Docs
 

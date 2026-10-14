@@ -54,6 +54,8 @@ export interface VariableDef {
   defaultValue?: string;
   example?: string;
   description?: string;
+  /** An empty value is a real answer (e.g. no Sir/Ma when gender is unknown), not a missing one. */
+  allowEmpty?: boolean;
 }
 
 export interface PromptTemplate {

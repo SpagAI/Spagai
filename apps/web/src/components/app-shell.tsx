@@ -29,17 +29,19 @@ interface NavItem {
   key: string;
   icon: typeof Bot;
   soon?: string;
+  /** Only these roles see the item. */
+  roles?: string[];
 }
 
 const NAV: NavItem[] = [
   { href: "/dashboard", key: "dashboard", icon: LayoutDashboard },
   { href: "/agents", key: "agents", icon: Bot },
-  { href: "/coming-soon/voices", key: "voices", icon: AudioLines, soon: "M3" },
-  { href: "/coming-soon/simulator", key: "simulator", icon: FlaskConical, soon: "M3" },
-  { href: "/coming-soon/leads", key: "leads", icon: ListChecks, soon: "M4" },
-  { href: "/coming-soon/campaigns", key: "campaigns", icon: Megaphone, soon: "M4" },
-  { href: "/coming-soon/calls", key: "calls", icon: PhoneCall, soon: "M4" },
-  { href: "/coming-soon/billing", key: "billing", icon: CreditCard, soon: "M5" },
+  { href: "/voices", key: "voices", icon: AudioLines },
+  { href: "/simulator", key: "simulator", icon: FlaskConical },
+  { href: "/leads", key: "leads", icon: ListChecks },
+  { href: "/campaigns", key: "campaigns", icon: Megaphone },
+  { href: "/calls", key: "calls", icon: PhoneCall },
+  { href: "/billing", key: "billing", icon: CreditCard, roles: ["OWNER", "ADMIN"] },
   { href: "/settings", key: "settings", icon: Settings },
 ];
 
@@ -58,7 +60,7 @@ export function AppShell({ children, user, organisation, role, memberships }: Sh
 
   const nav = (
     <nav className="flex flex-col gap-1">
-      {NAV.map((item) => {
+      {NAV.filter((item) => !item.roles || item.roles.includes(role)).map((item) => {
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
         const Icon = item.icon;
         return (

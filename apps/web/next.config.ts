@@ -8,10 +8,14 @@ const codespaceHost =
     : null;
 
 const nextConfig: NextConfig = {
-  ...(codespaceHost && {
-    allowedDevOrigins: [codespaceHost],
-    experimental: { serverActions: { allowedOrigins: [codespaceHost] } },
-  }),
+  ...(codespaceHost && { allowedDevOrigins: [codespaceHost] }),
+  experimental: {
+    serverActions: {
+      // Lead CSV uploads can be up to 2 MB (checked again in the import action).
+      bodySizeLimit: "2100kb",
+      ...(codespaceHost && { allowedOrigins: [codespaceHost] }),
+    },
+  },
   // packages/core ships TypeScript source; Next compiles it for us.
   transpilePackages: ["@spagai/core"],
   poweredByHeader: false,

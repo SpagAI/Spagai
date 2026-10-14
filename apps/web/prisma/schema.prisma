@@ -29,14 +29,23 @@ model User {
 }
 
 model Organisation {
-  id          String       @id @default(cuid())
-  name        String
-  timezone    String       @default("Africa/Lagos")
-  currency    String       @default("NGN")
-  createdAt   DateTime     @default(now())
-  memberships Membership[]
-  agents      Agent[]
-  auditLogs   AuditLog[]
+  id                 String              @id @default(cuid())
+  name               String
+  timezone           String              @default("Africa/Lagos")
+  currency           String              @default("NGN")
+  /// Prepaid wallet balance in kobo. Changed only together with a WalletTransaction.
+  balanceKobo        Int                 @default(0)
+  /// Price per started minute of an answered call, in kobo (default ₦150).
+  ratePerMinuteKobo  Int                 @default(15000)
+  createdAt          DateTime            @default(now())
+  memberships        Membership[]
+  agents             Agent[]
+  auditLogs          AuditLog[]
+  leads              Lead[]
+  doNotCall          DoNotCall[]
+  campaigns          Campaign[]
+  calls              Call[]
+  walletTransactions WalletTransaction[]
 }
 
 model Membership {
@@ -94,6 +103,8 @@ model Agent {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  campaigns      Campaign[]
+  calls          Call[]
 
   @@index([organisationId])
 }
@@ -109,6 +120,188 @@ model AuditLog {
   details        Json?
   createdAt      DateTime     @default(now())
   organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// M4: leads, do-not-call list, campaigns and calls
+// ---------------------------------------------------------------------------
+
+/// A person a business may call. Phone is E.164 (+234...). Never store BVN, card numbers, PINs or OTPs here.
+model Lead {
+  id             String         @id @default(cuid())
+  organisationId String
+  firstName      String
+  lastName       String         @default("")
+  title          String         @default("")
+  /// "male", "female" or "" (unknown)
+  gender         String         @default("")
+  phone          String
+  email          String         @default("")
+  /// Where the lead came from (required before any call).
+  source         String
+  /// The business has a consent record for calling this person.
+  consent        Boolean        @default(false)
+  /// Extra imported columns, used as per-call variables.
+  extra          Json           @default("{}")
+  optedOut       Boolean        @default(false)
+  optedOutAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  organisation   Organisation   @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  campaignLeads  CampaignLead[]
+  calls          Call[]
+
+  @@unique([organisationId, phone])
+  @@index([organisationId, createdAt])
+}
+
+/// Numbers that must never be called by this organisation. Opt-outs are added automatically.
+model DoNotCall {
+  id             String       @id @default(cuid())
+  organisationId String
+  phone          String
+  /// "opt_out" (the person asked on a call) or "manual" (added by a team member)
+  reason         String
+  note           String       @default("")
+  createdAt      DateTime     @default(now())
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, phone])
+}
+
+enum CampaignStatus {
+  DRAFT
+  RUNNING
+  PAUSED
+  COMPLETED
+}
+
+model Campaign {
+  id                String         @id @default(cuid())
+  organisationId    String
+  name              String
+  agentId           String
+  status            CampaignStatus @default(DRAFT)
+  /// Calling window in Lagos time. Can only narrow 08:00-21:00.
+  windowStart       String         @default("08:00")
+  windowEnd         String         @default("21:00")
+  /// Allowed weekdays, 0 = Sunday.
+  days              Int[]          @default([1, 2, 3, 4, 5, 6])
+  maxAttempts       Int            @default(3)
+  retryAfterMinutes Int            @default(240)
+  createdById       String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  organisation      Organisation   @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  agent             Agent          @relation(fields: [agentId], references: [id], onDelete: Restrict)
+  leads             CampaignLead[]
+  calls             Call[]
+
+  @@index([organisationId, createdAt])
+}
+
+enum CampaignLeadStatus {
+  PENDING
+  DONE
+  STOPPED
+}
+
+/// One lead inside one campaign, with its attempt history.
+model CampaignLead {
+  id            String             @id @default(cuid())
+  campaignId    String
+  leadId        String
+  status        CampaignLeadStatus @default(PENDING)
+  attempts      Int                @default(0)
+  lastAttemptAt DateTime?
+  /// Do not try again before this time (callbacks and retries).
+  nextAttemptAt DateTime?
+  outcome       String?
+  campaign      Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  lead          Lead               @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, leadId])
+  @@index([campaignId, status])
+}
+
+enum CallStatus {
+  /// Stopped by the compliance gate before dialling.
+  BLOCKED
+  NO_ANSWER
+  COMPLETED
+  FAILED
+}
+
+/// Every call attempt, including blocked ones (the compliance audit trail).
+model Call {
+  id              String       @id @default(cuid())
+  organisationId  String
+  campaignId      String?
+  leadId          String
+  agentId         String?
+  status          CallStatus
+  /// Gate reasons when BLOCKED: [{ code, message, permanent }]
+  blockReasons    Json?
+  outcome         String?
+  /// [{ role: "agent" | "caller", text }]
+  transcript      Json?
+  /// [{ tool, args }]
+  toolCalls       Json?
+  durationSeconds Int?
+  /// What this call cost, in kobo (answered calls only).
+  costKobo        Int?
+  /// "mock" until real telephony is connected (M5).
+  provider        String       @default("mock")
+  /// The (possibly pretend) time the attempt was made, for mock runs.
+  attemptedAt     DateTime
+  createdAt       DateTime     @default(now())
+  organisation    Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  campaign        Campaign?    @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  lead            Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  agent           Agent?       @relation(fields: [agentId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, createdAt])
+  @@index([campaignId])
+  @@index([leadId])
+}
+
+// ---------------------------------------------------------------------------
+// M5: prepaid wallet in kobo
+// ---------------------------------------------------------------------------
+
+enum WalletTransactionType {
+  TOPUP
+  CALL_CHARGE
+  ADJUSTMENT
+}
+
+enum WalletTransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+/// Every change to an organisation's balance. Amounts are signed kobo (top-ups positive, charges negative).
+model WalletTransaction {
+  id               String                  @id @default(cuid())
+  organisationId   String
+  type             WalletTransactionType
+  status           WalletTransactionStatus @default(SUCCESS)
+  amountKobo       Int
+  /// Balance right after this transaction was applied (set when it succeeds).
+  balanceAfterKobo Int?
+  /// Unique payment or charge reference, so the same payment can never be credited twice.
+  reference        String                  @unique
+  /// "mock" or "paystack" for top-ups; "calls" for charges.
+  provider         String
+  callId           String?                 @unique
+  description      String                  @default("")
+  createdById      String?
+  createdAt        DateTime                @default(now())
+  completedAt      DateTime?
+  organisation     Organisation            @relation(fields: [organisationId], references: [id], onDelete: Cascade)
 
   @@index([organisationId, createdAt])
 }

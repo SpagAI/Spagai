@@ -19,6 +19,24 @@ const schema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((v) => v === "true"),
+  /** Who writes the agent's replies in the simulator. "mock" is free and needs no key. */
+  LLM_PROVIDER: z.enum(["mock", "openai_compatible"]).default("mock"),
+  /** Who speaks voice previews. "mock" uses the browser's built-in speech. */
+  TTS_PROVIDER: z.enum(["mock", "openai_compatible"]).default("mock"),
+  /** Who places phone calls. Only "mock" works in this prototype (see docs/DEVELOPER_HANDOFF.md). */
+  TELEPHONY_PROVIDER: z.enum(["mock"]).default("mock"),
+  /** Who takes wallet top-up payments. "mock" shows a pretend checkout page. */
+  PAYMENTS_PROVIDER: z.enum(["mock", "paystack"]).default("mock"),
+  PAYSTACK_SECRET_KEY: z.string().optional(),
+  /** Shared secret the voice worker sends when calling this app's /api/voice/* endpoints. */
+  WORKER_SHARED_SECRET: z
+    .string()
+    .optional()
+    .transform((v) => v || undefined),
+  OPENAI_COMPATIBLE_BASE_URL: z.string().url().optional().or(z.literal("").transform(() => undefined)),
+  OPENAI_COMPATIBLE_API_KEY: z.string().optional(),
+  OPENAI_COMPATIBLE_MODEL: z.string().optional(),
+  OPENAI_COMPATIBLE_TTS_MODEL: z.string().optional(),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -39,6 +57,26 @@ if (env.EMAIL_TRANSPORT === "console" && !isLocalhost) {
 
 if (env.NODE_ENV === "production" && env.DEV_SHOW_LOGIN_LINK) {
   throw new Error("DEV_SHOW_LOGIN_LINK must not be enabled in production.");
+}
+
+if (env.LLM_PROVIDER === "openai_compatible" && !(env.OPENAI_COMPATIBLE_BASE_URL && env.OPENAI_COMPATIBLE_MODEL)) {
+  throw new Error("LLM_PROVIDER=openai_compatible needs OPENAI_COMPATIBLE_BASE_URL and OPENAI_COMPATIBLE_MODEL.");
+}
+
+if (env.TTS_PROVIDER === "openai_compatible" && !(env.OPENAI_COMPATIBLE_BASE_URL && env.OPENAI_COMPATIBLE_TTS_MODEL)) {
+  throw new Error("TTS_PROVIDER=openai_compatible needs OPENAI_COMPATIBLE_BASE_URL and OPENAI_COMPATIBLE_TTS_MODEL.");
+}
+
+if (env.PAYMENTS_PROVIDER === "paystack" && !env.PAYSTACK_SECRET_KEY?.startsWith("sk_")) {
+  throw new Error("PAYMENTS_PROVIDER=paystack needs PAYSTACK_SECRET_KEY (it starts with sk_).");
+}
+
+if (env.NODE_ENV === "production" && env.PAYMENTS_PROVIDER === "mock") {
+  throw new Error("The pretend checkout must not run in production. Set PAYMENTS_PROVIDER=paystack.");
+}
+
+if (env.WORKER_SHARED_SECRET !== undefined && env.WORKER_SHARED_SECRET.length < 32) {
+  throw new Error("WORKER_SHARED_SECRET must be at least 32 characters.");
 }
 
 if (env.NODE_ENV === "production" && env.SESSION_SECRET.startsWith("dev-only")) {

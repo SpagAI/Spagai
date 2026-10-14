@@ -14,3 +14,7 @@ export * from "./names";
 export * from "./shared/numberWords";
 export { PRESETS, getPreset, presetToTemplate } from "./presets";
 export * from "./voices";
+export * from "./simulator";
+export * from "./leads";
+export * from "./compliance";
+export * from "./billing";

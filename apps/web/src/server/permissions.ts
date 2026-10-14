@@ -16,13 +16,19 @@ export type Permission =
   | "member:view"
   | "member:manage"
   | "organisation:edit"
-  | "audit:view";
+  | "audit:view"
+  | "lead:view"
+  | "lead:edit"
+  | "campaign:run"
+  | "call:view"
+  | "billing:view"
+  | "billing:manage";
 
 const GRANTS: Record<Role, Permission[]> = {
-  OWNER: ["agent:view", "agent:edit", "agent:delete", "member:view", "member:manage", "organisation:edit", "audit:view"],
-  ADMIN: ["agent:view", "agent:edit", "agent:delete", "member:view", "member:manage", "organisation:edit", "audit:view"],
-  MEMBER: ["agent:view", "agent:edit", "member:view"],
-  VIEWER: ["agent:view", "member:view"],
+  OWNER: ["agent:view", "agent:edit", "agent:delete", "member:view", "member:manage", "organisation:edit", "audit:view", "lead:view", "lead:edit", "campaign:run", "call:view", "billing:view", "billing:manage"],
+  ADMIN: ["agent:view", "agent:edit", "agent:delete", "member:view", "member:manage", "organisation:edit", "audit:view", "lead:view", "lead:edit", "campaign:run", "call:view", "billing:view", "billing:manage"],
+  MEMBER: ["agent:view", "agent:edit", "member:view", "lead:view", "lead:edit", "campaign:run", "call:view"],
+  VIEWER: ["agent:view", "member:view", "lead:view", "call:view"],
 };
 
 export const ROLES: Role[] = ["OWNER", "ADMIN", "MEMBER", "VIEWER"];

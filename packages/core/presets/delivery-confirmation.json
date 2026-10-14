@@ -76,7 +76,7 @@
       "id": "addressing",
       "section": "adjunct",
       "title": "Addressing the person",
-      "content": "Greet the person as {{address}}. After that, you may use {{suffix}} on its own to show respect, but never in the same sentence as their name or title. Do not use their first name unless they invite you to."
+      "content": "Greet the person as {{address}}. After that, you may use the respectful term in these brackets ({{suffix}}) on its own to show respect, but never in the same sentence as their name or title. If the brackets are empty, do not say Sir or Ma. Do not use their first name unless they invite you to."
     },
     {
       "id": "understand",

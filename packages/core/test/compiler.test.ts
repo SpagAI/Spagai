@@ -115,3 +115,22 @@ describe("compilePrompt", () => {
     expect(compilePrompt({ ...template, firstMessage: "" }, { values: { company_name: "S" } }).errors).toContain("First message is empty.");
   });
 });
+
+describe("empty Sir/Ma for unknown gender", () => {
+  const template = {
+    blocks: [{ id: "b", section: "beginning" as const, title: "Opening", content: "Greet {{address}}. You may use ({{suffix}}) on its own." }],
+    variables: [{ name: "company_name", label: "Company", scope: "agent" as const, required: true }],
+    firstMessage: "Good morning, {{address}}. Is now a good time, {{suffix}}?",
+  };
+
+  it("lets a call go ahead with no suffix, and tidies the line", () => {
+    const r = compilePrompt(template, { values: { address: "Kemi", suffix: "", company_name: "Spag" }, mode: "call" });
+    expect(r.errors).toEqual([]);
+    expect(r.firstMessage).toBe("Good morning, Kemi. Is now a good time?");
+    expect(r.prompt).toContain("You may use () on its own.");
+  });
+
+  it("still treats a suffix that was never provided as missing", () => {
+    expect(compilePrompt(template, { values: { address: "Kemi", company_name: "Spag" }, mode: "call" }).errors[0]).toContain("suffix");
+  });
+});

@@ -122,6 +122,11 @@ export function compilePrompt(template: PromptTemplate, options: CompileOptions 
   const filled: Record<string, string | undefined> = {};
   for (const v of declared) if (v.defaultValue) filled[v.name] = v.defaultValue;
   Object.assign(filled, Object.fromEntries(Object.entries(values).filter(([, v]) => v !== undefined && v !== "")));
+  // In call mode, a deliberately empty value (no Sir/Ma for unknown gender) is filled with nothing.
+  const emptyAllowed = new Set(
+    mode === "call" ? declared.filter((v) => v.allowEmpty && values[v.name] === "").map((v) => v.name) : [],
+  );
+  for (const name of emptyAllowed) filled[name] = "";
 
   // Build sections in framework order
   const sections: CompiledSection[] = [];
@@ -142,18 +147,18 @@ export function compilePrompt(template: PromptTemplate, options: CompileOptions 
       const sameAsPart = PART_TITLES[part]?.toLowerCase().endsWith(block.title.toLowerCase());
       lines.push("", ...(sameAsPart ? [] : [`**${block.title}**`]), block.content.trim());
     }
-    sections.push({ section, title: SECTION_TITLES[section], text: renderVariables(lines.join("\n"), filled) });
+    sections.push({ section, title: SECTION_TITLES[section], text: renderVariables(lines.join("\n"), filled, emptyAllowed) });
   }
 
   const rawText = active.map((b) => b.content).join("\n") + "\n" + (template.firstMessage ?? "");
   const used = findVariables(rawText);
 
   const prompt = sections.map((s) => s.text).join("\n\n");
-  const firstMessage = renderVariables(template.firstMessage ?? "", filled);
+  const firstMessage = renderVariables(template.firstMessage ?? "", filled, emptyAllowed);
   const unresolved = findVariables(prompt + "\n" + firstMessage);
 
   const missingRequired = declared
-    .filter((v) => used.includes(v.name) && !filled[v.name])
+    .filter((v) => used.includes(v.name) && !filled[v.name] && !emptyAllowed.has(v.name))
     .filter((v) => (mode === "call" ? v.required || v.scope === "system" : v.required && v.scope === "agent"))
     .map((v) => v.name);
 

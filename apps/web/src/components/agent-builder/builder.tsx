@@ -1,7 +1,7 @@
 "use client";
 
 import type { AgentConfig, VariableDef } from "@spagai/core";
-import { ArrowLeft, CircleAlert, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, CircleAlert, FlaskConical, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { deleteAgent, saveAgent } from "@/app/(app)/agents/actions";
@@ -82,18 +82,30 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
         <span className="text-xs text-muted-foreground">
           {pending ? t("builder.saving") : dirty ? t("builder.unsaved") : `${t("builder.saved")} ${formatLagos(saved.at)} WAT`}
         </span>
-        {!readOnly && (
-          <div className="ml-auto flex flex-wrap gap-2">
-            {saved.status === "READY" ? (
-              <Button type="button" variant="outline" disabled={pending} onClick={() => save("DRAFT")}>{t("builder.markDraft")}</Button>
-            ) : (
-              <Button type="button" variant="outline" disabled={pending} onClick={() => save("READY")}>{t("builder.markReady")}</Button>
-            )}
-            <Button type="button" disabled={pending || !dirty} onClick={() => save(saved.status)}>
-              <Save /> {t("builder.save")}
-            </Button>
-          </div>
-        )}
+        <div className="ml-auto flex flex-wrap gap-2">
+          <Button asChild variant="outline">
+            <Link
+              href={`/simulator/${agentId}`}
+              onClick={(e) => {
+                if (dirty && !window.confirm(t("builder.testUnsaved"))) e.preventDefault();
+              }}
+            >
+              <FlaskConical /> {t("builder.test")}
+            </Link>
+          </Button>
+          {!readOnly && (
+            <>
+              {saved.status === "READY" ? (
+                <Button type="button" variant="outline" disabled={pending} onClick={() => save("DRAFT")}>{t("builder.markDraft")}</Button>
+              ) : (
+                <Button type="button" variant="outline" disabled={pending} onClick={() => save("READY")}>{t("builder.markReady")}</Button>
+              )}
+              <Button type="button" disabled={pending || !dirty} onClick={() => save(saved.status)}>
+                <Save /> {t("builder.save")}
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {readOnly && <Alert>{t("agents.readOnly")}</Alert>}
