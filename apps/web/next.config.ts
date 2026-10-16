@@ -1,8 +1,9 @@
 import path from "node:path";
 import type { NextConfig } from "next";
 
-// GitHub Codespaces serves the app from https://<codespace>-3000.<domain>.
-// Trust exactly that address (and nothing broader) for the dev server and Server Actions.
+// GitHub Codespaces serves the app from https://<codespace>-3000.<domain>, and its proxy
+// can pass the browser's Origin on as "localhost:3000" while forwarding the codespace host.
+// Inside a codespace only, trust exactly those two hosts for the dev server and Server Actions.
 const codespaceHost =
   process.env.CODESPACE_NAME && process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN
     ? `${process.env.CODESPACE_NAME}-3000.${process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}`
@@ -20,7 +21,8 @@ const nextConfig: NextConfig = {
     serverActions: {
       // Lead CSV uploads can be up to 2 MB (checked again in the import action).
       bodySizeLimit: "2100kb",
-      ...(codespaceHost && { allowedOrigins: [codespaceHost] }),
+      // The Codespaces proxy can pass the browser Origin on as "localhost:3000" (see DECISIONS D52).
+      ...(codespaceHost && { allowedOrigins: [codespaceHost, "localhost:3000"] }),
     },
   },
   // Hide Next.js's round "N" badge in the corner while developing. Errors still show as normal.
