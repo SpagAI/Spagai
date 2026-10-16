@@ -8,7 +8,7 @@ import { getT } from "@/i18n/server";
 import { requireOrg } from "@/server/auth/session";
 import { db } from "@/server/db";
 
-export const metadata: Metadata = { title: "Simulator" };
+export const metadata: Metadata = { title: "Lab" };
 
 export default async function SimulatorIndex() {
   const ctx = await requireOrg();
@@ -43,7 +43,7 @@ export default async function SimulatorIndex() {
               </CardHeader>
               <CardContent>
                 <Button asChild variant="outline">
-                  <Link href={`/simulator/${a.id}`}><FlaskConical /> {t("simulator.test")}</Link>
+                  <Link href={`/lab/${a.id}`}><FlaskConical /> {t("simulator.test")}</Link>
                 </Button>
               </CardContent>
             </Card>

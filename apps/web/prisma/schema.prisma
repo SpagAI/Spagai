@@ -19,13 +19,18 @@ enum Role {
 }
 
 model User {
-  id          String       @id @default(cuid())
-  email       String       @unique
-  name        String?
-  createdAt   DateTime     @default(now())
-  lastLoginAt DateTime?
-  memberships Membership[]
-  sessions    Session[]
+  id                String       @id @default(cuid())
+  email             String       @unique
+  name              String?
+  /// Profile details (Account page).
+  jobTitle          String       @default("")
+  phone             String       @default("")
+  /// Which emails this person wants, e.g. { "weeklySummary": true }.
+  notificationPrefs Json         @default("{}")
+  createdAt         DateTime     @default(now())
+  lastLoginAt       DateTime?
+  memberships       Membership[]
+  sessions          Session[]
 }
 
 model Organisation {
@@ -46,6 +51,11 @@ model Organisation {
   campaigns          Campaign[]
   calls              Call[]
   walletTransactions WalletTransaction[]
+  phoneNumbers       PhoneNumber[]
+  sipTrunks          SipTrunk[]
+  knowledgeItems     KnowledgeItem[]
+  integrations       Integration[]
+  apiKeys            ApiKey[]
 }
 
 model Membership {
@@ -92,19 +102,21 @@ enum AgentStatus {
 }
 
 model Agent {
-  id             String       @id @default(cuid())
+  id             String          @id @default(cuid())
   organisationId String
   name           String
   presetId       String?
-  status         AgentStatus  @default(DRAFT)
+  status         AgentStatus     @default(DRAFT)
   /// The full AgentConfig from @spagai/core (blocks, variables, tools, silence, voice...).
   config         Json
   createdById    String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  organisation   Organisation    @relation(fields: [organisationId], references: [id], onDelete: Cascade)
   campaigns      Campaign[]
   calls          Call[]
+  phoneNumbers   PhoneNumber[]
+  knowledgeItems KnowledgeItem[]
 
   @@index([organisationId])
 }
@@ -143,6 +155,14 @@ model Lead {
   source         String
   /// The business has a consent record for calling this person.
   consent        Boolean        @default(false)
+  /// Where the person is (for the dashboard map). Optional.
+  continent      String         @default("")
+  country        String         @default("")
+  countryCode    String         @default("")
+  region         String         @default("")
+  city           String         @default("")
+  lat            Float?
+  lng            Float?
   /// Extra imported columns, used as per-call variables.
   extra          Json           @default("{}")
   optedOut       Boolean        @default(false)
@@ -304,4 +324,121 @@ model WalletTransaction {
   organisation     Organisation            @relation(fields: [organisationId], references: [id], onDelete: Cascade)
 
   @@index([organisationId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// M6: phone numbers, SIP trunks, knowledge bank, integrations, API keys
+// (prototype: none of these talk to real providers yet)
+// ---------------------------------------------------------------------------
+
+enum PhoneNumberStatus {
+  ACTIVE
+  RELEASED
+}
+
+model PhoneNumber {
+  id              String            @id @default(cuid())
+  organisationId  String
+  /// E.164, e.g. +2349012345678
+  number          String
+  countryCode     String
+  country         String
+  areaCode        String            @default("")
+  /// "local", "mobile" or "toll_free"
+  type            String            @default("local")
+  /// "Spag AI" for bought numbers, or the SIP trunk name
+  source          String            @default("Spag AI")
+  monthlyCostKobo Int               @default(0)
+  label           String            @default("")
+  agentId         String?
+  status          PhoneNumberStatus @default(ACTIVE)
+  purchasedAt     DateTime          @default(now())
+  releasedAt      DateTime?
+  organisation    Organisation      @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  agent           Agent?            @relation(fields: [agentId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, status])
+}
+
+model SipTrunk {
+  id             String       @id @default(cuid())
+  organisationId String
+  name           String
+  host           String
+  port           Int          @default(5060)
+  /// "udp", "tcp" or "tls"
+  transport      String       @default("udp")
+  username       String       @default("")
+  /// The SIP password is never stored in this prototype; only whether one was given.
+  hasPassword    Boolean      @default(false)
+  /// "connected" or "unreachable" (simulated)
+  status         String       @default("connected")
+  createdAt      DateTime     @default(now())
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId])
+}
+
+enum KnowledgeKind {
+  FILE
+  WEBSITE
+}
+
+enum KnowledgeStatus {
+  PROCESSING
+  READY
+  FAILED
+}
+
+/// A file or scraped website linked to an agent. Prototype: only details are stored, not the content.
+model KnowledgeItem {
+  id             String          @id @default(cuid())
+  organisationId String
+  agentId        String
+  kind           KnowledgeKind
+  name           String
+  url            String          @default("")
+  sizeBytes      Int             @default(0)
+  mimeType       String          @default("")
+  /// Pages read from a website
+  pages          Int             @default(0)
+  /// Searchable pieces the content was split into
+  chunks         Int             @default(0)
+  status         KnowledgeStatus @default(READY)
+  createdById    String?
+  createdAt      DateTime        @default(now())
+  organisation   Organisation    @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  agent          Agent           @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, createdAt])
+}
+
+model Integration {
+  id             String       @id @default(cuid())
+  organisationId String
+  /// "make", "zapier", "n8n", "google_calendar", "cal_com", "hubspot", "slack", "webhook"
+  provider       String
+  /// Display detail, e.g. the connected account or webhook URL
+  detail         String       @default("")
+  connectedAt    DateTime     @default(now())
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, provider])
+}
+
+/// API keys. The key is stored encrypted (so it can be revealed) and hashed (to check requests).
+model ApiKey {
+  id             String       @id @default(cuid())
+  organisationId String
+  name           String
+  /// First characters shown in lists, e.g. "spag_live_3f9a"
+  prefix         String
+  keyHash        String       @unique
+  keyEncrypted   String
+  createdById    String?
+  createdAt      DateTime     @default(now())
+  lastUsedAt     DateTime?
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId])
 }

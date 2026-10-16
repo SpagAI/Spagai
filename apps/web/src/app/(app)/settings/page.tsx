@@ -48,7 +48,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       {error && <Alert variant="destructive">{error}</Alert>}
       {params.invited && <Alert variant="success">{t("settings.invited")}</Alert>}
 
-      <Card>
+      <Card id="workspace" className="scroll-mt-24">
         <CardHeader>
           <CardTitle>{t("settings.name")}</CardTitle>
           <CardDescription>{t("settings.timezone")}: {org.timezone} · {t("settings.currency")}: {org.currency} (₦)</CardDescription>
@@ -61,7 +61,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="members" className="scroll-mt-24">
         <CardHeader>
           <CardTitle>{t("settings.members")}</CardTitle>
           <CardDescription>{t("settings.roleHelp")}</CardDescription>

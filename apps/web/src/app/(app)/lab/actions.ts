@@ -16,7 +16,7 @@ import {
 } from "@spagai/core";
 import { z } from "zod";
 import { requirePermission } from "@/server/auth/session";
-import { loadAgent } from "@/server/agents";
+import { audit, loadAgent } from "@/server/agents";
 import { getLlm } from "@/server/providers";
 
 const inputSchema = z.object({
@@ -124,6 +124,8 @@ export async function simulate(raw: SimulateInput): Promise<SimulateResult> {
   const agent = await loadAgent(ctx.organisation.id, input.agentId);
   if (!agent) return { ok: false, errors: ["Agent not found."] };
   const { config } = agent;
+  // Remember that this agent has been tried in the Lab (shown in its setup steps).
+  if (input.history.length === 0) await audit(ctx.organisation.id, ctx.user.id, "agent.tested", { type: "agent", id: agent.id });
 
   const now = parseWhen(input.when);
   const lead = { ...input.lead, gender: input.lead.gender === "unknown" ? "" : input.lead.gender };

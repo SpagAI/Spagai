@@ -53,9 +53,9 @@ describe("normaliseAgentConfig", () => {
 });
 
 describe("voice catalogue", () => {
-  it("covers all five launch languages with mock voices", () => {
+  it("covers all five launch languages with Spag AI voices", () => {
     for (const lang of ["en-NG", "pcm", "yo", "ha", "ig"]) {
-      expect(VOICE_CATALOGUE.some((v) => v.language === lang && v.provider === "mock")).toBe(true);
+      expect(VOICE_CATALOGUE.some((v) => v.language === lang && v.provider === "spagai")).toBe(true);
     }
     expect(getVoice("mock-en-ng-male-1")?.name).toBe("Tunde");
   });

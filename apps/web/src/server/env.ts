@@ -25,6 +25,8 @@ const schema = z.object({
   TTS_PROVIDER: z.enum(["mock", "openai_compatible"]).default("mock"),
   /** Who places phone calls. Only "mock" works in this prototype (see docs/DEVELOPER_HANDOFF.md). */
   TELEPHONY_PROVIDER: z.enum(["mock"]).default("mock"),
+  /** Development only: make the Billing page wait this many milliseconds, to see the loading animation. Ignored in production. */
+  DEV_BILLING_DELAY_MS: z.coerce.number().int().min(0).max(30_000).default(0),
   /** Who takes wallet top-up payments. "mock" shows a pretend checkout page. */
   PAYMENTS_PROVIDER: z.enum(["mock", "paystack"]).default("mock"),
   PAYSTACK_SECRET_KEY: z.string().optional(),

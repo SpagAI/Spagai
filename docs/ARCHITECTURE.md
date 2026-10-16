@@ -26,7 +26,7 @@ flowchart LR
         Compiler[Prompt compiler<br/>5-part framework + guardrails]
         Linter[Prompt linter]
         Presets[(Preset JSON files)]
-        Sim[Simulator mock brain<br/>silence handling]
+        Sim[Lab mock brain<br/>silence handling]
     end
 
     DB[(PostgreSQL via Prisma)]
@@ -127,7 +127,7 @@ erDiagram
 ```mermaid
 sequenceDiagram
     actor U as User
-    participant S as Simulator page
+    participant S as Lab page
     participant A as simulate() server action
     participant C as packages/core
     participant L as LLM provider (mock or OpenAI-compatible)
@@ -148,7 +148,7 @@ sequenceDiagram
 |---|---|
 | `packages/core/src/simulator` | Mock agent brain, day and time parsing, silence turns (pure, tested) |
 | `apps/web/src/server/providers` | `getLlm()` and `synthesise()`: mock and OpenAI-compatible adapters |
-| `apps/web/src/app/(app)/simulator` | Simulator pages and the `simulate` server action |
+| `apps/web/src/app/(app)/lab` | Lab pages (formerly the Simulator) and the `simulate` server action |
 | `apps/web/src/app/(app)/voices` | Voice library page and the `previewVoice` server action |
 | `apps/web/src/components/voice` | `useSpeaker` hook (browser speech or audio) and the Play button |
 

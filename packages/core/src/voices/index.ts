@@ -18,7 +18,24 @@ export interface Voice {
   providerVoiceId: string;
   sampleText: string;
   status: VoiceStatus;
+  /** e.g. "Conversational", "Sales", "Customer service", "Professional", "Narration" */
+  category: string;
+  /** e.g. "Nigerian", "British", "American" */
+  accent: string;
+  description: string;
+  age: "young" | "middle" | "mature";
 }
+
+/** Voice providers in display order. "openai_compatible" is your own connected server. */
+export const VOICE_PROVIDERS: Record<string, string> = {
+  spagai: "Spag AI",
+  elevenlabs: "ElevenLabs",
+  cartesia: "Cartesia",
+  openai: "OpenAI",
+  openai_compatible: "Your provider",
+};
+
+export const VOICE_CATEGORIES = ["Conversational", "Customer service", "Sales", "Professional", "Narration"] as const;
 
 export const LANGUAGE_NAMES: Record<VoiceLanguage, string> = {
   "en-NG": "English (Nigeria)",

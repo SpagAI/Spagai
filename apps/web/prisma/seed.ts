@@ -1,9 +1,11 @@
 /**
- * Demo data: one organisation, an owner (demo@spagai.local), a viewer, one agent, ten leads and a ₦10,000 demo wallet credit.
+ * Demo data: the demo workspace (owner demo@spagai.local, a viewer, agents, leads, a ₦10,000 wallet credit), plus
+ * "Yakub's Workspace" (the demo account is an Admin there), with realistic calls, numbers and settings (seed-platform.ts).
  * Run with: pnpm db:seed   then sign in as demo@spagai.local.
  */
 import { agentReadiness, getPreset, presetToAgentConfig } from "@spagai/core";
 import { PrismaClient } from "@prisma/client";
+import { seedPlatform } from "./seed-platform";
 
 const db = new PrismaClient();
 
@@ -11,7 +13,7 @@ async function main() {
   const owner = await db.user.upsert({ where: { email: "demo@spagai.local" }, create: { email: "demo@spagai.local", name: "Demo Owner" }, update: {} });
   const viewer = await db.user.upsert({ where: { email: "viewer@spagai.local" }, create: { email: "viewer@spagai.local", name: "Demo Viewer" }, update: {} });
 
-  const existing = await db.membership.findFirst({ where: { userId: owner.id }, include: { organisation: true } });
+  const existing = await db.membership.findFirst({ where: { userId: owner.id, role: "OWNER" }, include: { organisation: true }, orderBy: { createdAt: "asc" } });
   const org = existing?.organisation ?? (await db.organisation.create({ data: { name: "Spag Demo Finance" } }));
 
   await db.membership.upsert({
@@ -76,7 +78,20 @@ async function main() {
     });
   }
 
-  console.log(`Seeded "${org.name}". Sign in as demo@spagai.local (owner) or viewer@spagai.local (viewer).`);
+  // A second workspace, owned by Yakub, that the demo account belongs to as an Admin,
+  // so switching workspaces can be tried with completely different agents, numbers and data.
+  const yakub = await db.user.upsert({ where: { email: "yakub@spagai.local" }, create: { email: "yakub@spagai.local", name: "Yakub Adeyemi", jobTitle: "Founder" }, update: {} });
+  const yakubOwned = await db.membership.findFirst({ where: { userId: yakub.id, role: "OWNER" }, include: { organisation: true } });
+  const yakubOrg = yakubOwned?.organisation ?? (await db.organisation.create({ data: { name: "Yakub's Workspace" } }));
+  await db.membership.upsert({ where: { userId_organisationId: { userId: yakub.id, organisationId: yakubOrg.id } }, create: { userId: yakub.id, organisationId: yakubOrg.id, role: "OWNER" }, update: {} });
+  await db.membership.upsert({ where: { userId_organisationId: { userId: owner.id, organisationId: yakubOrg.id } }, create: { userId: owner.id, organisationId: yakubOrg.id, role: "ADMIN" }, update: {} });
+
+  // Dashboard analytics, map locations, numbers, knowledge bank, integrations and API keys.
+  const secret = process.env.SESSION_SECRET || "dev-only-insecure-secret-change-me";
+  await seedPlatform(db, { id: org.id, ownerId: owner.id }, "demo", secret);
+  await seedPlatform(db, { id: yakubOrg.id, ownerId: yakub.id }, "yakub", secret);
+
+  console.log(`Seeded "${org.name}" and "${yakubOrg.name}". Sign in as demo@spagai.local (owner) or viewer@spagai.local (viewer).`);
 }
 
 main().finally(() => db.$disconnect());

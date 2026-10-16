@@ -10,3 +10,4 @@ export function formatLagos(date: Date | string): string {
     hour12: false,
   }).format(new Date(date));
 }
+

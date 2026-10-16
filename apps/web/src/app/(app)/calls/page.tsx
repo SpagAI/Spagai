@@ -1,5 +1,5 @@
 import { formatNigerianPhone } from "@spagai/core";
-import { PhoneCall } from "lucide-react";
+import { PhoneCall, Play } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -72,7 +72,7 @@ export default async function CallsPage({ searchParams }: { searchParams: Promis
                   <th className="py-2 pr-3 font-medium">{t("leads.name")}</th>
                   <th className="py-2 pr-3 font-medium">{t("calls.campaign")}</th>
                   <th className="py-2 pr-3 font-medium">{t("calls.result")}</th>
-                  <th className="py-2 font-medium">{t("calls.length")}</th>
+                  <th className="py-2 font-medium">Recording</th>
                 </tr>
               </thead>
               <tbody>
@@ -89,7 +89,13 @@ export default async function CallsPage({ searchParams }: { searchParams: Promis
                         {c.status === "BLOCKED" || c.status === "FAILED" ? t(`calls.status.${c.status}`) : t(`calls.outcome.${c.outcome ?? "other"}`)}
                       </Badge>
                     </td>
-                    <td className="py-2 tabular-nums text-muted-foreground">{c.durationSeconds ? `${Math.floor(c.durationSeconds / 60)}:${String(c.durationSeconds % 60).padStart(2, "0")}` : "—"}</td>
+                    <td className="py-2 tabular-nums text-muted-foreground">
+                      {c.durationSeconds ? (
+                        <Link href={`/calls/${c.id}#recording`} className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs text-foreground transition-colors hover:border-primary hover:bg-accent" aria-label={`Listen to the recording (${Math.floor(c.durationSeconds / 60)}:${String(c.durationSeconds % 60).padStart(2, "0")})`}>
+                          <Play className="size-3 fill-current text-primary" aria-hidden /> {Math.floor(c.durationSeconds / 60)}:{String(c.durationSeconds % 60).padStart(2, "0")}
+                        </Link>
+                      ) : "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>

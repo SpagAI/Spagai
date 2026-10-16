@@ -136,7 +136,7 @@ function sfx(values: MockReplyInput["values"]): string {
 
 /** The free mock agent. Deterministic, so tests and demos are repeatable. */
 export function mockAgentReply(input: MockReplyInput): SimTurn {
-  const { callerText, history, values, tools, now } = input;
+  const { callerText, history, values, tools } = input;
   const s = sfx(values);
   const company = values.company_name?.trim() || "our company";
   const goodbye = values.goodbye ?? "Have a great day.";

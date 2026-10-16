@@ -1,8 +1,9 @@
-import { formatNaira, formatNigerianPhone, TOOL_DEFINITIONS, type SimMessage, type SimToolCall, type ToolId } from "@spagai/core";
+import { agentConfigSchema, formatNaira, formatNigerianPhone, getVoice, TOOL_DEFINITIONS, type SimMessage, type SimToolCall, type ToolId } from "@spagai/core";
 import { ArrowLeft, ShieldX } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CallPlayer } from "@/components/calls/call-player";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ export default async function CallPage({ params }: { params: Promise<{ id: strin
   const t = await getT();
   const call = await db.call.findFirst({
     where: { id, organisationId: ctx.organisation.id },
-    include: { lead: true, campaign: { select: { id: true, name: true } }, agent: { select: { id: true, name: true } } },
+    include: { lead: true, campaign: { select: { id: true, name: true } }, agent: { select: { id: true, name: true, config: true } } },
   });
   if (!call) notFound();
 
@@ -29,6 +30,8 @@ export default async function CallPage({ params }: { params: Promise<{ id: strin
   const toolCalls = ((Array.isArray(call.toolCalls) ? call.toolCalls : []) as unknown as SimToolCall[]).filter((c) => c.tool in TOOL_DEFINITIONS);
   const reasons = (Array.isArray(call.blockReasons) ? call.blockReasons : []) as unknown as { code: string; message: string }[];
   const lead = call.lead;
+  const agentVoice = getVoice(agentConfigSchema.safeParse(call.agent?.config).data?.voiceId);
+  const hasRecording = transcript.length > 0 && (call.durationSeconds ?? 0) > 0;
 
   return (
     <div className="space-y-6">
@@ -60,8 +63,25 @@ export default async function CallPage({ params }: { params: Promise<{ id: strin
 
       {call.status === "NO_ANSWER" && transcript.length === 0 && <Alert variant="warning">{t("calls.noAnswer")}</Alert>}
 
+      {hasRecording && (
+        <>
+          <CallPlayer
+            callId={call.id}
+            turns={transcript}
+            duration={call.durationSeconds!}
+            agentName={call.agent?.name ?? "Agent"}
+            callerName={lead.firstName || "Customer"}
+            agentGender={agentVoice?.gender ?? "female"}
+            callerGender={lead.gender === "female" ? "female" : "male"}
+          />
+          <p className="-mt-3 text-xs text-muted-foreground">
+            {t("calls.length")}: {Math.floor(call.durationSeconds! / 60)}:{String(call.durationSeconds! % 60).padStart(2, "0")}{call.costKobo ? ` · ${t("calls.cost")}: ${formatNaira(call.costKobo)}` : ""}
+          </p>
+        </>
+      )}
+
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
-        {transcript.length > 0 && (
+        {transcript.length > 0 && !hasRecording && (
           <Card>
             <CardHeader>
               <CardTitle>{t("calls.transcript")}</CardTitle>

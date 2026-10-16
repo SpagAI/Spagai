@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requirePermission } from "@/server/auth/session";
+import { blankAgentDraft } from "@/server/agent-factory";
 import { audit, loadAgent } from "@/server/agents";
 import { db } from "@/server/db";
 
@@ -19,7 +20,7 @@ export async function createAgentFromPreset(form: FormData): Promise<void> {
     data: { organisationId: ctx.organisation.id, name: config.name, presetId, config, createdById: ctx.user.id },
   });
   await audit(ctx.organisation.id, ctx.user.id, "agent.created", { type: "agent", id: agent.id }, { presetId });
-  redirect(`/agents/${agent.id}`);
+  redirect(`/agents/${agent.id}?new=1`);
 }
 
 export type SaveAgentResult =
@@ -56,4 +57,24 @@ export async function deleteAgent(form: FormData): Promise<void> {
   if (result.count > 0) await audit(ctx.organisation.id, ctx.user.id, "agent.deleted", { type: "agent", id: agentId });
   revalidatePath("/agents");
   redirect("/agents");
+}
+
+/** A new agent from scratch: just a name, what it should do and its business, plus the standard guardrails. */
+export async function createBlankAgent(form: FormData): Promise<void> {
+  const ctx = await requirePermission("agent:edit");
+  const input = z.object({
+    name: z.string().trim().min(1).max(80),
+    direction: z.enum(["inbound", "outbound"]),
+    purpose: z.string().trim().max(2000),
+    company: z.string().trim().max(120),
+  }).parse({ name: form.get("name"), direction: form.get("direction"), purpose: form.get("purpose") ?? "", company: form.get("company") ?? "" });
+
+  const draft = blankAgentDraft({ ...input, company: input.company || ctx.organisation.name });
+  const normalised = normaliseAgentConfig(draft);
+  if (!normalised.ok) throw new Error(normalised.errors.join("; "));
+  const agent = await db.agent.create({
+    data: { organisationId: ctx.organisation.id, name: input.name, presetId: null, config: normalised.config, createdById: ctx.user.id },
+  });
+  await audit(ctx.organisation.id, ctx.user.id, "agent.created", { type: "agent", id: agent.id }, { from: "scratch" });
+  redirect(`/agents/${agent.id}?new=1`);
 }

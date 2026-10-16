@@ -1,14 +1,16 @@
 {
   "app": {
     "name": "Spag AI Studio",
+    "brand": "Spag AI",
     "tagline": "AI voice agents for Nigerian businesses",
     "prototype": "Prototype: mock providers only"
   },
   "nav": {
+    "home": "Home",
     "dashboard": "Dashboard",
     "agents": "Agents",
     "voices": "Voices",
-    "simulator": "Simulator",
+    "simulator": "Lab",
     "leads": "Leads",
     "campaigns": "Campaigns",
     "calls": "Calls",
@@ -16,8 +18,16 @@
     "settings": "Settings",
     "signOut": "Sign out",
     "menu": "Menu",
+    "collapse": "Collapse side panel",
+    "expand": "Expand side panel",
+    "resize": "Drag to resize the side panel (double-click to reset)",
     "comingSoon": "Coming soon",
-    "organisation": "Organisation"
+    "organisation": "Organisation",
+    "knowledge": "Knowledge Base",
+    "numbers": "Phone Numbers",
+    "integrations": "Integrations",
+    "apiKeys": "API Keys",
+    "workspace": "Workspace"
   },
   "login": {
     "title": "Sign in",
@@ -50,7 +60,7 @@
     "nextSteps": "Next steps",
     "step1": "Create an agent from a preset",
     "step2": "Fill in your business details and check the lint score",
-    "step3": "Test it in the simulator",
+    "step3": "Test it in the Lab",
     "step4": "Upload leads and start a campaign",
     "leads": "Leads",
     "answered": "Calls answered",
@@ -60,15 +70,25 @@
   },
   "agents": {
     "title": "Agents",
-    "new": "New agent",
-    "empty": "No agents yet. Start from a preset.",
-    "choosePreset": "Choose a starting point",
+    "new": "Create agent",
+    "empty": "No agents yet. Create one from scratch or from a template.",
+    "choosePreset": "Or start from a template",
     "choosePresetIntro": "Each preset is a ready-made agent you can edit. Guardrails are always included.",
     "use": "Use this preset",
     "updated": "Updated",
-    "status": { "DRAFT": "Draft", "READY": "Ready" },
-    "presetStatus": { "ready": "Ready", "draft": "Draft", "placeholder": "Placeholder" },
-    "direction": { "outbound": "Outbound", "inbound": "Inbound" },
+    "status": {
+      "DRAFT": "Draft",
+      "READY": "Ready"
+    },
+    "presetStatus": {
+      "ready": "Ready",
+      "draft": "Draft",
+      "placeholder": "Placeholder"
+    },
+    "direction": {
+      "outbound": "Outbound",
+      "inbound": "Inbound"
+    },
     "delete": "Delete",
     "deleteConfirm": "Delete this agent? This cannot be undone.",
     "readOnly": "You have view-only access. Ask an admin to change your role to edit agents."
@@ -80,16 +100,18 @@
     "unsaved": "Unsaved changes",
     "markReady": "Mark as ready",
     "markDraft": "Back to draft",
-    "test": "Test in simulator",
-    "testUnsaved": "You have unsaved changes. The simulator uses the last saved version. Continue?",
+    "test": "Test in the Lab",
+    "testUnsaved": "You have unsaved changes. The Lab uses the last saved version. Continue?",
     "agentName": "Agent name",
     "tabs": {
       "business": "Business details",
-      "blocks": "Prompt blocks",
+      "blocks": "Prompt (instructions)",
       "firstMessage": "First message",
       "tools": "Tools",
       "silence": "Silence",
-      "voice": "Voice"
+      "voice": "Voice",
+      "knowledge": "Knowledge base",
+      "numbers": "Phone number"
     },
     "business": {
       "intro": "These details are filled into the prompt. Fields marked * are required.",
@@ -175,7 +197,11 @@
     },
     "variables": {
       "intro": "Variables are written as {{name}} in blocks and the first message.",
-      "scope": { "agent": "Agent", "call": "Per call", "system": "Automatic" },
+      "scope": {
+        "agent": "Agent",
+        "call": "Per call",
+        "system": "Automatic"
+      },
       "used": "Used",
       "unused": "Not used",
       "missing": "Missing value",
@@ -202,7 +228,7 @@
     "unused": "Not used by any agent yet."
   },
   "simulator": {
-    "title": "Simulator",
+    "title": "Lab",
     "intro": "Have a pretend call with any of your agents. Nobody is called and nothing is charged.",
     "test": "Test this agent",
     "testing": "Testing",
@@ -292,8 +318,17 @@
     "empty": "No campaigns yet. Create one below.",
     "leads": "leads",
     "attempts": "attempts",
-    "status": { "DRAFT": "Not started", "RUNNING": "Running", "PAUSED": "Paused", "COMPLETED": "Finished" },
-    "leadStatus": { "PENDING": "Waiting", "DONE": "Done", "STOPPED": "Stopped" },
+    "status": {
+      "DRAFT": "Not started",
+      "RUNNING": "Running",
+      "PAUSED": "Paused",
+      "COMPLETED": "Finished"
+    },
+    "leadStatus": {
+      "PENDING": "Waiting",
+      "DONE": "Done",
+      "STOPPED": "Stopped"
+    },
     "new": "New campaign",
     "newIntro": "Choose an agent, which leads to call and when.",
     "needAgent": "Create an agent first.",
@@ -349,7 +384,12 @@
     "result": "Result",
     "length": "Length",
     "cost": "Cost",
-    "status": { "BLOCKED": "Blocked", "NO_ANSWER": "No answer", "COMPLETED": "Answered", "FAILED": "Failed" },
+    "status": {
+      "BLOCKED": "Blocked",
+      "NO_ANSWER": "No answer",
+      "COMPLETED": "Answered",
+      "FAILED": "Failed"
+    },
     "outcome": {
       "booked": "Booked",
       "callback": "Call back",
@@ -389,11 +429,42 @@
     "empty": "No wallet activity yet.",
     "what": "Details",
     "balanceAfter": "Balance after",
-    "status": { "PENDING": "Waiting for payment", "FAILED": "Not completed", "SUCCESS": "Done" },
+    "status": {
+      "PENDING": "Waiting for payment",
+      "FAILED": "Not completed",
+      "SUCCESS": "Done"
+    },
     "mockCheckout": "Pretend checkout",
     "mockCheckoutWarning": "This is a pretend payment page for testing. No card is needed and no money moves.",
     "mockPay": "Pay (pretend)",
     "reference": "Reference"
+  },
+  "credit": {
+    "title": "Credit",
+    "payg": "Pay As You Go",
+    "paygHelp": "Pay As You Go (PAYG): you add credit and only pay for the minutes you use",
+    "left": "{percent}% left",
+    "summary": "{amount} credit left ({percent}%)",
+    "detail": "~{minutes} min of calls",
+    "none": "No credit added yet.",
+    "buy": "Buy more credit",
+    "askAdmin": "Ask an owner or admin to add credit."
+  },
+  "topbar": {
+    "search": "Search",
+    "searchPlaceholder": "Search agents, leads, campaigns…",
+    "searching": "Searching…",
+    "noResults": "Nothing found.",
+    "pages": "Go to",
+    "group": {
+      "agents": "Agents",
+      "leads": "Leads",
+      "campaigns": "Campaigns"
+    },
+    "notifications": "Notifications",
+    "markRead": "Mark all as read",
+    "noNotifications": "You are all caught up.",
+    "profile": "Your profile"
   },
   "settings": {
     "title": "Organisation settings",
@@ -409,18 +480,60 @@
     "invited": "Invite sent.",
     "remove": "Remove",
     "you": "you",
-    "roles": { "OWNER": "Owner", "ADMIN": "Admin", "MEMBER": "Member", "VIEWER": "Viewer" },
-    "roleHelp": "Owner: everything. Admin: manage members and agents. Member: build agents. Viewer: read only.",
+    "roles": {
+      "OWNER": "Owner",
+      "ADMIN": "Admin",
+      "MEMBER": "Editor",
+      "VIEWER": "Viewer"
+    },
+    "roleHelp": "Owner: everything. Admin: manage members, billing, agents and settings. Editor: build agents, import leads and run campaigns. Viewer: read only.",
     "language": "Interface language",
     "languageSoon": "More languages coming soon",
     "audit": "Recent activity"
   },
   "common": {
     "required": "Required",
+    "loading": "Loading…",
     "optional": "Optional",
     "cancel": "Cancel",
     "back": "Back",
     "error": "Something went wrong.",
     "notFound": "Not found."
+  },
+  "workspace": {
+    "label": "Workspace",
+    "switchTo": "Switch workspace",
+    "current": "Current",
+    "yourRole": "Your role",
+    "members": "Workspace members and permissions",
+    "add": "Add to workspace",
+    "invite": "Invite a member",
+    "inviteHelp": "They get an email link to join this workspace.",
+    "email": "Email address",
+    "role": "Role",
+    "send": "Send invite",
+    "sending": "Sending…",
+    "sent": "Invite sent to {email}.",
+    "noPermission": "Only owners and admins can invite members.",
+    "ownedBy": "Owned by {name}"
+  },
+  "profile": {
+    "account": "Account",
+    "editProfile": "Edit profile details",
+    "changePassword": "Change password",
+    "notifications": "Notification preferences",
+    "workspace": "Workspace",
+    "renameWorkspace": "Rename workspace",
+    "members": "Workspace members and permissions",
+    "billing": "Billing and usage",
+    "appearance": "Appearance",
+    "theme": {
+      "light": "Day (white)",
+      "dark": "Night (black)"
+    },
+    "support": "Support",
+    "helpCentre": "Help centre",
+    "contactSupport": "Contact support",
+    "whatsNew": "What's new"
   }
 }

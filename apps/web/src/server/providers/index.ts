@@ -67,8 +67,8 @@ export function getLlm(): LlmProvider {
 
 /** How a voice preview is played. */
 export type SpeechResult =
-  /** Mock: the browser speaks the (already cleaned) text with its own voices. */
-  | { kind: "browser"; text: string; language: Voice["language"]; gender: Voice["gender"]; providerVoiceId: string }
+  /** Demo voices: the browser speaks the (already cleaned) text with its own voices. */
+  | { kind: "browser"; text: string; language: Voice["language"]; gender: Voice["gender"]; providerVoiceId: string; accent: string }
   /** Real provider: an audio file to play. */
   | { kind: "audio"; text: string; src: string }
   | { kind: "error"; message: string };
@@ -80,8 +80,9 @@ export async function synthesise(voiceId: string, rawText: string): Promise<Spee
   const text = sanitiseForSpeech(rawText).slice(0, 1000);
   if (!text) return { kind: "error", message: "Nothing to say." };
 
-  if (voice.provider === "mock") {
-    return { kind: "browser", text, language: voice.language, gender: voice.gender, providerVoiceId: voice.providerVoiceId };
+  // Demo voices (every provider except your own connected server) play with browser speech.
+  if (voice.provider !== "openai_compatible") {
+    return { kind: "browser", text, language: voice.language, gender: voice.gender, providerVoiceId: voice.providerVoiceId, accent: voice.accent };
   }
   if (voice.status !== "available" || env.TTS_PROVIDER !== voice.provider) {
     return { kind: "error", message: "This voice's provider is not connected yet." };

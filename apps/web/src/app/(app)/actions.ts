@@ -18,6 +18,8 @@ export async function switchOrganisation(form: FormData): Promise<void> {
   const organisationId = z.string().min(1).parse(form.get("organisationId"));
   if (!ctx.memberships.some((m) => m.organisationId === organisationId)) throw new Error("Not a member of that organisation.");
   await db.session.update({ where: { id: ctx.sessionId }, data: { activeOrganisationId: organisationId } });
+  // Everything on screen belongs to the old workspace: refresh it all, not just the page.
+  revalidatePath("/", "layout");
   redirect("/dashboard");
 }
 

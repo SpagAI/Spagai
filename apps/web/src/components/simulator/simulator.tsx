@@ -4,7 +4,7 @@ import { getVoice, TOOL_DEFINITIONS, type AgentConfig } from "@spagai/core";
 import { ArrowLeft, CircleAlert, CircleCheck, CircleX, Clock, PhoneCall, PhoneOff, RotateCcw, Send, Settings2, TriangleAlert, Volume2, VolumeX } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { simulate, type AgentLine, type SimulateInput } from "@/app/(app)/simulator/actions";
+import { simulate, type AgentLine, type SimulateInput } from "@/app/(app)/lab/actions";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -114,7 +114,7 @@ export function Simulator({ agentId, config, initialWhen, provider }: SimulatorP
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <Button asChild variant="ghost" size="icon" aria-label={t("common.back")}>
-          <Link href="/simulator"><ArrowLeft /></Link>
+          <Link href="/lab"><ArrowLeft /></Link>
         </Button>
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-xl font-semibold tracking-tight">{t("simulator.testing")} {config.name}</h1>

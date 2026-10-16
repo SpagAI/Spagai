@@ -13,10 +13,11 @@ import { useT } from "@/i18n/client";
 import { formatLagos } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { BlocksEditor } from "./blocks-editor";
+import { KnowledgeTab, NumbersTab, SetupSteps, type AgentConnections } from "./connections";
 import { PreviewPanel } from "./preview-panel";
 import { BusinessTab, FirstMessageTab, SilenceTab, ToolsTab, VoiceTab } from "./tabs";
 
-const TABS = ["business", "blocks", "firstMessage", "tools", "silence", "voice"] as const;
+const TABS = ["business", "voice", "blocks", "firstMessage", "knowledge", "numbers", "tools", "silence"] as const;
 type Tab = (typeof TABS)[number];
 
 export interface AgentBuilderProps {
@@ -26,9 +27,12 @@ export interface AgentBuilderProps {
   updatedAt: string;
   readOnly: boolean;
   canDelete: boolean;
+  connections: AgentConnections;
+  /** Just created: show a short welcome. */
+  isNew?: boolean;
 }
 
-export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt, readOnly, canDelete }: AgentBuilderProps) {
+export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt, readOnly, canDelete, connections, isNew }: AgentBuilderProps) {
   const t = useT();
   const [config, setConfig] = useState(initialConfig);
   const [saved, setSaved] = useState({ config: initialConfig, status: initialStatus, at: updatedAt });
@@ -37,6 +41,15 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
   const [pending, startTransition] = useTransition();
 
   const dirty = JSON.stringify(config) !== JSON.stringify(saved.config);
+  const detailsFilled = saved.config.variables.filter((v) => v.scope === "agent" && v.required).every((v) => (saved.config.variableValues[v.name] ?? "").trim());
+  const steps = [
+    { key: "name", label: "Name & business", done: !!saved.config.name.trim() && detailsFilled, tab: "business" },
+    { key: "voice", label: "Voice", done: !!saved.config.voiceId, tab: "voice" },
+    { key: "prompt", label: "Instructions", done: saved.config.blocks.some((b) => !b.guardrail && b.content.trim().length > 40), tab: "blocks" },
+    { key: "knowledge", label: "Knowledge base", done: connections.knowledge.length > 0, tab: "knowledge" },
+    { key: "number", label: "Phone number", done: connections.numbers.length > 0, tab: "numbers" },
+    { key: "lab", label: "Test in the Lab", done: connections.testedInLab, href: `/lab/${agentId}` },
+  ];
   const update = useCallback((patch: Partial<AgentConfig>) => setConfig((c) => ({ ...c, ...patch })), []);
   const addVariable = useCallback(
     (v: VariableDef) => setConfig((c) => (c.variables.some((x) => x.name === v.name) ? c : { ...c, variables: [...c.variables, v] })),
@@ -85,7 +98,8 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
         <div className="ml-auto flex flex-wrap gap-2">
           <Button asChild variant="outline">
             <Link
-              href={`/simulator/${agentId}`}
+              href={`/lab/${agentId}`}
+              data-no-loader
               onClick={(e) => {
                 if (dirty && !window.confirm(t("builder.testUnsaved"))) e.preventDefault();
               }}
@@ -107,6 +121,9 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
           )}
         </div>
       </div>
+
+      {isNew && <Alert variant="success">Your agent is created. Work through the steps below: choose a voice, write its instructions, give it knowledge and a phone number, then test it in the Lab.</Alert>}
+      <SetupSteps steps={steps} onPick={(id) => setTab(id as Tab)} />
 
       {readOnly && <Alert>{t("agents.readOnly")}</Alert>}
       {errors.length > 0 && (
@@ -146,6 +163,8 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
             {tab === "silence" && <SilenceTab config={config} update={update} />}
             {tab === "voice" && <VoiceTab config={config} update={update} />}
           </fieldset>
+          {tab === "knowledge" && <KnowledgeTab agentId={agentId} c={connections} />}
+          {tab === "numbers" && <NumbersTab agentId={agentId} c={connections} />}
 
           {canDelete && (
             <form

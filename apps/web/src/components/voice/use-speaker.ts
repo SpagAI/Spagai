@@ -21,8 +21,14 @@ const LANG_FALLBACKS: Record<string, string[]> = {
   ig: ["ig", "en-NG", "en-GB", "en"],
 };
 
-function pickBrowserVoice(voices: SpeechSynthesisVoice[], language: string, gender: "female" | "male") {
-  for (const tag of LANG_FALLBACKS[language] ?? ["en"]) {
+/** For English voices, the browser accent closest to the voice's accent. */
+const ACCENT_TAGS: Record<string, string> = {
+  British: "en-GB", American: "en-US", Irish: "en-IE", Kenyan: "en-KE", "South African": "en-ZA", Ghanaian: "en-GB",
+};
+
+export function pickBrowserVoice(voices: SpeechSynthesisVoice[], language: string, gender: "female" | "male", accent = "") {
+  const accentTag = language === "en-NG" ? ACCENT_TAGS[accent] : undefined;
+  for (const tag of [...(accentTag ? [accentTag] : []), ...(LANG_FALLBACKS[language] ?? ["en"])]) {
     const matching = voices.filter((v) => v.lang.toLowerCase().replace("_", "-").startsWith(tag.toLowerCase()));
     if (!matching.length) continue;
     const hint = gender === "female" ? FEMALE_HINTS : MALE_HINTS;
@@ -31,7 +37,7 @@ function pickBrowserVoice(voices: SpeechSynthesisVoice[], language: string, gend
   return voices[0];
 }
 
-function loadBrowserVoices(): Promise<SpeechSynthesisVoice[]> {
+export function loadBrowserVoices(): Promise<SpeechSynthesisVoice[]> {
   const synth = window.speechSynthesis;
   const now = synth.getVoices();
   if (now.length) return Promise.resolve(now);
@@ -87,12 +93,12 @@ export function useSpeaker() {
         }
         void loadBrowserVoices().then((voices) => {
           const utterance = new SpeechSynthesisUtterance(result.text);
-          const browserVoice = pickBrowserVoice(voices, result.language, result.gender);
+          const browserVoice = pickBrowserVoice(voices, result.language, result.gender, result.accent);
           if (browserVoice) utterance.voice = browserVoice;
-          // Small pitch differences so each mock voice sounds a little different.
-          const n = Number(/\d+$/.exec(result.providerVoiceId)?.[0] ?? 1);
-          utterance.pitch = (result.gender === "female" ? 1.1 : 0.85) + (n - 1) * 0.08;
-          utterance.rate = 0.95;
+          // Small pitch and pace differences so each demo voice sounds a little different.
+          const n = [...result.providerVoiceId].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 997, 7) % 5;
+          utterance.pitch = (result.gender === "female" ? 1.05 : 0.8) + n * 0.06;
+          utterance.rate = 0.9 + (n % 3) * 0.05;
           utterance.onend = finish;
           utterance.onerror = finish;
           window.speechSynthesis.speak(utterance);

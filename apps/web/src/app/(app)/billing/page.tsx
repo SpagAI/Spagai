@@ -28,20 +28,25 @@ const ERRORS: Record<string, string> = {
 export default async function BillingPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const params = await searchParams;
   const ctx = await requirePermission("billing:view");
+  // Test aid: a deliberate pause so the loading animation can be seen (development only, set in apps/web/.env).
+  if (env.NODE_ENV === "development" && env.DEV_BILLING_DELAY_MS > 0) {
+    await new Promise((resolve) => setTimeout(resolve, env.DEV_BILLING_DELAY_MS));
+  }
   const t = await getT();
   const p = toLagosParts(new Date());
   const monthStart = fromLagosParts(p.year, p.month, 1);
 
-  const [org, transactions, usage] = await Promise.all([
+  const [org, transactions, allTime, monthCalls] = await Promise.all([
     db.organisation.findUniqueOrThrow({ where: { id: ctx.organisation.id }, select: { balanceKobo: true, ratePerMinuteKobo: true } }),
     db.walletTransaction.findMany({ where: { organisationId: ctx.organisation.id }, orderBy: { createdAt: "desc" }, take: 50 }),
-    db.walletTransaction.aggregate({
-      where: { organisationId: ctx.organisation.id, type: "CALL_CHARGE", createdAt: { gte: monthStart } },
-      _sum: { amountKobo: true },
-      _count: true,
-    }),
+    // Spending is counted from the calls themselves, so it always matches the dashboard.
+    db.call.aggregate({ where: { organisationId: ctx.organisation.id, costKobo: { gt: 0 } }, _sum: { costKobo: true }, _count: true, _min: { attemptedAt: true } }),
+    db.call.aggregate({ where: { organisationId: ctx.organisation.id, costKobo: { gt: 0 }, attemptedAt: { gte: monthStart } }, _sum: { costKobo: true }, _count: true }),
   ]);
-  const spent = -(usage._sum.amountKobo ?? 0);
+  const totalSpent = allTime._sum.costKobo ?? 0;
+  const spentThisMonth = monthCalls._sum.costKobo ?? 0;
+  const minutesUsed = org.ratePerMinuteKobo ? Math.round(totalSpent / org.ratePerMinuteKobo) : 0;
+  const since = allTime._min.attemptedAt;
   const canManage = can(ctx.role, "billing:manage");
   const error = params.error ? (ERRORS[params.error] ?? params.error) : null;
   const low = org.balanceKobo < org.ratePerMinuteKobo * 10;
@@ -52,6 +57,22 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         <h1 className="text-2xl font-semibold tracking-tight">{t("billing.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("billing.intro")}</p>
       </div>
+
+      {/* The headline figure: everything spent on calls so far. */}
+      <section className="flex flex-wrap items-end justify-between gap-6 rounded-2xl border bg-foreground p-6 text-background sm:p-8">
+        <div>
+          <p className="text-sm font-medium opacity-80">Total spent</p>
+          <p className="mt-1 text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl">{formatNaira(totalSpent)}</p>
+          <p className="mt-2 text-sm opacity-80">
+            {since ? `On about ${minutesUsed.toLocaleString("en")} minutes of answered calls since ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Africa/Lagos" }).format(since)}` : "No calls charged yet"}
+          </p>
+        </div>
+        <dl className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
+          <dt className="opacity-80">This month</dt><dd className="text-right font-semibold tabular-nums">{formatNaira(spentThisMonth)}</dd>
+          <dt className="opacity-80">Charged calls</dt><dd className="text-right font-semibold tabular-nums">{allTime._count.toLocaleString("en")}</dd>
+          <dt className="opacity-80">Balance left</dt><dd className="text-right font-semibold tabular-nums">{formatNaira(org.balanceKobo)}</dd>
+        </dl>
+      </section>
 
       {error && <Alert variant="destructive">{error}</Alert>}
       {params.paid && <Alert variant="success">{t("billing.paid")}</Alert>}
@@ -79,9 +100,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         <Card>
           <CardHeader>
             <CardDescription>{t("billing.thisMonth")}</CardDescription>
-            <CardTitle className="text-3xl tabular-nums">{formatNaira(spent)}</CardTitle>
+            <CardTitle className="text-3xl tabular-nums">{formatNaira(spentThisMonth)}</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">{t("billing.chargedCalls").replace("{count}", String(usage._count))}</CardContent>
+          <CardContent className="text-sm text-muted-foreground">{t("billing.chargedCalls").replace("{count}", String(monthCalls._count))}</CardContent>
         </Card>
       </div>
 

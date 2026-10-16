@@ -3,13 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { sendLoginLink } from "@/server/auth/login";
 import { requirePermission } from "@/server/auth/session";
-import { normaliseEmail } from "@/server/auth/tokens";
 import { audit } from "@/server/agents";
 import { db } from "@/server/db";
+import { inviteToWorkspace } from "@/server/invites";
 import { canChangeRole, canRemoveMember, ROLES, type Role } from "@/server/permissions";
-import { loginByEmail } from "@/server/rate-limit";
 
 const roleSchema = z.enum(ROLES as [Role, ...Role[]]);
 const back = (query: string) => redirect(`/settings?${query}`);
@@ -28,24 +26,8 @@ export async function renameOrganisation(form: FormData): Promise<void> {
 
 export async function inviteMember(form: FormData): Promise<void> {
   const ctx = await requirePermission("member:manage");
-  const parsed = z
-    .object({ email: z.string().trim().max(254).email(), role: roleSchema })
-    .safeParse({ email: form.get("email"), role: form.get("role") });
-  if (!parsed.success) return back("error=invite");
-
-  const email = normaliseEmail(parsed.data.email);
-  const role = parsed.data.role;
-  if (role === "OWNER" && ctx.role !== "OWNER") return back("error=owner-only");
-  if (!loginByEmail.check(email).allowed) return back("error=rate");
-
-  const user = await db.user.upsert({ where: { email }, create: { email }, update: {} });
-  await db.membership.upsert({
-    where: { userId_organisationId: { userId: user.id, organisationId: ctx.organisation.id } },
-    create: { userId: user.id, organisationId: ctx.organisation.id, role },
-    update: {},
-  });
-  await audit(ctx.organisation.id, ctx.user.id, "member.invited", { type: "user", id: user.id }, { email, role });
-  await sendLoginLink(email, { invitedTo: ctx.organisation.name });
+  const result = await inviteToWorkspace(ctx, form.get("email"), form.get("role"));
+  if (!result.ok) return back(`error=${result.error}`);
   revalidatePath("/settings");
   back("invited=1");
 }

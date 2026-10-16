@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { SpagLogo } from "@/components/spag-logo";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getT } from "@/i18n/server";
 import { completeLogin } from "./actions";
@@ -16,7 +17,8 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
   const errorKey = error === "expired" || error === "used" ? error : error || !token ? "invalid" : null;
 
   return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-4 py-10">
+      <SpagLogo className="h-12" title={t("app.brand")} />
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>{t("verify.title")}</CardTitle>

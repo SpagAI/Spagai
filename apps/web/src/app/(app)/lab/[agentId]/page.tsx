@@ -6,7 +6,7 @@ import { requireOrg } from "@/server/auth/session";
 import { loadAgent } from "@/server/agents";
 import { env } from "@/server/env";
 
-export const metadata: Metadata = { title: "Simulator" };
+export const metadata: Metadata = { title: "Lab" };
 
 const pad = (n: number) => String(n).padStart(2, "0");
 

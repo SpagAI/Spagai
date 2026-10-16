@@ -10,15 +10,27 @@ const codespaceHost =
 const nextConfig: NextConfig = {
   ...(codespaceHost && { allowedDevOrigins: [codespaceHost] }),
   experimental: {
+    // Keep visited pages for 30 seconds, so going back and forth between pages is instant.
+    // Saving anything (a Server Action) still refreshes the affected pages straight away.
+    staleTimes: { dynamic: 30 },
     serverActions: {
       // Lead CSV uploads can be up to 2 MB (checked again in the import action).
       bodySizeLimit: "2100kb",
       ...(codespaceHost && { allowedOrigins: [codespaceHost] }),
     },
   },
+  // Hide Next.js's round "N" badge in the corner while developing. Errors still show as normal.
+  devIndicators: false,
   // packages/core ships TypeScript source; Next compiles it for us.
   transpilePackages: ["@spagai/core"],
   poweredByHeader: false,
+  // The Simulator is now called the Lab; old links still work.
+  async redirects() {
+    return [
+      { source: "/simulator", destination: "/lab", permanent: true },
+      { source: "/simulator/:agentId", destination: "/lab/:agentId", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

@@ -22,12 +22,16 @@ export type Permission =
   | "campaign:run"
   | "call:view"
   | "billing:view"
-  | "billing:manage";
+  | "billing:manage"
+  | "number:manage"
+  | "knowledge:edit"
+  | "integration:manage"
+  | "apikey:manage";
 
 const GRANTS: Record<Role, Permission[]> = {
-  OWNER: ["agent:view", "agent:edit", "agent:delete", "member:view", "member:manage", "organisation:edit", "audit:view", "lead:view", "lead:edit", "campaign:run", "call:view", "billing:view", "billing:manage"],
-  ADMIN: ["agent:view", "agent:edit", "agent:delete", "member:view", "member:manage", "organisation:edit", "audit:view", "lead:view", "lead:edit", "campaign:run", "call:view", "billing:view", "billing:manage"],
-  MEMBER: ["agent:view", "agent:edit", "member:view", "lead:view", "lead:edit", "campaign:run", "call:view"],
+  OWNER: ["agent:view", "agent:edit", "agent:delete", "member:view", "member:manage", "organisation:edit", "audit:view", "lead:view", "lead:edit", "campaign:run", "call:view", "billing:view", "billing:manage", "number:manage", "knowledge:edit", "integration:manage", "apikey:manage"],
+  ADMIN: ["agent:view", "agent:edit", "agent:delete", "member:view", "member:manage", "organisation:edit", "audit:view", "lead:view", "lead:edit", "campaign:run", "call:view", "billing:view", "billing:manage", "number:manage", "knowledge:edit", "integration:manage", "apikey:manage"],
+  MEMBER: ["agent:view", "agent:edit", "member:view", "lead:view", "lead:edit", "campaign:run", "call:view", "knowledge:edit"],
   VIEWER: ["agent:view", "member:view", "lead:view", "call:view"],
 };
 

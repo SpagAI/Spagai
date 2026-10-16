@@ -16,7 +16,7 @@ A platform where businesses in Nigeria and Africa build and run AI voice agents,
 | Agent Builder: presets, business details, blocks, live preview, lint, variables, tools, silence, voice picker | `apps/web/src/components/agent-builder` | Done |
 | Translation files (English now; Pidgin, Yoruba, Hausa, Igbo ready to fill) | `apps/web/src/i18n/messages` | Structure done |
 | Voice library with previews (Play buttons, try your own line) | `apps/web/src/app/(app)/voices`, `src/components/voice` | Done |
-| Simulator: pretend calls with any agent, simulated tools, silence, calling-hours check | `apps/web/src/app/(app)/simulator`, `packages/core/src/simulator` | Done + tests |
+| Lab (formerly Simulator): pretend calls with any agent, simulated tools, silence, calling-hours check | `apps/web/src/app/(app)/lab`, `packages/core/src/simulator` | Done + tests |
 | Provider adapters (language model, text-to-speech) with free mock defaults | `apps/web/src/server/providers` | Done + tests |
 | Leads: CSV import (sensitive columns refused), add by hand, opt-out, do-not-call list | `apps/web/src/app/(app)/leads`, `packages/core/src/leads` | Done + tests |
 | Compliance gate before every call attempt (hours, opt-out, do-not-call, consent, source, attempts) | `packages/core/src/compliance` | Done + tests |
