@@ -1,6 +1,10 @@
 import "server-only";
 import { z } from "zod";
 
+/** On Vercel, the site's own address is known, so APP_URL does not have to be set by hand. */
+const vercelUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL;
+if (!process.env.APP_URL && vercelUrl) process.env.APP_URL = `https://${vercelUrl}`;
+
 /** All server settings, checked once at start-up. See .env.example. */
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -16,6 +20,14 @@ const schema = z.object({
   EMAIL_TRANSPORT: z.enum(["smtp", "console"]).optional(),
   /** Development only: show the sign-in link on the page after requesting it. Refused in production. */
   DEV_SHOW_LOGIN_LINK: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+  /**
+   * A public demo site: a "Try the demo" button signs visitors into the sample workspace without email,
+   * the pretend checkout is allowed, and emails are only written to the server log. Never use it for real customers.
+   */
+  DEMO_MODE: z
     .enum(["true", "false"])
     .default("false")
     .transform((v) => v === "true"),
@@ -53,8 +65,8 @@ export const env = {
 };
 
 const isLocalhost = ["localhost", "127.0.0.1"].includes(new URL(env.APP_URL).hostname);
-if (env.EMAIL_TRANSPORT === "console" && !isLocalhost) {
-  throw new Error("EMAIL_TRANSPORT=console is only allowed when APP_URL is localhost. Configure SMTP.");
+if (env.EMAIL_TRANSPORT === "console" && !isLocalhost && !env.DEMO_MODE) {
+  throw new Error("EMAIL_TRANSPORT=console is only allowed when APP_URL is localhost (or DEMO_MODE=true). Configure SMTP.");
 }
 
 if (env.NODE_ENV === "production" && env.DEV_SHOW_LOGIN_LINK) {
@@ -73,8 +85,8 @@ if (env.PAYMENTS_PROVIDER === "paystack" && !env.PAYSTACK_SECRET_KEY?.startsWith
   throw new Error("PAYMENTS_PROVIDER=paystack needs PAYSTACK_SECRET_KEY (it starts with sk_).");
 }
 
-if (env.NODE_ENV === "production" && env.PAYMENTS_PROVIDER === "mock") {
-  throw new Error("The pretend checkout must not run in production. Set PAYMENTS_PROVIDER=paystack.");
+if (env.NODE_ENV === "production" && env.PAYMENTS_PROVIDER === "mock" && !env.DEMO_MODE) {
+  throw new Error("The pretend checkout must not run in production. Set PAYMENTS_PROVIDER=paystack (or DEMO_MODE=true for a demo site).");
 }
 
 if (env.WORKER_SHARED_SECRET !== undefined && env.WORKER_SHARED_SECRET.length < 32) {

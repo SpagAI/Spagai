@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 // GitHub Codespaces serves the app from https://<codespace>-3000.<domain>.
@@ -8,6 +9,9 @@ const codespaceHost =
     : null;
 
 const nextConfig: NextConfig = {
+  // This app lives in a monorepo: trace files from the repository root, so the deployed site
+  // (e.g. on Vercel) includes everything it needs, such as the database engine and packages/core.
+  outputFileTracingRoot: path.resolve(__dirname, "../.."),
   ...(codespaceHost && { allowedDevOrigins: [codespaceHost] }),
   experimental: {
     // Keep visited pages for 30 seconds, so going back and forth between pages is instant.

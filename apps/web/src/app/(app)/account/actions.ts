@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { destroySession, requireOrg } from "@/server/auth/session";
 import { db } from "@/server/db";
+import { env } from "@/server/env";
 
 export type FormState = { status: "idle" } | { status: "ok"; message: string } | { status: "error"; message: string };
 
@@ -57,6 +58,10 @@ export async function signOutOtherSessions(_prev: FormState): Promise<FormState>
  */
 export async function deleteAccount(_prev: FormState, form: FormData): Promise<FormState> {
   const ctx = await requireOrg();
+  // Everyone on a demo site shares this account, so it cannot be deleted there.
+  if (env.DEMO_MODE && ctx.user.email === "demo@spagai.local") {
+    return { status: "error", message: "The shared demo account cannot be deleted." };
+  }
   if (String(form.get("confirm") ?? "").trim().toLowerCase() !== ctx.user.email.toLowerCase()) {
     return { status: "error", message: "Type your email address exactly to confirm." };
   }

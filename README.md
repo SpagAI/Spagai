@@ -91,6 +91,26 @@ Preset ids you can pass to `pnpm demo`: `fintech-outbound-zara`, `fintech-suppor
 - **No email in the inbox**: copy the link from the terminal where `pnpm dev` is running.
 - **"Too many attempts"**: sign-in links are limited to 5 per email per 15 minutes. Wait, or restart `pnpm dev`.
 
+## Deploy to Vercel (a public demo site)
+
+The repository is ready for Vercel. The first deploy creates the database tables and loads the sample data for you.
+
+1. **Import the project.** In Vercel choose **Add New → Project**, pick the `SpagAI/Spagai` repository, and set **Root Directory** to `apps/web`. Leave the other build settings as they are (`apps/web/vercel.json` sets the build command).
+2. **Add a database.** In the project's **Storage** tab, add **Neon** (free Postgres). It sets `DATABASE_URL` and `DATABASE_URL_UNPOOLED` for you.
+3. **Add these Environment Variables** (Settings → Environment Variables):
+
+   | Name | Value |
+   |---|---|
+   | `SESSION_SECRET` | any long random text, at least 32 characters |
+   | `DEMO_MODE` | `true` |
+
+4. **Deploy.** The build runs `apps/web/scripts/vercel-build.mjs`: database tables, then sample data (demo mode only, safe to repeat), then the website.
+5. Open the site and press **Enter the demo workspace** on the sign-in page.
+
+**What demo mode means.** Anyone with the link can enter the shared sample workspace with one click (no email). No calls are made and no money moves (pretend checkout). The shared demo account cannot be deleted. Emails are only written to the Vercel logs unless you add SMTP settings (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM`), which also turns email sign-in back on. For a real launch with customers, remove `DEMO_MODE` and set `PAYMENTS_PROVIDER=paystack` with your Paystack key.
+
+`APP_URL` is worked out from the Vercel address automatically; set it only if you use your own domain.
+
 ## Project layout
 
 ```
