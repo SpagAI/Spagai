@@ -91,7 +91,58 @@ Preset ids you can pass to `pnpm demo`: `fintech-outbound-zara`, `fintech-suppor
 - **No email in the inbox**: copy the link from the terminal where `pnpm dev` is running.
 - **"Too many attempts"**: sign-in links are limited to 5 per email per 15 minutes. Wait, or restart `pnpm dev`.
 
-## Deploy to Vercel (a public demo site)
+## Deploy to Cloudflare (the public demo site)
+
+The site runs on **Cloudflare Workers** (website) with a free **Neon** Postgres database. Cloudflare is connected to this GitHub repository: **every push to `main` rebuilds and redeploys the site automatically**. The first deploy creates the database tables and loads the sample data.
+
+### 1. Create the database (Neon)
+
+1. Sign up at https://neon.tech (free) and create a project, for example `spagai`, in a region near your users.
+2. On the project dashboard click **Connect**. Turn **Connection pooling off**, then copy the connection string. It starts with `postgresql://` and ends with `?sslmode=require`. This is your `DATABASE_URL`. Keep it private.
+
+### 2. Connect the repository (Cloudflare)
+
+1. Sign up at https://dash.cloudflare.com/sign-up (free).
+2. Go to **Workers & Pages → Create → Import a repository**, connect GitHub, and pick **SpagAI/Spagai**.
+3. Fill in:
+
+   | Setting | Value |
+   |---|---|
+   | Project name | `spagai-studio` (must match `name` in `apps/web/wrangler.jsonc`) |
+   | Production branch | `main` |
+   | Build command | `pnpm run cloudflare-build` |
+   | Deploy command | `pnpm exec wrangler deploy` |
+   | Root directory (Advanced settings → Path) | `apps/web` |
+
+4. Under **Build variables** (Advanced settings), add:
+
+   | Name | Value |
+   |---|---|
+   | `DATABASE_URL` | the Neon connection string |
+   | `DEMO_MODE` | `true` |
+   | `SESSION_SECRET` | any long random text, at least 32 characters |
+
+5. Click **Deploy** and wait for the build to finish (about 5 minutes). The build log shows each step: database tables, sample data, website.
+
+### 3. Add the site's own settings (once)
+
+The build variables are only used while building. The running site needs its own copy. Open the Worker → **Settings → Variables and Secrets** and add:
+
+| Name | Type | Value |
+|---|---|---|
+| `DATABASE_URL` | Secret | the same Neon connection string |
+| `SESSION_SECRET` | Secret | the same long random text |
+| `DEMO_MODE` | Text | `true` |
+| `APP_URL` | Text | the site's address, e.g. `https://spagai-studio.<your-subdomain>.workers.dev` |
+
+Then open the address and press **Enter the demo workspace**.
+
+**Good to know**
+- Pushes to other branches can get their own preview links: Worker → **Settings → Build → Branch control**, turn on builds for non-production branches.
+- The Worker is about 2.7 MB compressed. The free plan allows 3 MB; the $5/month Workers plan allows 10 MB if it grows.
+- Try the Cloudflare build on your computer with `pnpm --filter @spagai/web cloudflare-preview` (needs a running database and an `apps/web/.dev.vars` file with the variables above).
+
+## Deploy to Vercel (alternative)
 
 The repository is ready for Vercel. The first deploy creates the database tables and loads the sample data for you.
 

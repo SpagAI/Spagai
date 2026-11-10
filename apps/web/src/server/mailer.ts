@@ -1,5 +1,4 @@
 import "server-only";
-import nodemailer from "nodemailer";
 import { env } from "./env";
 
 export interface Email {
@@ -20,6 +19,8 @@ export async function sendEmail(message: Email): Promise<void> {
   }
   if (env.EMAIL_TRANSPORT === "console" || !env.SMTP_HOST) return;
 
+  // Loaded only when an email is really sent over SMTP (never on the console-only demo site).
+  const { default: nodemailer } = await import("nodemailer");
   const transport = nodemailer.createTransport({
     host: env.SMTP_HOST,
     port: env.SMTP_PORT,

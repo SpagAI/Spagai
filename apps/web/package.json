@@ -13,12 +13,16 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "cloudflare-build": "node scripts/cloudflare-build.mjs",
+    "cloudflare-preview": "opennextjs-cloudflare build && wrangler dev"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "1.20.16",
+    "@prisma/adapter-pg": "6.19.3",
     "@prisma/client": "6.19.3",
     "@radix-ui/react-slot": "^1.5.0",
     "@spagai/core": "workspace:*",
@@ -27,6 +31,7 @@
     "lucide-react": "^1.56.0",
     "next": "16.4.5",
     "nodemailer": "^10.1.0",
+    "pg": "^8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "^0.0.1",
@@ -37,6 +42,7 @@
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.5",
     "@types/nodemailer": "^8.0.2",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "postcss": "^8.5.30",
@@ -44,6 +50,7 @@
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.4"
+    "vitest": "^5.0.4",
+    "wrangler": "4.160.0"
   }
 }

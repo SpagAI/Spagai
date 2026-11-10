@@ -26,3 +26,9 @@ __pycache__/
 .vscode/*
 !.vscode/extensions.json
 next-env.d.ts
+
+# Cloudflare local secrets (wrangler)
+.dev.vars
+.dev.vars.*
+.wrangler/
+.open-next/

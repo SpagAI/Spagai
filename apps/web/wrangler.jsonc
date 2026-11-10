@@ -1,0 +1,17 @@
+// Cloudflare Workers settings for Spag AI Studio (see README, "Deploy to Cloudflare").
+// Secrets such as DATABASE_URL and SESSION_SECRET are NOT kept here: add them in the
+// Cloudflare dashboard (Worker → Settings → Variables and Secrets).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "spagai-studio",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": { "enabled": true },
+  // Keep the variables added in the dashboard when a new version is deployed.
+  "keep_vars": true
+}
