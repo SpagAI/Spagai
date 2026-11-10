@@ -2,6 +2,8 @@
 
 A platform where businesses in Nigeria and Africa build and run AI voice agents, like Vapi or Retell but made for the Nigerian market: respectful addressing (Sir and Ma), calling-hours and opt-out enforcement, local voices, and Naira billing.
 
+**Live demo:** https://spagai-studio.team-spagai.workers.dev (press **Enter the demo workspace**). Runs on Cloudflare Workers with a Neon database and redeploys automatically when the production branch changes. See "Deploy to Cloudflare" below.
+
 > **Status: prototype skeleton.** Everything runs locally with **mock** providers. No paid API keys are needed. Nothing here is legal advice. All regulatory text is a draft that **needs legal review**.
 
 ## What works today (Milestones 1 to 5)
