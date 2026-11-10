@@ -56,6 +56,8 @@ model Organisation {
   knowledgeItems     KnowledgeItem[]
   integrations       Integration[]
   apiKeys            ApiKey[]
+  workspaceVoices    WorkspaceVoice[]
+  voiceUsage         VoiceUsage[]
 }
 
 model Membership {
@@ -441,4 +443,35 @@ model ApiKey {
   organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
 
   @@index([organisationId])
+}
+
+/// A voice from an outside voice bank (e.g. Fish Audio) that this workspace added to its own list.
+/// Agents refer to it as "<provider>:<providerVoiceId>". Details are copied from the provider when added.
+model WorkspaceVoice {
+  id              String       @id @default(cuid())
+  organisationId  String
+  provider        String       // "fish_audio"
+  providerVoiceId String
+  name            String
+  gender          String       // "female" | "male"
+  language        String       // en-NG, pcm, yo, ha, ig
+  accent          String
+  description     String
+  age             String       // young | middle | mature
+  sampleUrl       String?
+  addedById       String?
+  createdAt       DateTime     @default(now())
+  organisation    Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, provider, providerVoiceId])
+}
+
+/// Characters of real speech generated per workspace per day (Lagos date), for the daily cost guard.
+model VoiceUsage {
+  organisationId String
+  day            String       // YYYY-MM-DD in Africa/Lagos
+  characters     Int          @default(0)
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@id([organisationId, day])
 }

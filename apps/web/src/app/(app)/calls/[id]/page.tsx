@@ -1,4 +1,4 @@
-import { agentConfigSchema, formatNaira, formatNigerianPhone, getVoice, TOOL_DEFINITIONS, type SimMessage, type SimToolCall, type ToolId } from "@spagai/core";
+import { agentConfigSchema, formatNaira, formatNigerianPhone, TOOL_DEFINITIONS, type SimMessage, type SimToolCall, type ToolId } from "@spagai/core";
 import { ArrowLeft, ShieldX } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -13,6 +13,7 @@ import { formatLagos } from "@/lib/format";
 import { CALL_STATUS_VARIANT } from "@/lib/status";
 import { requirePermission } from "@/server/auth/session";
 import { db } from "@/server/db";
+import { resolveVoice } from "@/server/voices";
 
 export const metadata: Metadata = { title: "Call" };
 
@@ -30,7 +31,7 @@ export default async function CallPage({ params }: { params: Promise<{ id: strin
   const toolCalls = ((Array.isArray(call.toolCalls) ? call.toolCalls : []) as unknown as SimToolCall[]).filter((c) => c.tool in TOOL_DEFINITIONS);
   const reasons = (Array.isArray(call.blockReasons) ? call.blockReasons : []) as unknown as { code: string; message: string }[];
   const lead = call.lead;
-  const agentVoice = getVoice(agentConfigSchema.safeParse(call.agent?.config).data?.voiceId);
+  const agentVoice = await resolveVoice(ctx.organisation.id, agentConfigSchema.safeParse(call.agent?.config).data?.voiceId);
   const hasRecording = transcript.length > 0 && (call.durationSeconds ?? 0) > 0;
 
   return (

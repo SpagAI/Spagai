@@ -51,6 +51,15 @@ const schema = z.object({
   OPENAI_COMPATIBLE_API_KEY: z.string().optional(),
   OPENAI_COMPATIBLE_MODEL: z.string().optional(),
   OPENAI_COMPATIBLE_TTS_MODEL: z.string().optional(),
+  /** Fish Audio (voice bank + real speech). Without a key, voices fall back to browser speech. */
+  FISH_AUDIO_API_KEY: z
+    .string()
+    .optional()
+    .transform((v) => v || undefined),
+  /** Fish Audio speech model, sent in the "model" header. */
+  FISH_AUDIO_MODEL: z.string().default("s1"),
+  /** Cost guard: characters of real speech each workspace may generate per day (Lagos time). */
+  VOICE_DAILY_CHAR_LIMIT: z.coerce.number().int().min(0).max(1_000_000).default(5000),
 });
 
 const parsed = schema.safeParse(process.env);

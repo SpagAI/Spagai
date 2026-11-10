@@ -32,6 +32,7 @@ export const VOICE_PROVIDERS: Record<string, string> = {
   elevenlabs: "ElevenLabs",
   cartesia: "Cartesia",
   openai: "OpenAI",
+  fish_audio: "Fish Audio",
   openai_compatible: "Your provider",
 };
 

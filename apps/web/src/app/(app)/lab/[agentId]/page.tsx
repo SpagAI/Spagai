@@ -5,6 +5,7 @@ import { Simulator } from "@/components/simulator/simulator";
 import { requireOrg } from "@/server/auth/session";
 import { loadAgent } from "@/server/agents";
 import { env } from "@/server/env";
+import { resolveVoice } from "@/server/voices";
 
 export const metadata: Metadata = { title: "Lab" };
 
@@ -20,5 +21,6 @@ export default async function SimulatorPage({ params }: { params: Promise<{ agen
   const p = toLagosParts(new Date());
   const now = `${p.year}-${pad(p.month)}-${pad(p.day)}T${pad(p.hour)}:${pad(p.minute)}`;
 
-  return <Simulator agentId={agent.id} config={agent.config} initialWhen={now} provider={env.LLM_PROVIDER} />;
+  const voice = await resolveVoice(ctx.organisation.id, agent.config.voiceId);
+  return <Simulator agentId={agent.id} config={agent.config} initialWhen={now} provider={env.LLM_PROVIDER} voice={voice} />;
 }

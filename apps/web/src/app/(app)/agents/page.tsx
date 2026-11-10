@@ -1,4 +1,4 @@
-import { agentConfigSchema, getVoice } from "@spagai/core";
+import { agentConfigSchema } from "@spagai/core";
 import { BookOpen, Bot, Mic, Phone, Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getT } from "@/i18n/server";
 import { formatLagos } from "@/lib/format";
 import { requireOrg } from "@/server/auth/session";
+import { voiceNameLookup } from "@/server/voices";
 import { db } from "@/server/db";
 import { can } from "@/server/permissions";
 
@@ -15,6 +16,7 @@ export const metadata: Metadata = { title: "Agents" };
 
 export default async function AgentsPage() {
   const ctx = await requireOrg();
+  const voiceOf = await voiceNameLookup(ctx.organisation.id);
   const t = await getT();
   const agents = await db.agent.findMany({
     where: { organisationId: ctx.organisation.id },
@@ -59,7 +61,7 @@ export default async function AgentsPage() {
                 </CardHeader>
                 <CardContent className="space-y-2 text-xs text-muted-foreground">
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    <span className="inline-flex items-center gap-1"><Mic className="size-3.5" /> {getVoice(agentConfigSchema.safeParse(a.config).data?.voiceId)?.name ?? "No voice yet"}</span>
+                    <span className="inline-flex items-center gap-1"><Mic className="size-3.5" /> {voiceOf(agentConfigSchema.safeParse(a.config).data?.voiceId)?.name ?? "No voice yet"}</span>
                     <span className="inline-flex items-center gap-1"><Phone className="size-3.5" /> {a._count.phoneNumbers ? `${a._count.phoneNumbers} number${a._count.phoneNumbers === 1 ? "" : "s"}` : "No number"}</span>
                     <span className="inline-flex items-center gap-1"><BookOpen className="size-3.5" /> {a._count.knowledgeItems} knowledge item{a._count.knowledgeItems === 1 ? "" : "s"}</span>
                   </div>

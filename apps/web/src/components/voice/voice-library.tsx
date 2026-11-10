@@ -1,9 +1,10 @@
 "use client";
 
 import { LANGUAGE_NAMES, VOICE_CATALOGUE, VOICE_CATEGORIES, VOICE_PROVIDERS, type Voice } from "@spagai/core";
-import { Info, Pause, Play, Search, X } from "lucide-react";
+import { Info, Pause, Play, Search, Trash2, X } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { removeBankVoice } from "@/app/(app)/voices/actions";
 import { Alert } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +21,7 @@ const PRESETS: [string, string][] = [
   ["Support", "I'm sorry about the delay. Let me check your order and get back to you right away."],
 ];
 
-const PROVIDER_TABS = ["all", "spagai", "elevenlabs", "cartesia", "openai"] as const;
+const BASE_TABS = ["all", "spagai", "elevenlabs", "cartesia", "openai"];
 
 /** A soft, distinct avatar background for each voice (from its id), in the brand purple range. */
 function avatarStyle(id: string) {
@@ -43,11 +44,24 @@ function Bars({ playing }: { playing: boolean }) {
   );
 }
 
-export function VoiceLibrary({ usedBy }: { usedBy: Record<string, { id: string; name: string }[]> }) {
+export interface VoiceLibraryProps {
+  usedBy: Record<string, { id: string; name: string }[]>;
+  /** Voices this workspace added from the Fish Audio voice bank. */
+  workspaceVoices: Voice[];
+  canEdit: boolean;
+  /** True when real Fish Audio speech is switched on. */
+  fishConnected: boolean;
+}
+
+export function VoiceLibrary({ usedBy, workspaceVoices, canEdit, fishConnected }: VoiceLibraryProps) {
   const speaker = useSpeaker();
+  const allVoices = useMemo(() => [...workspaceVoices, ...VOICE_CATALOGUE], [workspaceVoices]);
+  const tabs = useMemo(() => (workspaceVoices.length ? ["all", "fish_audio", ...BASE_TABS.slice(1)] : BASE_TABS), [workspaceVoices.length]);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
   const [preset, setPreset] = useState(0);
   const [custom, setCustom] = useState("");
-  const [provider, setProvider] = useState<(typeof PROVIDER_TABS)[number]>("all");
+  const [provider, setProvider] = useState("all");
   const [gender, setGender] = useState("");
   const [category, setCategory] = useState("");
   const [language, setLanguage] = useState("");
@@ -55,7 +69,7 @@ export function VoiceLibrary({ usedBy }: { usedBy: Record<string, { id: string; 
 
   const voices = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return VOICE_CATALOGUE.filter(
+    return allVoices.filter(
       (v) =>
         (provider === "all" || v.provider === provider) &&
         (!gender || v.gender === gender) &&
@@ -63,8 +77,8 @@ export function VoiceLibrary({ usedBy }: { usedBy: Record<string, { id: string; 
         (!language || v.language === language) &&
         (!q || `${v.name} ${v.accent} ${v.description} ${v.category}`.toLowerCase().includes(q)),
     );
-  }, [provider, gender, category, language, query]);
-  const counts = useMemo(() => Object.fromEntries(PROVIDER_TABS.map((p) => [p, VOICE_CATALOGUE.filter((v) => p === "all" || v.provider === p).length])), []);
+  }, [allVoices, provider, gender, category, language, query]);
+  const counts = useMemo(() => Object.fromEntries(tabs.map((p) => [p, allVoices.filter((v) => p === "all" || v.provider === p).length])), [tabs, allVoices]);
   const filtered = gender || category || language || query;
 
   // Non-English voices read their own sample unless the user typed something.
@@ -112,7 +126,7 @@ export function VoiceLibrary({ usedBy }: { usedBy: Record<string, { id: string; 
 
       <div className="space-y-3">
         <div className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto border-b px-1">
-          {PROVIDER_TABS.map((p) => (
+          {tabs.map((p) => (
             <button
               key={p}
               type="button"
@@ -152,6 +166,7 @@ export function VoiceLibrary({ usedBy }: { usedBy: Record<string, { id: string; 
       </div>
 
       {speaker.error && <Alert variant="destructive">{speaker.error}</Alert>}
+      {removeError && <Alert variant="destructive">{removeError}</Alert>}
 
       {voices.length === 0 ? (
         <p className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">No voices match these filters.</p>
@@ -180,7 +195,26 @@ export function VoiceLibrary({ usedBy }: { usedBy: Record<string, { id: string; 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <p className="truncate font-semibold">{v.name}</p>
-                      <span className="shrink-0 rounded-md border px-1.5 py-0.5 text-[11px] text-muted-foreground">{VOICE_PROVIDERS[v.provider] ?? v.provider}</span>
+                      <span className="flex shrink-0 items-center gap-1">
+                        <span className="rounded-md border px-1.5 py-0.5 text-[11px] text-muted-foreground">{VOICE_PROVIDERS[v.provider] ?? v.provider}</span>
+                        {v.provider === "fish_audio" && canEdit && (
+                          <button
+                            type="button"
+                            aria-label={`Remove ${v.name} from my voices`}
+                            title="Remove from my voices"
+                            onClick={() => {
+                              setRemoveError(null);
+                              startTransition(async () => {
+                                const result = await removeBankVoice(v.id);
+                                if (!result.ok) setRemoveError(result.message);
+                              });
+                            }}
+                            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        )}
+                      </span>
                     </div>
                     <p className="text-xs text-muted-foreground">{v.gender === "female" ? "Female" : "Male"} · {v.accent} · {LANGUAGE_NAMES[v.language]}</p>
                   </div>
@@ -212,7 +246,9 @@ export function VoiceLibrary({ usedBy }: { usedBy: Record<string, { id: string; 
 
       <p className="flex items-start gap-2 text-xs text-muted-foreground">
         <Info className="mt-0.5 size-3.5 shrink-0" />
-        Previews in this demo use your browser&apos;s built-in speech, so they show timing and wording, not the final voice quality.
+        {fishConnected
+          ? "Fish Audio voices are real voices. The other voices in this demo use your browser's built-in speech, so they show timing and wording, not the final voice quality."
+          : "Previews in this demo use your browser's built-in speech, so they show timing and wording, not the final voice quality."}
       </p>
     </div>
   );

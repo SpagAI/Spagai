@@ -136,12 +136,16 @@ The build variables are only used while building. The running site needs its own
 | `SESSION_SECRET` | Secret | the same long random text |
 | `DEMO_MODE` | Text | `true` |
 | `APP_URL` | Text | the site's address, e.g. `https://spagai-studio.<your-subdomain>.workers.dev` |
+| `FISH_AUDIO_API_KEY` | Secret | optional: your Fish Audio API key, for real voices (see below) |
+| `VOICE_DAILY_CHAR_LIMIT` | Text | optional: characters of real speech per workspace per day (default `5000`) |
 
 Then open the address and press **Enter the demo workspace**.
 
+**Real voices (Fish Audio).** With `FISH_AUDIO_API_KEY` set, the Voices page shows the Fish Audio voice bank: search (for example "Nigerian"), play free samples, and **Add to my voices**. Added voices speak for real on the Voices page, in the Agent Builder and in the Lab. A daily limit per workspace (`VOICE_DAILY_CHAR_LIMIT`) protects your Fish Audio credit. Without a key, every voice falls back to the browser's built-in speech.
+
 **Good to know**
 - Pushes to other branches can get their own preview links: Worker → **Settings → Build → Branch control**, turn on builds for non-production branches.
-- The Worker is about 2.7 MB compressed. The free plan allows 3 MB; the $5/month Workers plan allows 10 MB if it grows.
+- The Worker is about 2.75 MB compressed. The free plan allows 3 MB; the $5/month Workers plan allows 10 MB if it grows.
 - Try the Cloudflare build on your computer with `pnpm --filter @spagai/web cloudflare-preview` (needs a running database and an `apps/web/.dev.vars` file with the variables above).
 
 ## Deploy to Vercel (alternative)

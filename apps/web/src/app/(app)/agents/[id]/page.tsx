@@ -6,6 +6,7 @@ import { requireOrg } from "@/server/auth/session";
 import { loadAgent } from "@/server/agents";
 import { db } from "@/server/db";
 import { can } from "@/server/permissions";
+import { listWorkspaceVoices } from "@/server/voices";
 
 export const metadata: Metadata = { title: "Agent Builder" };
 
@@ -16,12 +17,13 @@ export default async function AgentBuilderPage({ params, searchParams }: { param
   const agent = await loadAgent(ctx.organisation.id, id);
   if (!agent) notFound();
   const org = { organisationId: ctx.organisation.id };
-  const [knowledge, numbers, free, tested, calls] = await Promise.all([
+  const [knowledge, numbers, free, tested, calls, workspaceVoices] = await Promise.all([
     db.knowledgeItem.findMany({ where: { ...org, agentId: agent.id }, orderBy: { createdAt: "desc" }, select: { id: true, name: true, kind: true, status: true } }),
     db.phoneNumber.findMany({ where: { ...org, agentId: agent.id, status: "ACTIVE" }, select: { id: true, number: true, label: true } }),
     db.phoneNumber.findMany({ where: { ...org, agentId: null, status: "ACTIVE" }, select: { id: true, number: true, label: true } }),
     db.auditLog.count({ where: { ...org, action: "agent.tested", targetId: agent.id } }),
     db.call.count({ where: { ...org, agentId: agent.id } }),
+    listWorkspaceVoices(ctx.organisation.id),
   ]);
   const show = (n: { id: string; number: string; label: string }) => ({ ...n, number: formatNumber(n.number) });
 
@@ -34,6 +36,7 @@ export default async function AgentBuilderPage({ params, searchParams }: { param
       readOnly={!can(ctx.role, "agent:edit")}
       canDelete={can(ctx.role, "agent:delete")}
       isNew={isNew}
+      workspaceVoices={workspaceVoices}
       connections={{
         knowledge,
         numbers: numbers.map(show),

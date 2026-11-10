@@ -8,8 +8,10 @@ import {
   sanitiseForSpeech,
   TOOL_DEFINITIONS,
   VOICE_CATALOGUE,
+  VOICE_PROVIDERS,
   type AgentConfig,
   type ToolId,
+  type Voice,
   type VoiceLanguage,
 } from "@spagai/core";
 import { Check, TriangleAlert } from "lucide-react";
@@ -193,12 +195,13 @@ export function SilenceTab({ config, update }: { config: AgentConfig; update: Up
   );
 }
 
-export function VoiceTab({ config, update }: { config: AgentConfig; update: Update }) {
+export function VoiceTab({ config, update, workspaceVoices = [] }: { config: AgentConfig; update: Update; workspaceVoices?: Voice[] }) {
   const t = useT();
   const language = (Object.keys(LANGUAGE_NAMES) as VoiceLanguage[]).includes(config.language as VoiceLanguage)
     ? (config.language as VoiceLanguage)
     : "en-NG";
-  const voices = VOICE_CATALOGUE.filter((v) => v.language === language);
+  // Voices added from the Fish Audio voice bank come first.
+  const voices = [...workspaceVoices, ...VOICE_CATALOGUE].filter((v) => v.language === language);
   const speaker = useSpeaker();
   return (
     <Card>
@@ -232,7 +235,7 @@ export function VoiceTab({ config, update }: { config: AgentConfig; update: Upda
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{v.name}</span>
-                    {selected ? <Check className="size-4 text-primary" /> : <Badge variant="outline">{v.provider}</Badge>}
+                    {selected ? <Check className="size-4 text-primary" /> : <Badge variant="outline">{VOICE_PROVIDERS[v.provider] ?? v.provider}</Badge>}
                   </div>
                   <p className="text-xs text-muted-foreground">{v.gender} · {LANGUAGE_NAMES[v.language]}</p>
                   <p className="text-xs italic text-muted-foreground">“{v.sampleText}”</p>

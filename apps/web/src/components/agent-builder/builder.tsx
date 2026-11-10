@@ -1,6 +1,6 @@
 "use client";
 
-import type { AgentConfig, VariableDef } from "@spagai/core";
+import type { AgentConfig, VariableDef, Voice } from "@spagai/core";
 import { ArrowLeft, CircleAlert, FlaskConical, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, useTransition } from "react";
@@ -30,9 +30,11 @@ export interface AgentBuilderProps {
   connections: AgentConnections;
   /** Just created: show a short welcome. */
   isNew?: boolean;
+  /** Voices this workspace added from the Fish Audio voice bank. */
+  workspaceVoices?: Voice[];
 }
 
-export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt, readOnly, canDelete, connections, isNew }: AgentBuilderProps) {
+export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt, readOnly, canDelete, connections, isNew, workspaceVoices = [] }: AgentBuilderProps) {
   const t = useT();
   const [config, setConfig] = useState(initialConfig);
   const [saved, setSaved] = useState({ config: initialConfig, status: initialStatus, at: updatedAt });
@@ -161,7 +163,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
             {tab === "firstMessage" && <FirstMessageTab config={config} update={update} />}
             {tab === "tools" && <ToolsTab config={config} update={update} />}
             {tab === "silence" && <SilenceTab config={config} update={update} />}
-            {tab === "voice" && <VoiceTab config={config} update={update} />}
+            {tab === "voice" && <VoiceTab config={config} update={update} workspaceVoices={workspaceVoices} />}
           </fieldset>
           {tab === "knowledge" && <KnowledgeTab agentId={agentId} c={connections} />}
           {tab === "numbers" && <NumbersTab agentId={agentId} c={connections} />}

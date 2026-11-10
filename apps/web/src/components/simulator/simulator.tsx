@@ -1,6 +1,6 @@
 "use client";
 
-import { getVoice, TOOL_DEFINITIONS, type AgentConfig } from "@spagai/core";
+import { TOOL_DEFINITIONS, type AgentConfig, type Voice } from "@spagai/core";
 import { ArrowLeft, CircleAlert, CircleCheck, CircleX, Clock, PhoneCall, PhoneOff, RotateCcw, Send, Settings2, TriangleAlert, Volume2, VolumeX } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -28,12 +28,13 @@ export interface SimulatorProps {
   config: AgentConfig;
   initialWhen: string;
   provider: string;
+  /** The agent's voice (built-in or added from the voice bank), looked up on the server. */
+  voice?: Voice;
 }
 
-export function Simulator({ agentId, config, initialWhen, provider }: SimulatorProps) {
+export function Simulator({ agentId, config, initialWhen, provider, voice }: SimulatorProps) {
   const t = useT();
   const speaker = useSpeaker();
-  const voice = getVoice(config.voiceId);
   const callVars = config.variables.filter((v) => v.scope === "call" && !FROM_LEAD.has(v.name));
 
   const [lead, setLead] = useState<SimulateInput["lead"]>({ title: "", gender: "male", firstName: "Chinedu", lastName: "Okafor" });
