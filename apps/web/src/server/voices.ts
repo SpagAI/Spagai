@@ -40,13 +40,15 @@ function lagosDay(now = new Date()): string {
 export async function reserveSpeechCharacters(organisationId: string, characters: number, now = new Date()): Promise<boolean> {
   const day = lagosDay(now);
   // One atomic statement: add only if the total stays within the limit.
+  // The ::int casts matter: on Cloudflare the database driver sends numbers untyped, and without
+  // them Postgres compares "93" and "50000" as text and refuses (9 sorts after 5).
   const updated = await db.$executeRaw`
     INSERT INTO "VoiceUsage" ("organisationId", "day", "characters")
-    SELECT ${organisationId}, ${day}, ${characters}
-    WHERE ${characters} <= ${env.VOICE_DAILY_CHAR_LIMIT}
+    SELECT ${organisationId}, ${day}, ${characters}::int
+    WHERE ${characters}::int <= ${env.VOICE_DAILY_CHAR_LIMIT}::int
     ON CONFLICT ("organisationId", "day") DO UPDATE
       SET "characters" = "VoiceUsage"."characters" + EXCLUDED."characters"
-      WHERE "VoiceUsage"."characters" + EXCLUDED."characters" <= ${env.VOICE_DAILY_CHAR_LIMIT}`;
+      WHERE "VoiceUsage"."characters" + EXCLUDED."characters" <= ${env.VOICE_DAILY_CHAR_LIMIT}::int`;
   return updated > 0;
 }
 
