@@ -1,4 +1,4 @@
-import { agentConfigSchema } from "@spagai/core";
+import { agentConfigSchema, orderVoices } from "@spagai/core";
 import type { Metadata } from "next";
 import { VoiceBank } from "@/components/voice/voice-bank";
 import { VoiceLibrary } from "@/components/voice/voice-library";
@@ -41,7 +41,7 @@ export default async function VoicesPage() {
         )}
       </div>
       <VoiceLibrary usedBy={usedBy} workspaceVoices={workspaceVoices} canEdit={canEdit} fishConnected={fishConnected} />
-      <VoiceBank configured={fishConnected} canEdit={canEdit} addedIds={workspaceVoices.map((v) => v.providerVoiceId)} />
+      <VoiceBank configured={fishConnected} canEdit={canEdit} addedIds={orderVoices(workspaceVoices).filter((v) => v.provider === "fish_audio").map((v) => v.providerVoiceId)} />
     </div>
   );
 }

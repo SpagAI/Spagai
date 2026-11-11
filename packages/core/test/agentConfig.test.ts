@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getPreset, normaliseAgentConfig, presetToAgentConfig, VOICE_CATALOGUE, getVoice } from "../src";
+import { getPreset, normaliseAgentConfig, orderVoices, presetToAgentConfig, VOICE_CATALOGUE, getVoice } from "../src";
 
 const base = () => presetToAgentConfig(getPreset("clinic-booking")!);
 
@@ -58,6 +58,23 @@ describe("voice catalogue", () => {
       expect(VOICE_CATALOGUE.some((v) => v.language === lang && v.provider === "spagai")).toBe(true);
     }
     expect(getVoice("mock-en-ng-male-1")?.name).toBe("Tunde");
+  });
+
+  it("starts with real Fish Audio voices, with valid ids and a mix of genders", () => {
+    const fish = VOICE_CATALOGUE.filter((v) => v.provider === "fish_audio");
+    expect(fish.length).toBeGreaterThanOrEqual(10);
+    expect(VOICE_CATALOGUE.slice(0, fish.length).every((v) => v.provider === "fish_audio")).toBe(true);
+    for (const v of fish) expect(v.id).toBe(`fish_audio:${v.providerVoiceId}`), expect(v.providerVoiceId).toMatch(/^[a-f0-9]{32}$/);
+    expect(new Set(fish.map((v) => v.gender))).toEqual(new Set(["female", "male"]));
+    expect(new Set(VOICE_CATALOGUE.map((v) => v.id)).size).toBe(VOICE_CATALOGUE.length);
+  });
+});
+
+describe("orderVoices", () => {
+  const v = (id: string, provider: string) => ({ ...VOICE_CATALOGUE[0]!, id, provider });
+  it("puts Fish Audio voices first and lists each voice once", () => {
+    const list = orderVoices([v("fish_audio:a", "fish_audio"), v("mine", "spagai")], [v("x", "spagai"), v("fish_audio:a", "fish_audio"), v("fish_audio:b", "fish_audio")]);
+    expect(list.map((x) => x.id)).toEqual(["fish_audio:a", "fish_audio:b", "mine", "x"]);
   });
 });
 

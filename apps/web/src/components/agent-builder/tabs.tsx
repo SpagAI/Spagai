@@ -7,7 +7,7 @@ import {
   renderVariables,
   sanitiseForSpeech,
   TOOL_DEFINITIONS,
-  VOICE_CATALOGUE,
+  orderVoices,
   VOICE_PROVIDERS,
   type AgentConfig,
   type ToolId,
@@ -200,8 +200,8 @@ export function VoiceTab({ config, update, workspaceVoices = [] }: { config: Age
   const language = (Object.keys(LANGUAGE_NAMES) as VoiceLanguage[]).includes(config.language as VoiceLanguage)
     ? (config.language as VoiceLanguage)
     : "en-NG";
-  // Voices added from the Fish Audio voice bank come first.
-  const voices = [...workspaceVoices, ...VOICE_CATALOGUE].filter((v) => v.language === language);
+  // Real Fish Audio voices (built-in and added from the voice bank) come first.
+  const voices = orderVoices(workspaceVoices).filter((v) => v.language === language);
   const speaker = useSpeaker();
   return (
     <Card>

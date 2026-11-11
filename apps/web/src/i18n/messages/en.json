@@ -173,7 +173,7 @@
       "closingMessage": "Closing message"
     },
     "voice": {
-      "intro": "Pick the voice for this agent. Press Play to hear it. Only mock voices work for now.",
+      "intro": "Pick the voice for this agent. Press Play to hear it. Fish Audio voices are real voices; the others use your browser's speech for now.",
       "language": "Language",
       "none": "No voice selected",
       "notConfigured": "Not configured",

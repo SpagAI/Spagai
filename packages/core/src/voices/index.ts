@@ -51,3 +51,13 @@ export const VOICE_CATALOGUE: Voice[] = data.voices as Voice[];
 export function getVoice(id: string | null | undefined): Voice | undefined {
   return VOICE_CATALOGUE.find((v) => v.id === id);
 }
+
+/**
+ * One list for pickers: the workspace's own voices plus the catalogue, with each voice once
+ * and real Fish Audio voices first. Otherwise keeps the order it was given.
+ */
+export function orderVoices(own: Voice[], catalogue: Voice[] = VOICE_CATALOGUE): Voice[] {
+  const seen = new Set<string>();
+  const unique = [...own, ...catalogue].filter((v) => !seen.has(v.id) && seen.add(v.id));
+  return [...unique.filter((v) => v.provider === "fish_audio"), ...unique.filter((v) => v.provider !== "fish_audio")];
+}

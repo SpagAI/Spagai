@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { agentConfigSchema } from "@spagai/core";
+import { agentConfigSchema, getVoice } from "@spagai/core";
 import { z } from "zod";
 import { FISH_PROVIDER, bankVoiceId, isFishVoiceId } from "@/lib/voice-bank";
 import { audit } from "@/server/agents";
@@ -49,6 +49,8 @@ export type VoiceChangeResult = { ok: true; voiceId: string } | { ok: false; mes
 export async function addBankVoice(providerVoiceId: string): Promise<VoiceChangeResult> {
   const ctx = await requirePermission("agent:edit");
   if (!isFishVoiceId(providerVoiceId)) return { ok: false, message: "Unknown voice." };
+  // Built-in Fish Audio voices are already in every workspace.
+  if (getVoice(bankVoiceId(FISH_PROVIDER, providerVoiceId))) return { ok: true, voiceId: bankVoiceId(FISH_PROVIDER, providerVoiceId) };
   if (!fishAudioConfigured()) return { ok: false, message: "Fish Audio is not connected yet." };
   const count = await db.workspaceVoice.count({ where: { organisationId: ctx.organisation.id } });
   if (count >= 100) return { ok: false, message: "This workspace already has 100 voices. Remove one first." };

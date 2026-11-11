@@ -1,6 +1,6 @@
 "use client";
 
-import { LANGUAGE_NAMES, VOICE_CATALOGUE, VOICE_CATEGORIES, VOICE_PROVIDERS, type Voice } from "@spagai/core";
+import { LANGUAGE_NAMES, orderVoices, VOICE_CATEGORIES, VOICE_PROVIDERS, type Voice } from "@spagai/core";
 import { Info, Pause, Play, Search, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
@@ -21,7 +21,8 @@ const PRESETS: [string, string][] = [
   ["Support", "I'm sorry about the delay. Let me check your order and get back to you right away."],
 ];
 
-const BASE_TABS = ["all", "spagai", "elevenlabs", "cartesia", "openai"];
+/** Real Fish Audio voices come first. */
+const TABS = ["all", "fish_audio", "spagai", "elevenlabs", "cartesia", "openai"];
 
 /** A soft, distinct avatar background for each voice (from its id), in the brand purple range. */
 function avatarStyle(id: string) {
@@ -55,8 +56,9 @@ export interface VoiceLibraryProps {
 
 export function VoiceLibrary({ usedBy, workspaceVoices, canEdit, fishConnected }: VoiceLibraryProps) {
   const speaker = useSpeaker();
-  const allVoices = useMemo(() => [...workspaceVoices, ...VOICE_CATALOGUE], [workspaceVoices]);
-  const tabs = useMemo(() => (workspaceVoices.length ? ["all", "fish_audio", ...BASE_TABS.slice(1)] : BASE_TABS), [workspaceVoices.length]);
+  const allVoices = useMemo(() => orderVoices(workspaceVoices), [workspaceVoices]);
+  /** Only voices this workspace added can be removed; the built-in ones always stay. */
+  const ownIds = useMemo(() => new Set(workspaceVoices.map((v) => v.id)), [workspaceVoices]);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const [preset, setPreset] = useState(0);
@@ -78,7 +80,7 @@ export function VoiceLibrary({ usedBy, workspaceVoices, canEdit, fishConnected }
         (!q || `${v.name} ${v.accent} ${v.description} ${v.category}`.toLowerCase().includes(q)),
     );
   }, [allVoices, provider, gender, category, language, query]);
-  const counts = useMemo(() => Object.fromEntries(tabs.map((p) => [p, allVoices.filter((v) => p === "all" || v.provider === p).length])), [tabs, allVoices]);
+  const counts = useMemo(() => Object.fromEntries(TABS.map((p) => [p, allVoices.filter((v) => p === "all" || v.provider === p).length])), [allVoices]);
   const filtered = gender || category || language || query;
 
   // Non-English voices read their own sample unless the user typed something.
@@ -126,7 +128,7 @@ export function VoiceLibrary({ usedBy, workspaceVoices, canEdit, fishConnected }
 
       <div className="space-y-3">
         <div className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto border-b px-1">
-          {tabs.map((p) => (
+          {TABS.map((p) => (
             <button
               key={p}
               type="button"
@@ -197,7 +199,7 @@ export function VoiceLibrary({ usedBy, workspaceVoices, canEdit, fishConnected }
                       <p className="truncate font-semibold">{v.name}</p>
                       <span className="flex shrink-0 items-center gap-1">
                         <span className="rounded-md border px-1.5 py-0.5 text-[11px] text-muted-foreground">{VOICE_PROVIDERS[v.provider] ?? v.provider}</span>
-                        {v.provider === "fish_audio" && canEdit && (
+                        {ownIds.has(v.id) && canEdit && (
                           <button
                             type="button"
                             aria-label={`Remove ${v.name} from my voices`}
