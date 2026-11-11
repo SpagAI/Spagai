@@ -111,7 +111,8 @@
       "silence": "Silence",
       "voice": "Voice",
       "knowledge": "Knowledge base",
-      "numbers": "Phone number"
+      "numbers": "Phone number",
+      "talk": "Talk to agent"
     },
     "business": {
       "intro": "These details are filled into the prompt. Fields marked * are required.",
@@ -236,7 +237,7 @@
     "mockBrain": "free mock",
     "voice": "Voice",
     "editAgent": "Edit agent",
-    "mockNote": "Replies come from the free mock agent. It handles common answers (yes, no, busy, stop calling, are you a robot, a day and time, an email) but does not read your prompt. Connect a language model in the settings file to test the real prompt.",
+    "mockNote": "Replies come from the free demo agent. It handles common answers (yes, no, busy, stop calling, are you a robot, a day and time, an email) but does not read your prompt. To test the real prompt, connect an AI brain (for example a free Groq key) in the site's settings.",
     "customer": "Pretend customer",
     "customerIntro": "Who the agent is calling, and when.",
     "personTitle": "Title",

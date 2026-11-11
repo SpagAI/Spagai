@@ -1,10 +1,10 @@
 "use client";
 
 import { TOOL_DEFINITIONS, type AgentConfig, type Voice } from "@spagai/core";
-import { ArrowLeft, CircleAlert, CircleCheck, CircleX, Clock, PhoneCall, PhoneOff, RotateCcw, Send, Settings2, TriangleAlert, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, CircleAlert, Mic, MicOff, CircleCheck, CircleX, Clock, PhoneCall, PhoneOff, RotateCcw, Send, Settings2, TriangleAlert, Volume2, VolumeX } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { simulate, type AgentLine, type SimulateInput } from "@/app/(app)/lab/actions";
+import { simulate, talkToAgent, type AgentLine, type SimulateInput } from "@/app/(app)/lab/actions";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { PlayButton } from "@/components/voice/play-button";
+import { useListener } from "@/components/voice/use-listener";
 import { useSpeaker } from "@/components/voice/use-speaker";
 import { useT } from "@/i18n/client";
 import { cn } from "@/lib/utils";
@@ -30,9 +31,14 @@ export interface SimulatorProps {
   provider: string;
   /** The agent's voice (built-in or added from the voice bank), looked up on the server. */
   voice?: Voice;
+  /**
+   * Inside the Agent Builder ("Talk to agent"): uses `config` as it is on screen, even unsaved,
+   * and shows a compact layout without the Lab's page header.
+   */
+  embedded?: boolean;
 }
 
-export function Simulator({ agentId, config, initialWhen, provider, voice }: SimulatorProps) {
+export function Simulator({ agentId, config, initialWhen, provider, voice, embedded = false }: SimulatorProps) {
   const t = useT();
   const speaker = useSpeaker();
   const callVars = config.variables.filter((v) => v.scope === "call" && !FROM_LEAD.has(v.name));
@@ -54,6 +60,23 @@ export function Simulator({ agentId, config, initialWhen, provider, voice }: Sim
   const nextId = useRef(1);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listener = useListener(config.language);
+  /** Hands-free: after the agent speaks, start listening again by itself. */
+  const [handsFree, setHandsFree] = useState(false);
+  /** Builder layout: the pretend-customer fields fold away, but open when something there needs filling in. */
+  const [showCustomer, setShowCustomer] = useState(!embedded || callVars.some((v) => v.required && !(v.example ?? v.defaultValue)));
+  // Latest values for callbacks that run after speech or listening ends.
+  const entriesRef = useRef<Entry[]>([]);
+  const statusRef = useRef<Status>("idle");
+  const handsFreeRef = useRef(false);
+  const setAll = (list: Entry[]) => {
+    entriesRef.current = list;
+    setEntries(list);
+  };
+  const setStatusBoth = (next: Status) => {
+    statusRef.current = next;
+    setStatus(next);
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -61,19 +84,25 @@ export function Simulator({ agentId, config, initialWhen, provider, voice }: Sim
 
   const run = (event: SimulateInput["event"], before: Entry[]) =>
     startTransition(async () => {
-      const result = await simulate({ agentId, lead, callValues, when, history: before.map((e) => (e.role === "agent" ? { role: "agent", text: e.line.text } : { role: "caller", text: e.text })), event });
+      const turn = { lead, callValues, when, history: before.map((e) => (e.role === "agent" ? { role: "agent" as const, text: e.line.text } : { role: "caller" as const, text: e.text })), event };
+      const result = embedded ? await talkToAgent({ ...turn, config }) : await simulate({ ...turn, agentId });
       if (!result.ok) {
         setErrors(result.errors);
-        if (event.type === "start") setStatus("idle");
+        if (result.errors.some((e) => /placeholder|value/i.test(e))) setShowCustomer(true);
+        if (event.type === "start") setStatusBoth("idle");
         return;
       }
       setErrors([]);
       if (result.callingWindow) setCallingWindow(result.callingWindow);
       if (result.prompt) setPrompt(result.prompt);
       const entry: Entry = { id: nextId.current++, role: "agent", line: result.line };
-      setEntries([...before, entry]);
-      if (result.line.endsCall) setStatus("ended");
-      if (speakAloud && voice) void speaker.speak(voice.id, result.line.text, `line-${entry.id}`, config.voiceSettings);
+      setAll([...before, entry]);
+      if (result.line.endsCall) setStatusBoth("ended");
+      const listenNext = () => {
+        if (handsFreeRef.current && statusRef.current === "live") listener.listen(sendText);
+      };
+      if (speakAloud && voice) void speaker.speak(voice.id, result.line.text, `line-${entry.id}`, config.voiceSettings).then(listenNext);
+      else listenNext();
       inputRef.current?.focus();
     });
 
@@ -83,29 +112,46 @@ export function Simulator({ agentId, config, initialWhen, provider, voice }: Sim
     setCheckIns(0);
     setPrompt(null);
     setCallingWindow(null);
-    setStatus("live");
+    setStatusBoth("live");
+    entriesRef.current = [];
     run({ type: "start" }, []);
   };
 
-  const send = () => {
-    const text = draft.trim();
-    if (!text || status !== "live" || pending) return;
-    const withCaller: Entry[] = [...entries, { id: nextId.current++, role: "caller", text }];
-    setEntries(withCaller);
+  /** Send what the caller said (typed or spoken). */
+  function sendText(raw: string) {
+    const text = raw.trim();
+    if (!text || statusRef.current !== "live") return;
+    speaker.stop();
+    const withCaller: Entry[] = [...entriesRef.current, { id: nextId.current++, role: "caller", text }];
+    setAll(withCaller);
     setDraft("");
     setCheckIns(0);
-    run({ type: "message", text }, withCaller);
+    run({ type: "message", text: text.slice(0, 1000) }, withCaller);
+  }
+
+  const send = () => {
+    if (pending) return;
+    sendText(draft);
+  };
+
+  const toggleMic = () => {
+    if (listener.listening) listener.stopListening();
+    else {
+      speaker.stop();
+      listener.listen(sendText);
+    }
   };
 
   const silence = () => {
     if (status !== "live" || pending) return;
-    run({ type: "silence", checkInsSoFar: checkIns }, entries);
+    run({ type: "silence", checkInsSoFar: checkIns }, entriesRef.current);
     setCheckIns((n) => n + 1);
   };
 
   const hangUp = () => {
     speaker.stop();
-    setStatus("ended");
+    listener.stopListening();
+    setStatusBoth("ended");
   };
 
   const toolLog = entries.flatMap((e) => (e.role === "agent" ? e.line.toolCalls : []));
@@ -113,6 +159,16 @@ export function Simulator({ agentId, config, initialWhen, provider, voice }: Sim
 
   return (
     <div className="space-y-4">
+      {embedded ? (
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">
+            Talk to {config.name || "your agent"} using the settings on screen right now: prompt, first message, voice, voice settings and values, even before you save.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {t("simulator.brain")}: {provider === "mock" ? t("simulator.mockBrain") : provider} · {t("simulator.voice")}: {voice?.name ?? t("builder.voice.none")}
+          </p>
+        </div>
+      ) : (
       <div className="flex flex-wrap items-center gap-3">
         <Button asChild variant="ghost" size="icon" aria-label={t("common.back")}>
           <Link href="/lab"><ArrowLeft /></Link>
@@ -127,18 +183,23 @@ export function Simulator({ agentId, config, initialWhen, provider, voice }: Sim
           <Link href={`/agents/${agentId}`}><Settings2 /> {t("simulator.editAgent")}</Link>
         </Button>
       </div>
+      )}
 
       {provider === "mock" && <Alert><CircleAlert />{t("simulator.mockNote")}</Alert>}
 
-      <div className="grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
+      <div className={cn("grid gap-6", !embedded && "lg:grid-cols-[20rem_minmax(0,1fr)]")}>
         {/* Settings */}
         <Card className="h-fit">
+          {!embedded && (
           <CardHeader>
             <CardTitle>{t("simulator.customer")}</CardTitle>
             <CardDescription>{t("simulator.customerIntro")}</CardDescription>
           </CardHeader>
+          )}
           <CardContent>
-            <fieldset disabled={settingsLocked} className="space-y-3">
+            <details open={showCustomer} onToggle={(e) => setShowCustomer(e.currentTarget.open)} className="group">
+            {embedded && <summary className="cursor-pointer text-sm font-medium">{t("simulator.customer")} <span className="font-normal text-muted-foreground">(sample customer, call details and time)</span></summary>}
+            <fieldset disabled={settingsLocked} className={cn("space-y-3", embedded && "mt-3")}>
               <div className="grid grid-cols-[5rem_1fr] gap-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="sim-title">{t("simulator.personTitle")}</Label>
@@ -174,6 +235,7 @@ export function Simulator({ agentId, config, initialWhen, provider, voice }: Sim
                 <Input id="sim-when" type="datetime-local" value={when} onChange={(e) => e.target.value && setWhen(e.target.value)} />
               </div>
             </fieldset>
+            </details>
             <label className="mt-4 flex items-center gap-2 text-sm">
               <input type="checkbox" checked={speakAloud} disabled={!voice} onChange={(e) => setSpeakAloud(e.target.checked)} className="accent-[var(--primary)]" />
               {speakAloud ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
@@ -251,10 +313,47 @@ export function Simulator({ agentId, config, initialWhen, provider, voice }: Sim
                 onChange={(e) => setDraft(e.target.value)}
                 autoFocus
               />
+              {listener.supported && (
+                <Button
+                  type="button"
+                  variant={listener.listening ? "default" : "outline"}
+                  onClick={toggleMic}
+                  disabled={pending}
+                  aria-label={listener.listening ? "Stop listening" : "Speak instead of typing"}
+                  title={listener.listening ? "Stop listening" : "Speak instead of typing"}
+                  className={cn(listener.listening && "animate-pulse")}
+                >
+                  {listener.listening ? <MicOff /> : <Mic />} {listener.listening ? "Listening…" : "Speak"}
+                </Button>
+              )}
               <Button type="submit" disabled={pending || !draft.trim()}><Send /> {t("simulator.send")}</Button>
               <Button type="button" variant="outline" disabled={pending} onClick={silence}>{t("simulator.silent")}</Button>
               <Button type="button" variant="ghost" className="text-destructive" onClick={hangUp}><PhoneOff /> {t("simulator.hangUp")}</Button>
             </form>
+          )}
+
+          {status === "live" && (
+            <div className="space-y-1 text-xs">
+              {listener.supported ? (
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={handsFree}
+                    onChange={(e) => {
+                      setHandsFree(e.target.checked);
+                      handsFreeRef.current = e.target.checked;
+                      if (e.target.checked && !listener.listening && !pending && !speaker.playingKey) listener.listen(sendText);
+                    }}
+                    className="accent-[var(--primary)]"
+                  />
+                  Hands-free: after the agent speaks, the microphone turns on by itself, like a real phone call.
+                </label>
+              ) : (
+                <p className="text-muted-foreground">To talk out loud, open this page in Chrome or Edge. You can still type.</p>
+              )}
+              {listener.interim && <p className="italic text-muted-foreground">“{listener.interim}”</p>}
+              {listener.error && <p className="text-destructive">{listener.error}</p>}
+            </div>
           )}
 
           {status === "live" && entries.length > 0 && (

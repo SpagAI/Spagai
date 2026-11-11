@@ -1,6 +1,6 @@
 "use client";
 
-import type { AgentConfig, VariableDef, Voice } from "@spagai/core";
+import { orderVoices, type AgentConfig, type VariableDef, type Voice } from "@spagai/core";
 import { ArrowLeft, CircleAlert, FlaskConical, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, useTransition } from "react";
@@ -12,12 +12,13 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/client";
 import { formatLagos } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { Simulator } from "@/components/simulator/simulator";
 import { BlocksEditor } from "./blocks-editor";
 import { KnowledgeTab, NumbersTab, SetupSteps, type AgentConnections } from "./connections";
 import { PreviewPanel } from "./preview-panel";
 import { BusinessTab, FirstMessageTab, SilenceTab, ToolsTab, VoiceTab } from "./tabs";
 
-const TABS = ["business", "voice", "blocks", "firstMessage", "knowledge", "numbers", "tools", "silence"] as const;
+const TABS = ["business", "voice", "blocks", "firstMessage", "knowledge", "numbers", "tools", "silence", "talk"] as const;
 type Tab = (typeof TABS)[number];
 
 export interface AgentBuilderProps {
@@ -32,9 +33,12 @@ export interface AgentBuilderProps {
   isNew?: boolean;
   /** Voices this workspace added from the Fish Audio voice bank. */
   workspaceVoices?: Voice[];
+  /** For "Talk to agent": which AI brain answers ("mock" = demo replies) and the starting Lagos time. */
+  llmProvider?: string;
+  initialWhen?: string;
 }
 
-export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt, readOnly, canDelete, connections, isNew, workspaceVoices = [] }: AgentBuilderProps) {
+export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt, readOnly, canDelete, connections, isNew, workspaceVoices = [], llmProvider = "mock", initialWhen = "2026-10-13T10:30" }: AgentBuilderProps) {
   const t = useT();
   const [config, setConfig] = useState(initialConfig);
   const [saved, setSaved] = useState({ config: initialConfig, status: initialStatus, at: updatedAt });
@@ -167,6 +171,16 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
           </fieldset>
           {tab === "knowledge" && <KnowledgeTab agentId={agentId} c={connections} />}
           {tab === "numbers" && <NumbersTab agentId={agentId} c={connections} />}
+          {tab === "talk" && (
+            <Simulator
+              embedded
+              agentId={agentId}
+              config={config}
+              initialWhen={initialWhen}
+              provider={llmProvider}
+              voice={orderVoices(workspaceVoices).find((v) => v.id === config.voiceId)}
+            />
+          )}
 
           {canDelete && (
             <form

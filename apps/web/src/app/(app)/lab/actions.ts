@@ -10,6 +10,8 @@ import {
   sanitiseForSpeech,
   silenceTurn,
   validateAppointment,
+  normaliseAgentConfig,
+  type AgentConfig,
   type LintIssue,
   type SimToolCall,
   type SimTurn,
@@ -18,9 +20,9 @@ import { z } from "zod";
 import { requirePermission } from "@/server/auth/session";
 import { audit, loadAgent } from "@/server/agents";
 import { getLlm } from "@/server/providers";
+import { RateLimiter } from "@/server/rate-limit";
 
-const inputSchema = z.object({
-  agentId: z.string().min(1).max(100),
+const turnSchema = z.object({
   lead: z.object({
     title: z.string().max(20),
     gender: z.enum(["male", "female", "unknown"]),
@@ -39,7 +41,13 @@ const inputSchema = z.object({
   ]),
 });
 
+const inputSchema = turnSchema.extend({ agentId: z.string().min(1).max(100) });
 export type SimulateInput = z.infer<typeof inputSchema>;
+/** "Talk to agent" in the builder: the same turn, with the settings currently on screen (not yet saved). */
+export type TalkInput = z.infer<typeof turnSchema> & { config: unknown };
+
+/** Real AI replies cost money: at most 40 turns a minute per workspace. */
+const turnsPerMinute = new RateLimiter(40, 60_000);
 
 export interface CheckedToolCall extends SimToolCall {
   ok: boolean;
@@ -123,10 +131,26 @@ export async function simulate(raw: SimulateInput): Promise<SimulateResult> {
 
   const agent = await loadAgent(ctx.organisation.id, input.agentId);
   if (!agent) return { ok: false, errors: ["Agent not found."] };
-  const { config } = agent;
   // Remember that this agent has been tried in the Lab (shown in its setup steps).
   if (input.history.length === 0) await audit(ctx.organisation.id, ctx.user.id, "agent.tested", { type: "agent", id: agent.id });
+  return runTurn(ctx.organisation.id, agent.config, input);
+}
 
+/** "Talk to agent": one turn with the builder's current (possibly unsaved) settings. Nothing is saved. */
+export async function talkToAgent(raw: TalkInput): Promise<SimulateResult> {
+  const ctx = await requirePermission("agent:view");
+  const parsed = turnSchema.safeParse(raw);
+  if (!parsed.success) return { ok: false, errors: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`) };
+  // Same checks as saving: valid settings, locked safety rules put back.
+  const normalised = normaliseAgentConfig(raw.config);
+  if (!normalised.ok) return { ok: false, errors: normalised.errors };
+  return runTurn(ctx.organisation.id, normalised.config, parsed.data);
+}
+
+async function runTurn(organisationId: string, config: AgentConfig, input: z.infer<typeof turnSchema>): Promise<SimulateResult> {
+  if (input.event.type === "message" && !turnsPerMinute.check(organisationId).allowed) {
+    return { ok: false, errors: ["Too many messages. Please wait a minute."] };
+  }
   const now = parseWhen(input.when);
   const lead = { ...input.lead, gender: input.lead.gender === "unknown" ? "" : input.lead.gender };
   const values: Record<string, string> = {

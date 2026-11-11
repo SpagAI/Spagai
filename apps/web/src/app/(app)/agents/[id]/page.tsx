@@ -1,3 +1,5 @@
+import { toLagosParts } from "@spagai/core";
+import { env } from "@/server/env";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AgentBuilder } from "@/components/agent-builder/builder";
@@ -9,6 +11,13 @@ import { can } from "@/server/permissions";
 import { listWorkspaceVoices } from "@/server/voices";
 
 export const metadata: Metadata = { title: "Agent Builder" };
+
+const pad = (n: number) => String(n).padStart(2, "0");
+/** Current Lagos time as "YYYY-MM-DDTHH:MM", where "Talk to agent" starts its clock. */
+function lagosNow() {
+  const p = toLagosParts(new Date());
+  return `${p.year}-${pad(p.month)}-${pad(p.day)}T${pad(p.hour)}:${pad(p.minute)}`;
+}
 
 export default async function AgentBuilderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ new?: string }> }) {
   const { id } = await params;
@@ -37,6 +46,8 @@ export default async function AgentBuilderPage({ params, searchParams }: { param
       canDelete={can(ctx.role, "agent:delete")}
       isNew={isNew}
       workspaceVoices={workspaceVoices}
+      llmProvider={env.LLM_PROVIDER}
+      initialWhen={lagosNow()}
       connections={{
         knowledge,
         numbers: numbers.map(show),
