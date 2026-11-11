@@ -8,6 +8,18 @@ import { requirePermission } from "@/server/auth/session";
 import { blankAgentDraft } from "@/server/agent-factory";
 import { audit, loadAgent } from "@/server/agents";
 import { db } from "@/server/db";
+import { resolveVoice } from "@/server/voices";
+
+/**
+ * The voice picked on the "Create an agent" page, if it is a real, usable voice for this
+ * workspace in the agent's language. Anything else is ignored (the voice is chosen later).
+ */
+async function chosenVoice(organisationId: string, form: FormData, language: string): Promise<string | null> {
+  const raw = form.get("voiceId");
+  if (typeof raw !== "string" || !raw || raw.length > 100) return null;
+  const voice = await resolveVoice(organisationId, raw);
+  return voice && voice.status === "available" && voice.language === language ? voice.id : null;
+}
 
 export async function createAgentFromPreset(form: FormData): Promise<void> {
   const ctx = await requirePermission("agent:edit");
@@ -15,7 +27,8 @@ export async function createAgentFromPreset(form: FormData): Promise<void> {
   const preset = getPreset(presetId);
   if (!preset) throw new Error("Unknown preset.");
 
-  const config = presetToAgentConfig(preset);
+  const base = presetToAgentConfig(preset);
+  const config = { ...base, voiceId: (await chosenVoice(ctx.organisation.id, form, base.language)) ?? base.voiceId };
   const agent = await db.agent.create({
     data: { organisationId: ctx.organisation.id, name: config.name, presetId, config, createdById: ctx.user.id },
   });
@@ -69,7 +82,8 @@ export async function createBlankAgent(form: FormData): Promise<void> {
     company: z.string().trim().max(120),
   }).parse({ name: form.get("name"), direction: form.get("direction"), purpose: form.get("purpose") ?? "", company: form.get("company") ?? "" });
 
-  const draft = blankAgentDraft({ ...input, company: input.company || ctx.organisation.name });
+  const voiceId = await chosenVoice(ctx.organisation.id, form, "en-NG");
+  const draft = blankAgentDraft({ ...input, company: input.company || ctx.organisation.name, language: "en-NG", voiceId });
   const normalised = normaliseAgentConfig(draft);
   if (!normalised.ok) throw new Error(normalised.errors.join("; "));
   const agent = await db.agent.create({

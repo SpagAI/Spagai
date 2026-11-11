@@ -1,4 +1,4 @@
-import { PRESETS } from "@spagai/core";
+import { orderVoices, PRESETS } from "@spagai/core";
 import type { Metadata } from "next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { NewAgentVoiceInput, NewAgentVoicePicker, NewAgentVoiceProvider } from "@/components/agent-builder/new-agent-voice";
+import { listWorkspaceVoices } from "@/server/voices";
 import { createAgentFromPreset, createBlankAgent } from "../actions";
 
 export const metadata: Metadata = { title: "New agent" };
@@ -21,12 +23,22 @@ export default async function NewAgentPage() {
   const ctx = await requireOrg();
   if (!can(ctx.role, "agent:edit")) redirect("/agents");
   const t = await getT();
+  // English voices, real Fish Audio voices first. A conversational one is picked to start with.
+  const voices = orderVoices(await listWorkspaceVoices(ctx.organisation.id)).filter((v) => v.language === "en-NG" && v.status === "available");
+  const initial = (voices.find((v) => v.provider === "fish_audio" && v.category === "Conversational") ?? voices[0])?.id ?? "";
   return (
+    <NewAgentVoiceProvider initial={initial}>
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Create an agent</h1>
-        <p className="text-sm text-muted-foreground">Build your own from scratch, or start from a ready-made template. Next you will choose its voice, write its instructions, give it knowledge, connect a phone number and test it in the Lab.</p>
+        <p className="text-sm text-muted-foreground">Pick a voice, then build your own agent from scratch or start from a ready-made template. Next you will write its instructions, give it knowledge, connect a phone number and test it in the Lab.</p>
       </div>
+
+      <Card>
+        <CardContent>
+          <NewAgentVoicePicker voices={voices} company={ctx.organisation.name} />
+        </CardContent>
+      </Card>
 
       <Card className="border-primary/40">
         <CardHeader>
@@ -35,6 +47,7 @@ export default async function NewAgentPage() {
         </CardHeader>
         <CardContent>
           <form action={createBlankAgent} className="grid gap-4 md:grid-cols-2">
+            <NewAgentVoiceInput />
             <div className="space-y-1.5"><Label htmlFor="agent-name">Agent name</Label><Input id="agent-name" name="name" required maxLength={80} placeholder="e.g. Ada" /></div>
             <div className="space-y-1.5"><Label htmlFor="agent-company">Business name</Label><Input id="agent-company" name="company" maxLength={120} defaultValue={ctx.organisation.name} /></div>
             <div className="space-y-1.5">
@@ -72,6 +85,7 @@ export default async function NewAgentPage() {
             <CardFooter className="mt-auto">
               <form action={createAgentFromPreset} className="w-full">
                 <input type="hidden" name="presetId" value={p.id} />
+                <NewAgentVoiceInput />
                 <Button type="submit" variant="outline" className="w-full">{t("agents.use")}</Button>
               </form>
             </CardFooter>
@@ -79,5 +93,6 @@ export default async function NewAgentPage() {
         ))}
       </div>
     </div>
+    </NewAgentVoiceProvider>
   );
 }

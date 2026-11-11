@@ -120,6 +120,10 @@ const LANGUAGE_NAMES: Record<string, string> = { "en-NG": "English", pcm: "Pidgi
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function pickVoice(language: string, gender: Gender) {
+  // Real Fish Audio voices first (conversational ones suit calls best), then our demo voices.
+  const real = VOICE_CATALOGUE.filter((v) => v.provider === "fish_audio" && v.status === "available" && v.language === language && v.gender === gender);
+  const fish = real.find((x) => x.category === "Conversational") ?? real[0];
+  if (fish) return { voiceId: fish.id, voiceName: fish.name, voiceGender: fish.gender };
   const own = VOICE_CATALOGUE.filter((v) => v.provider === "spagai" && v.status === "available");
   const v = own.find((x) => x.language === language && x.gender === gender)
     ?? own.find((x) => x.language === language)
