@@ -15,6 +15,7 @@ import {
   type VoiceLanguage,
 } from "@spagai/core";
 import { Check, TriangleAlert } from "lucide-react";
+import { VoiceSettingsControls } from "@/components/voice/voice-settings";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -246,7 +247,7 @@ export function VoiceTab({ config, update, workspaceVoices = [] }: { config: Age
                     <PlayButton
                       size="icon"
                       playing={speaker.playingKey === v.id}
-                      onPlay={() => void speaker.speak(v.id, renderVariables(config.firstMessage, sampleValues(config)))}
+                      onPlay={() => void speaker.speak(v.id, renderVariables(config.firstMessage, sampleValues(config)), v.id, config.voiceSettings)}
                       onStop={speaker.stop}
                     />
                   </div>
@@ -257,6 +258,13 @@ export function VoiceTab({ config, update, workspaceVoices = [] }: { config: Age
         </div>
         <p className="text-xs text-muted-foreground">{t("builder.voice.playHint")}</p>
         {!config.voiceId && <p className="text-sm text-muted-foreground">{t("builder.voice.none")}</p>}
+        <VoiceSettingsControls
+          value={config.voiceSettings}
+          onChange={(voiceSettings) => update({ voiceSettings })}
+          voiceId={voices.some((v) => v.id === config.voiceId) ? config.voiceId : null}
+          sampleText={renderVariables(config.firstMessage, sampleValues(config))}
+          realVoice={voices.find((v) => v.id === config.voiceId)?.provider === "fish_audio"}
+        />
       </CardContent>
     </Card>
   );

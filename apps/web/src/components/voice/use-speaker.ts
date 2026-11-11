@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { VoiceSettings } from "@spagai/core";
 import { previewVoice } from "@/app/(app)/voices/actions";
+import { browserSpeechSettings } from "@/lib/voice-bank";
 
 /**
  * Plays a line in one of our voices.
@@ -63,11 +65,11 @@ export function useSpeaker() {
 
   /** Speak `text` in `voiceId`. `key` identifies the button, so it can show "playing". */
   const speak = useCallback(
-    async (voiceId: string, text: string, key = voiceId): Promise<void> => {
+    async (voiceId: string, text: string, key = voiceId, settings?: VoiceSettings): Promise<void> => {
       stop();
       setError(null);
       setPlayingKey(key);
-      const result = await previewVoice(voiceId, text);
+      const result = await previewVoice(voiceId, text, settings);
       if (result.kind === "error") {
         setError(result.message);
         setPlayingKey(null);
@@ -98,7 +100,9 @@ export function useSpeaker() {
           // Small pitch and pace differences so each demo voice sounds a little different.
           const n = [...result.providerVoiceId].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 997, 7) % 5;
           utterance.pitch = (result.gender === "female" ? 1.05 : 0.8) + n * 0.06;
-          utterance.rate = 0.9 + (n % 3) * 0.05;
+          const tuned = browserSpeechSettings(settings);
+          utterance.rate = (0.9 + (n % 3) * 0.05) * tuned.rate;
+          utterance.volume = tuned.volume;
           utterance.onend = finish;
           utterance.onerror = finish;
           window.speechSynthesis.speak(utterance);

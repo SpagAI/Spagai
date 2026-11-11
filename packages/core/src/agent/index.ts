@@ -205,6 +205,25 @@ export const silenceSchema = z
     path: ["endCallAfterSeconds"],
   });
 
+/**
+ * How the agent's voice sounds. Real (Fish Audio) voices use all of these; browser demo
+ * voices use speed and loudness only. Tested against Fish Audio, see docs/DECISIONS.md D120.
+ */
+export const voiceSettingsSchema = z.object({
+  /** 0.5 = half speed, 2 = double speed. */
+  speed: z.number().min(0.5).max(2),
+  /** Loudness change, -10 (quieter) to +10 (louder). */
+  volume: z.number().int().min(-10).max(10),
+  /** 0 = steady and the same each time, 1 = lively and varied. */
+  expressiveness: z.number().min(0).max(1),
+  /** Say "14/11/2026" as "the 14th of November 2026". */
+  naturalNumbers: z.boolean(),
+});
+
+export type VoiceSettings = z.infer<typeof voiceSettingsSchema>;
+
+export const DEFAULT_VOICE_SETTINGS: VoiceSettings = { speed: 1, volume: 0, expressiveness: 0.7, naturalNumbers: true };
+
 export const agentConfigSchema = z.object({
   name: z.string().trim().min(1).max(80),
   language: z.string().min(2).max(10),
@@ -217,6 +236,8 @@ export const agentConfigSchema = z.object({
   variableValues: z.record(z.string(), z.string().max(500)),
   tools: z.array(z.enum(["check_calendar", "book_appointment", "reschedule_appointment", "save_lead_data", "end_call"])),
   silence: silenceSchema,
+  /** Older agents have none saved: they get the defaults. */
+  voiceSettings: voiceSettingsSchema.default(DEFAULT_VOICE_SETTINGS),
 });
 
 export type AgentConfig = z.infer<typeof agentConfigSchema>;
@@ -265,6 +286,7 @@ export function presetToAgentConfig(preset: AgentPreset): AgentConfig {
     variableValues,
     tools: preset.tools,
     silence: preset.silence ?? DEFAULT_SILENCE,
+    voiceSettings: DEFAULT_VOICE_SETTINGS,
   };
 }
 

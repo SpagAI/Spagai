@@ -86,7 +86,7 @@ export default async function AgentsPage() {
             </Link>
             {/* Outside the link: a button inside a link is not allowed. */}
             {voice && line && voice.status === "available" && (
-              <PlayVoiceButton voiceId={voice.id} text={line} label={`Hear ${a.name}'s voice`} className="absolute bottom-4 right-4" />
+              <PlayVoiceButton voiceId={voice.id} text={line} label={`Hear ${a.name}'s voice`} settings={config?.voiceSettings} className="absolute bottom-4 right-4" />
             )}
             </div>
             );

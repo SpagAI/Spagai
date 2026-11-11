@@ -73,7 +73,7 @@ export function Simulator({ agentId, config, initialWhen, provider, voice }: Sim
       const entry: Entry = { id: nextId.current++, role: "agent", line: result.line };
       setEntries([...before, entry]);
       if (result.line.endsCall) setStatus("ended");
-      if (speakAloud && voice) void speaker.speak(voice.id, result.line.text, `line-${entry.id}`);
+      if (speakAloud && voice) void speaker.speak(voice.id, result.line.text, `line-${entry.id}`, config.voiceSettings);
       inputRef.current?.focus();
     });
 
@@ -218,7 +218,7 @@ export function Simulator({ agentId, config, initialWhen, provider, voice }: Sim
                     line={e.line}
                     playing={speaker.playingKey === `line-${e.id}`}
                     canPlay={Boolean(voice)}
-                    onPlay={() => voice && void speaker.speak(voice.id, e.line.text, `line-${e.id}`)}
+                    onPlay={() => voice && void speaker.speak(voice.id, e.line.text, `line-${e.id}`, config.voiceSettings)}
                     onStop={speaker.stop}
                   />
                 ),

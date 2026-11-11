@@ -74,3 +74,18 @@ describe("workspaceVoiceToVoice", () => {
     expect(v).toMatchObject({ id: `fish_audio:${ID}`, gender: "male", language: "en-NG", status: "available", provider: "fish_audio", age: "young" });
   });
 });
+
+import { browserSpeechSettings, fishTtsBody } from "@/lib/voice-bank";
+
+describe("voice settings", () => {
+  it("sends speed, loudness, expressiveness and number reading to Fish Audio", () => {
+    const body = fishTtsBody(ID, "Hello", { speed: 1.5, volume: -4, expressiveness: 0.3, naturalNumbers: false });
+    expect(body).toMatchObject({ reference_id: ID, text: "Hello", normalize: false, temperature: 0.3, prosody: { speed: 1.5, volume: -4 } });
+    expect(fishTtsBody(ID, "Hi")).toMatchObject({ normalize: true, prosody: { speed: 1, volume: 0 } });
+  });
+
+  it("maps settings to browser speech (which cannot go louder than normal)", () => {
+    expect(browserSpeechSettings({ speed: 0.8, volume: 5, expressiveness: 0.7, naturalNumbers: true })).toEqual({ rate: 0.8, volume: 1 });
+    expect(browserSpeechSettings({ speed: 1, volume: -10, expressiveness: 0.7, naturalNumbers: true }).volume).toBeCloseTo(0.2);
+  });
+});

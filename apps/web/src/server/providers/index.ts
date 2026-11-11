@@ -6,6 +6,7 @@ import {
   type SimTurn,
   type ToolId,
   type Voice,
+  type VoiceSettings,
 } from "@spagai/core";
 import { env } from "../env";
 import { RateLimiter } from "../rate-limit";
@@ -83,7 +84,7 @@ const speechPerMinute = new RateLimiter(30, 60_000);
  * Fish Audio voices are spoken for real (when FISH_AUDIO_API_KEY is set); the built-in demo
  * voices, and any voice whose provider is not connected, use the browser's own speech.
  */
-export async function synthesise(organisationId: string, voiceId: string, rawText: string): Promise<SpeechResult> {
+export async function synthesise(organisationId: string, voiceId: string, rawText: string, settings?: VoiceSettings): Promise<SpeechResult> {
   const voice = await resolveVoice(organisationId, voiceId);
   if (!voice) return { kind: "error", message: "Unknown voice." };
   const text = sanitiseForSpeech(rawText).slice(0, 1000);
@@ -97,7 +98,7 @@ export async function synthesise(organisationId: string, voiceId: string, rawTex
       return { kind: "error", message: `Today's real-voice allowance for this workspace (${env.VOICE_DAILY_CHAR_LIMIT.toLocaleString("en-NG")} characters) is used up. It resets at midnight, Lagos time.` };
     }
     try {
-      const audio = Buffer.from(await fishTextToSpeech(voice.providerVoiceId, text)).toString("base64");
+      const audio = Buffer.from(await fishTextToSpeech(voice.providerVoiceId, text, settings)).toString("base64");
       return { kind: "audio", text, src: `data:audio/mpeg;base64,${audio}` };
     } catch (error) {
       await releaseSpeechCharacters(organisationId, text.length);

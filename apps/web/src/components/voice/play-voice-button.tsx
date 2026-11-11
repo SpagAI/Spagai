@@ -1,5 +1,6 @@
 "use client";
 
+import type { VoiceSettings } from "@spagai/core";
 import { Pause, Play } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -14,10 +15,12 @@ export interface PlayVoiceButtonProps {
   /** e.g. "Hear Amaka's voice" */
   label: string;
   className?: string;
+  /** The agent's voice settings (speed, loudness...). */
+  settings?: VoiceSettings;
 }
 
 /** A small round play button that says `text` in a voice (real speech for Fish Audio voices). */
-export function PlayVoiceButton({ voiceId, text, label, className }: PlayVoiceButtonProps) {
+export function PlayVoiceButton({ voiceId, text, label, className, settings }: PlayVoiceButtonProps) {
   const speaker = useSpeaker();
   const playing = speaker.playingKey !== null;
   const stopRef = useRef(speaker.stop);
@@ -34,7 +37,7 @@ export function PlayVoiceButton({ voiceId, text, label, className }: PlayVoiceBu
     }
     if (stopLast && stopLast !== speaker.stop) stopLast();
     stopLast = speaker.stop;
-    await speaker.speak(voiceId, text);
+    await speaker.speak(voiceId, text, voiceId, settings);
   };
 
   return (

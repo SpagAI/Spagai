@@ -4,7 +4,7 @@
  *
  * Agents refer to a bank voice as "<provider>:<providerVoiceId>", e.g. "fish_audio:90170ece…".
  */
-import type { Voice, VoiceLanguage } from "@spagai/core";
+import { DEFAULT_VOICE_SETTINGS, type Voice, type VoiceLanguage, type VoiceSettings } from "@spagai/core";
 
 export const FISH_PROVIDER = "fish_audio";
 
@@ -124,4 +124,23 @@ export function workspaceVoiceToVoice(row: WorkspaceVoiceRow): Voice {
     description: row.description,
     age: row.age === "young" || row.age === "mature" ? row.age : "middle",
   };
+}
+
+/** The Fish Audio text-to-speech request for a voice, a line and the agent's voice settings. */
+export function fishTtsBody(providerVoiceId: string, text: string, settings: VoiceSettings = DEFAULT_VOICE_SETTINGS) {
+  return {
+    text,
+    reference_id: providerVoiceId,
+    format: "mp3",
+    mp3_bitrate: 64,
+    latency: "balanced",
+    normalize: settings.naturalNumbers,
+    temperature: Math.round(settings.expressiveness * 100) / 100,
+    prosody: { speed: settings.speed, volume: settings.volume },
+  };
+}
+
+/** Browser demo voices: the agent's speed and loudness as speech settings (volume 0 to 1, louder than 1 is not possible). */
+export function browserSpeechSettings(settings: VoiceSettings = DEFAULT_VOICE_SETTINGS): { rate: number; volume: number } {
+  return { rate: settings.speed, volume: settings.volume >= 0 ? 1 : Math.max(0.2, 1 + settings.volume * 0.08) };
 }

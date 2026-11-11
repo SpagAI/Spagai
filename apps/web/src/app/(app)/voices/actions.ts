@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { agentConfigSchema, getVoice } from "@spagai/core";
+import { agentConfigSchema, getVoice, voiceSettingsSchema, type VoiceSettings } from "@spagai/core";
 import { z } from "zod";
 import { FISH_PROVIDER, bankVoiceId, isFishVoiceId } from "@/lib/voice-bank";
 import { audit } from "@/server/agents";
@@ -11,12 +11,12 @@ import { synthesise, type SpeechResult } from "@/server/providers";
 import { fishAudioConfigured, getFishVoice, searchFishVoices, type BankPage } from "@/server/providers/fish-audio";
 
 /** Speak a line in one voice. The text is cleaned for speech on the server first. */
-export async function previewVoice(voiceId: string, text: string): Promise<SpeechResult> {
+export async function previewVoice(voiceId: string, text: string, settings?: VoiceSettings): Promise<SpeechResult> {
   const ctx = await requirePermission("agent:view");
-  const input = z.object({ voiceId: z.string().min(1).max(100), text: z.string().max(1000) }).safeParse({ voiceId, text });
+  const input = z.object({ voiceId: z.string().min(1).max(100), text: z.string().max(1000), settings: voiceSettingsSchema.optional() }).safeParse({ voiceId, text, settings });
   if (!input.success) return { kind: "error", message: "That line is too long." };
   try {
-    return await synthesise(ctx.organisation.id, input.data.voiceId, input.data.text);
+    return await synthesise(ctx.organisation.id, input.data.voiceId, input.data.text, input.data.settings);
   } catch {
     return { kind: "error", message: "The voice could not be played. Please try again." };
   }

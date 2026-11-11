@@ -9,6 +9,7 @@ import { blankAgentDraft } from "@/server/agent-factory";
 import { audit, loadAgent } from "@/server/agents";
 import { db } from "@/server/db";
 import { resolveVoice } from "@/server/voices";
+import { customAgentDraft, customAgentSchema } from "@/lib/custom-agent";
 
 /**
  * The voice picked on the "Create an agent" page, if it is a real, usable voice for this
@@ -90,5 +91,25 @@ export async function createBlankAgent(form: FormData): Promise<void> {
     data: { organisationId: ctx.organisation.id, name: input.name, presetId: null, config: normalised.config, createdById: ctx.user.id },
   });
   await audit(ctx.organisation.id, ctx.user.id, "agent.created", { type: "agent", id: agent.id }, { from: "scratch" });
+  redirect(`/agents/${agent.id}?new=1`);
+}
+
+export type CreateCustomResult = { ok: false; errors: string[] };
+
+/** "Custom": the person wrote the prompt, first message and voice settings themselves. Saved as written. */
+export async function createCustomAgent(input: unknown): Promise<CreateCustomResult> {
+  const ctx = await requirePermission("agent:edit");
+  const parsed = customAgentSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, errors: parsed.error.issues.map((i) => i.message) };
+  const data = parsed.data;
+  // Only keep a voice that this workspace can use, in the agent's language.
+  const voice = data.voiceId ? await resolveVoice(ctx.organisation.id, data.voiceId) : undefined;
+  const voiceId = voice && voice.status === "available" && voice.language === data.language ? voice.id : null;
+  const normalised = normaliseAgentConfig(customAgentDraft({ ...data, voiceId }));
+  if (!normalised.ok) return { ok: false, errors: normalised.errors };
+  const agent = await db.agent.create({
+    data: { organisationId: ctx.organisation.id, name: data.name, presetId: null, config: normalised.config, createdById: ctx.user.id },
+  });
+  await audit(ctx.organisation.id, ctx.user.id, "agent.created", { type: "agent", id: agent.id }, { from: "custom" });
   redirect(`/agents/${agent.id}?new=1`);
 }

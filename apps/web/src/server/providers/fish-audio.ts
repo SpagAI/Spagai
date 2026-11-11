@@ -1,6 +1,7 @@
 import "server-only";
 import { env } from "../env";
-import { fishModelToBankVoice, isFishVoiceId, type BankVoice } from "@/lib/voice-bank";
+import type { VoiceSettings } from "@spagai/core";
+import { fishModelToBankVoice, fishTtsBody, isFishVoiceId, type BankVoice } from "@/lib/voice-bank";
 
 /**
  * Fish Audio adapter: search its public voice library, look up one voice, and turn text into speech.
@@ -54,11 +55,11 @@ export async function getFishVoice(providerVoiceId: string): Promise<BankVoice |
 }
 
 /** Turn already-cleaned text into MP3 speech in one Fish Audio voice. */
-export async function fishTextToSpeech(providerVoiceId: string, text: string): Promise<ArrayBuffer> {
+export async function fishTextToSpeech(providerVoiceId: string, text: string, settings?: VoiceSettings): Promise<ArrayBuffer> {
   const res = await fetch(`${BASE}/v1/tts`, {
     method: "POST",
     headers: headers({ "content-type": "application/json", model: env.FISH_AUDIO_MODEL }),
-    body: JSON.stringify({ text, reference_id: providerVoiceId, format: "mp3", mp3_bitrate: 64, normalize: true, latency: "balanced" }),
+    body: JSON.stringify(fishTtsBody(providerVoiceId, text, settings)),
     signal: AbortSignal.timeout(45_000),
   });
   if (res.status === 402) throw new SpeechError("Your Fish Audio account has run out of credit.");
