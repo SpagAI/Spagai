@@ -3,7 +3,7 @@
  * voice settings). Pure, so it can be tested. The locked safety rules are added later by
  * normaliseAgentConfig, as for every agent.
  */
-import { buildCallValues, DEFAULT_SILENCE, findVariables, fromLagosParts, MAX_BLOCK_CHARS, voiceSettingsSchema } from "@spagai/core";
+import { DEFAULT_SILENCE, findVariables, MAX_BLOCK_CHARS, SYSTEM_VARIABLES, voiceSettingsSchema } from "@spagai/core";
 import { z } from "zod";
 
 export const customAgentSchema = z.object({
@@ -20,11 +20,7 @@ export const customAgentSchema = z.object({
 export type CustomAgentInput = z.infer<typeof customAgentSchema>;
 
 /** Variables every call fills in by itself (from the lead and the clock), plus the agent's own two. */
-const BUILT_IN = new Set([
-  ...Object.keys(buildCallValues({ title: "", gender: "male", firstName: "A", lastName: "B" }, fromLagosParts(2026, 1, 1, 9, 0), "B")),
-  "agent_name",
-  "company_name",
-]);
+const BUILT_IN = new Set([...SYSTEM_VARIABLES.map((v) => v.name), "agent_name", "company_name"]);
 
 const label = (name: string) => name.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 

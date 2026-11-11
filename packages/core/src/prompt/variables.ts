@@ -16,6 +16,11 @@ export const SYSTEM_VARIABLES: VariableDef[] = [
   { name: "current_date", label: "Today's date (YYYY-MM-DD, WAT)", scope: "system", required: false },
   { name: "current_time", label: "Current time (HH:MM, WAT)", scope: "system", required: false },
   { name: "current_day", label: "Day of the week", scope: "system", required: false },
+  // From the lead being called (filled by buildCallValues). Empty is fine: not every lead has them.
+  { name: "lead_name", label: "The customer's first name (from the lead)", scope: "system", required: false, allowEmpty: true },
+  { name: "last_name", label: "The customer's last name (from the lead)", scope: "system", required: false, allowEmpty: true },
+  { name: "title", label: "The customer's title, e.g. Dr (from the lead)", scope: "system", required: false, allowEmpty: true },
+  { name: "gender", label: "The customer's gender, male or female (from the lead)", scope: "system", required: false, allowEmpty: true },
 ];
 
 export function findVariables(text: string): string[] {

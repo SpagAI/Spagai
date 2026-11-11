@@ -1,7 +1,7 @@
 "use client";
 
 import { orderVoices, type AgentConfig, type VariableDef, type Voice } from "@spagai/core";
-import { ArrowLeft, CircleAlert, FlaskConical, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, AudioLines, BookOpen, Building2, CircleAlert, FlaskConical, MessageSquareText, Mic, Phone, Save, ScrollText, Timer, Trash2, Wrench, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { deleteAgent, saveAgent } from "@/app/(app)/agents/actions";
@@ -20,6 +20,13 @@ import { BusinessTab, FirstMessageTab, SilenceTab, ToolsTab, VoiceTab } from "./
 
 const TABS = ["business", "voice", "blocks", "firstMessage", "knowledge", "numbers", "tools", "silence", "talk"] as const;
 type Tab = (typeof TABS)[number];
+
+/** Tabs in three groups, all visible (they wrap instead of scrolling out of sight). */
+const TAB_GROUPS: { label: string; tabs: { id: Tab; icon: LucideIcon }[] }[] = [
+  { label: "Set up", tabs: [{ id: "business", icon: Building2 }, { id: "voice", icon: AudioLines }, { id: "blocks", icon: ScrollText }, { id: "firstMessage", icon: MessageSquareText }] },
+  { label: "Connect", tabs: [{ id: "knowledge", icon: BookOpen }, { id: "numbers", icon: Phone }, { id: "tools", icon: Wrench }, { id: "silence", icon: Timer }] },
+  { label: "Test", tabs: [{ id: "talk", icon: Mic }] },
+];
 
 export interface AgentBuilderProps {
   agentId: string;
@@ -143,21 +150,33 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]">
         <div className="min-w-0 space-y-4">
-          <div role="tablist" className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0">
-            {TABS.map((id) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={tab === id}
-                onClick={() => setTab(id)}
-                className={cn(
-                  "shrink-0 rounded-md px-3 py-1.5 text-sm transition-colors",
-                  tab === id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {t(`builder.tabs.${id}`)}
-              </button>
+          <div role="tablist" aria-label="Agent settings" className="flex flex-wrap gap-x-4 gap-y-3 rounded-xl border bg-card p-3">
+            {TAB_GROUPS.map((group) => (
+              <div key={group.label} className="min-w-0 space-y-1.5">
+                <p className="px-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{group.label}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {group.tabs.map(({ id, icon: Icon }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      role="tab"
+                      aria-selected={tab === id}
+                      onClick={() => setTab(id)}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors",
+                        tab === id
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : id === "talk"
+                            ? "border border-primary/40 bg-primary/5 text-primary hover:bg-primary/10"
+                            : "bg-muted text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <Icon className="size-4" />
+                      {t(`builder.tabs.${id}`)}
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
 

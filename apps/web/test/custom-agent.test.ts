@@ -55,3 +55,12 @@ describe("custom agents", () => {
     expect(ready.problems.join(" ")).not.toMatch(/tokens/);
   });
 });
+
+describe("customer details from the lead", () => {
+  it("are known to every agent, so {{lead_name}}, {{last_name}}, {{title}} and {{gender}} are not 'unknown'", async () => {
+    const { compilePrompt } = await import("@spagai/core");
+    const draft = customAgentDraft({ ...input, firstMessage: "Hello {{title}} {{lead_name}} {{last_name}}", prompt: "The customer is {{gender}}. Be polite and brief with them always." });
+    const compiled = compilePrompt({ blocks: draft.blocks, variables: draft.variables, firstMessage: draft.firstMessage }, { values: { company_name: "X", agent_name: "Kemi", lead_name: "Chinedu", last_name: "", title: "", gender: "male" }, mode: "call" });
+    expect(compiled.errors).toEqual([]);
+  });
+});
