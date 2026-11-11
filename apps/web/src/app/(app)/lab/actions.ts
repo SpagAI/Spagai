@@ -19,7 +19,7 @@ import {
 import { z } from "zod";
 import { requirePermission } from "@/server/auth/session";
 import { audit, loadAgent } from "@/server/agents";
-import { getLlm } from "@/server/providers";
+import { getLlm, PHONE_CALL_RULES } from "@/server/providers";
 import { RateLimiter } from "@/server/rate-limit";
 
 const turnSchema = z.object({
@@ -176,7 +176,8 @@ async function runTurn(organisationId: string, config: AgentConfig, input: z.inf
       provider: llm.name,
       line: toLine({ text: compiled.firstMessage, toolCalls: [], endsCall: false }, now),
       callingWindow: { allowed: window.allowed, reason: window.reason },
-      prompt: compiled.prompt,
+      // Exactly what a real model receives (the phone call rules are added for real models only).
+      prompt: llm.name === "mock" ? compiled.prompt : `${compiled.prompt}\n\n${PHONE_CALL_RULES}`,
     };
   }
 
@@ -192,6 +193,11 @@ async function runTurn(organisationId: string, config: AgentConfig, input: z.inf
       values,
       tools: config.tools,
       now,
+      // A real model hears back what each (simulated) tool did, then speaks.
+      runTool: (call) => {
+        const [checked] = checkTools([call], now);
+        return checked ? `${checked.ok ? "Success" : "Failed"}: ${checked.result}` : "Unknown tool.";
+      },
     });
     return { ok: true, provider: llm.name, line: toLine(turn, now) };
   } catch (e) {

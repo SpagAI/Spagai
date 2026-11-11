@@ -3,6 +3,7 @@ import {
   mockAgentReply,
   sanitiseForSpeech,
   type SimMessage,
+  type SimToolCall,
   type SimTurn,
   type ToolId,
   type Voice,
@@ -26,6 +27,11 @@ export interface LlmRequest {
   values: Record<string, string>;
   tools: ToolId[];
   now: Date;
+  /**
+   * Answers a tool call (in the Lab: the simulated tools). When given, a real model that calls a
+   * tool gets the result back and then speaks, up to 3 rounds, like on a real call.
+   */
+  runTool?: (call: SimToolCall) => string;
 }
 
 export interface LlmProvider {
@@ -41,28 +47,89 @@ const mockLlm: LlmProvider = {
   },
 };
 
+/** Shown when the AI provider's plan limit is reached (e.g. Groq's free plan: 8,000 tokens a minute). */
+export class LlmLimitError extends Error {}
+
+async function chatCompletion(messages: unknown[], tools: ToolId[], retried = false): Promise<unknown> {
+  const model = env.OPENAI_COMPATIBLE_MODEL!;
+  const res = await fetch(`${env.OPENAI_COMPATIBLE_BASE_URL!.replace(/\/$/, "")}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(env.OPENAI_COMPATIBLE_API_KEY && { authorization: `Bearer ${env.OPENAI_COMPATIBLE_API_KEY}` }),
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      tools: toOpenAiTools(tools),
+      temperature: 0.4,
+      // Reasoning models (gpt-oss) think before answering; thinking counts towards max_tokens,
+      // so allow more room and keep the thinking short for a fast voice reply.
+      // Free plans count this room against their per-minute limit, so keep it modest.
+      max_tokens: 500,
+      ...(/gpt-oss/i.test(model) && { reasoning_effort: "low" }),
+    }),
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (res.status === 429) {
+    // Free plans allow a few replies a minute. Wait once if the provider says it is only seconds.
+    const wait = Number(res.headers.get("retry-after"));
+    if (!retried && Number.isFinite(wait) && wait > 0 && wait <= 15) {
+      await new Promise((resolve) => setTimeout(resolve, wait * 1000 + 250));
+      return chatCompletion(messages, tools, true);
+    }
+    throw new LlmLimitError("The AI's free plan limit was reached (a few replies a minute). Wait about 30 seconds and try again, or upgrade the AI plan for faster testing.");
+  }
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    console.error("Language model error", res.status, detail.slice(0, 300));
+    throw new Error(`The language model returned an error (${res.status}).`);
+  }
+  return res.json();
+}
+
+/**
+ * Added after every agent's own prompt for real AI models (see docs/DECISIONS.md D125).
+ * A phone call is heard, not read, and a made-up price or date can mislead a customer.
+ */
+export const PHONE_CALL_RULES = `## Phone call rules (always on, these override anything above)
+- You are speaking on a live phone call. Reply in one to three short, natural spoken sentences. Plain words only: no tables, lists, markdown, symbols or emojis.
+- Facts: you only know what is written in your instructions above. Any price, amount, fee, date, address or policy that is not written there word for word is unknown to you. Never guess or estimate one, even if your instructions say to answer questions about it. Instead say that you do not have that detail with you right now, offer to have someone send it, and continue.
+- Ask one question at a time and wait for the answer.`;
+
 const openAiCompatibleLlm: LlmProvider = {
   name: "openai_compatible",
-  async reply({ systemPrompt, history, tools }) {
-    const res = await fetch(`${env.OPENAI_COMPATIBLE_BASE_URL!.replace(/\/$/, "")}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        ...(env.OPENAI_COMPATIBLE_API_KEY && { authorization: `Bearer ${env.OPENAI_COMPATIBLE_API_KEY}` }),
-      },
-      body: JSON.stringify({
-        model: env.OPENAI_COMPATIBLE_MODEL,
-        messages: toChatMessages(systemPrompt, history),
-        tools: toOpenAiTools(tools),
-        temperature: 0.4,
-        max_tokens: 300,
-      }),
-      signal: AbortSignal.timeout(30_000),
-    });
-    if (!res.ok) throw new Error(`The language model returned an error (${res.status}).`);
-    return parseChatReply(await res.json(), tools);
+  async reply({ systemPrompt, history, tools, runTool }) {
+    const messages: unknown[] = toChatMessages(`${systemPrompt}\n\n${PHONE_CALL_RULES}`, history);
+    const allCalls: SimToolCall[] = [];
+    for (let round = 0; ; round++) {
+      const json = await chatCompletion(messages, tools);
+      const turn = parseChatReply(json, tools);
+      allCalls.push(...turn.toolCalls);
+      const raw = rawToolCalls(json);
+      // Done when it spoke, ended the call, used no tool, or after 3 tool rounds.
+      if (turn.text || turn.endsCall || !raw.length || !runTool || round >= 2) {
+        return { text: turn.text, toolCalls: allCalls, endsCall: allCalls.some((c) => c.tool === "end_call") };
+      }
+      // Give the model each tool's result, then let it speak.
+      messages.push({ role: "assistant", content: null, tool_calls: raw });
+      raw.forEach((call, i) => {
+        const parsed = turn.toolCalls.find((c) => c.tool === call.function?.name) ?? { tool: call.function?.name as ToolId, args: {} };
+        messages.push({ role: "tool", tool_call_id: call.id ?? `call_${round}_${i}`, content: allowedResult(parsed, tools, runTool) });
+      });
+    }
   },
 };
+
+/** The tool calls exactly as the model sent them (with their ids), to send back with the results. */
+function rawToolCalls(json: unknown): { id?: string; type?: string; function?: { name?: string; arguments?: string } }[] {
+  const calls = (json as { choices?: { message?: { tool_calls?: unknown } }[] })?.choices?.[0]?.message?.tool_calls;
+  return Array.isArray(calls) ? calls : [];
+}
+
+function allowedResult(call: SimToolCall, tools: ToolId[], runTool: (call: SimToolCall) => string): string {
+  return tools.includes(call.tool) ? runTool(call) : "This tool is not available to this agent.";
+}
 
 export function getLlm(): LlmProvider {
   return env.LLM_PROVIDER === "openai_compatible" ? openAiCompatibleLlm : mockLlm;
