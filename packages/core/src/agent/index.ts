@@ -222,6 +222,10 @@ export const voiceSettingsSchema = z.object({
 
 export type VoiceSettings = z.infer<typeof voiceSettingsSchema>;
 
+/** Longest single instruction section, and all sections together. */
+export const MAX_BLOCK_CHARS = 50_000;
+export const MAX_PROMPT_CHARS = 60_000;
+
 export const DEFAULT_VOICE_SETTINGS: VoiceSettings = { speed: 1, volume: 0, expressiveness: 0.7, naturalNumbers: true };
 
 export const agentConfigSchema = z.object({
@@ -230,7 +234,14 @@ export const agentConfigSchema = z.object({
   voiceId: z.string().max(100).nullable(),
   addressMode: z.enum(["A", "B"]),
   firstMessage: z.string().trim().min(1).max(1000),
-  blocks: z.array(promptBlockSchema.extend({ content: z.string().max(8000) })).min(1).max(60),
+  /** One section can hold a whole long prompt (50,000 characters); all sections together up to 60,000. */
+  blocks: z
+    .array(promptBlockSchema.extend({ content: z.string().max(MAX_BLOCK_CHARS) }))
+    .min(1)
+    .max(60)
+    .refine((blocks) => blocks.reduce((n, b) => n + b.content.length, 0) <= MAX_PROMPT_CHARS, {
+      message: `All instructions together can be up to ${MAX_PROMPT_CHARS.toLocaleString("en-NG")} characters.`,
+    }),
   variables: z.array(variableDefSchema).max(50),
   /** Values for agent-scope variables (company_name, product_name, ...). */
   variableValues: z.record(z.string(), z.string().max(500)),

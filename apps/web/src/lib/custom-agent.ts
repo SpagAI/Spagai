@@ -3,7 +3,7 @@
  * voice settings). Pure, so it can be tested. The locked safety rules are added later by
  * normaliseAgentConfig, as for every agent.
  */
-import { buildCallValues, DEFAULT_SILENCE, findVariables, fromLagosParts, voiceSettingsSchema } from "@spagai/core";
+import { buildCallValues, DEFAULT_SILENCE, findVariables, fromLagosParts, MAX_BLOCK_CHARS, voiceSettingsSchema } from "@spagai/core";
 import { z } from "zod";
 
 export const customAgentSchema = z.object({
@@ -13,7 +13,7 @@ export const customAgentSchema = z.object({
   language: z.enum(["en-NG", "pcm", "yo", "ha", "ig"]),
   voiceId: z.string().max(100).nullable(),
   firstMessage: z.string().trim().min(1, "Write what the agent says first.").max(1000),
-  prompt: z.string().trim().min(20, "Write the agent's instructions (at least a sentence or two).").max(8000),
+  prompt: z.string().trim().min(20, "Write the agent's instructions (at least a sentence or two).").max(MAX_BLOCK_CHARS, `Instructions can be up to ${MAX_BLOCK_CHARS.toLocaleString("en-NG")} characters.`),
   voiceSettings: voiceSettingsSchema,
 });
 

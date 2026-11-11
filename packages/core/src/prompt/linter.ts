@@ -44,10 +44,10 @@ export interface LintIssue {
 }
 
 export interface LintOptions {
-  /** Warn above this many estimated tokens. Default 1500. */
+  /** Warn above this many estimated tokens. Default 3000 (about 12,000 characters). */
   warnTokens?: number;
-  /** Error above this many estimated tokens. Default 3000. */
-  errorTokens?: number;
+  /** Stronger warning above this many. Default 8000 (about 32,000 characters). Never blocks: long prompts are allowed. */
+  slowTokens?: number;
 }
 
 export interface LintInput {
@@ -146,8 +146,8 @@ function afterHoursIssue(text: string, line?: number): LintIssue {
 }
 
 export function lintPrompt(input: LintInput, options: LintOptions = {}): LintReport {
-  const warnTokens = options.warnTokens ?? 1500;
-  const errorTokens = options.errorTokens ?? 3000;
+  const warnTokens = options.warnTokens ?? 3000;
+  const slowTokens = options.slowTokens ?? 8000;
   const { prompt } = input;
   const issues: LintIssue[] = [];
 
@@ -179,12 +179,12 @@ export function lintPrompt(input: LintInput, options: LintOptions = {}): LintRep
 
   // Length
   const tokens = estimateTokens(prompt);
-  if (tokens > errorTokens) {
+  if (tokens > slowTokens) {
     issues.push({
       rule: "prompt-too-long",
-      severity: "error",
-      message: `Prompt is about ${tokens} tokens. Above ${errorTokens} the voice will be noticeably slow to reply.`,
-      suggestion: "Cut repeated instructions and long examples.",
+      severity: "warning",
+      message: `Prompt is about ${tokens} tokens. Above ${slowTokens} the voice may be noticeably slower to reply. It still works.`,
+      suggestion: "If replies feel slow in the Lab, cut repeated instructions and long examples.",
     });
   } else if (tokens > warnTokens) {
     issues.push({

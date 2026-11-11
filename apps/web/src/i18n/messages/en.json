@@ -192,7 +192,7 @@
       "compileErrors": "Fix before use",
       "latencyOk": "Length is fine for a voice call.",
       "latencyWarn": "Getting long: replies may feel slow.",
-      "latencyBad": "Too long: replies will be slow.",
+      "latencyBad": "Very long: replies may be slower. It still works; test it in the Lab.",
       "line": "Line"
     },
     "variables": {

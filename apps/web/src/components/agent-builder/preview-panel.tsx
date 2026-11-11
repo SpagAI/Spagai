@@ -25,8 +25,8 @@ import { sampleValues } from "./shared";
 
 type View = "prompt" | "issues" | "variables";
 
-const WARN_TOKENS = 1500;
-const ERROR_TOKENS = 3000;
+const WARN_TOKENS = 3000;
+const SLOW_TOKENS = 8000;
 
 export function PreviewPanel({
   config,
@@ -48,7 +48,7 @@ export function PreviewPanel({
       { blocks: deferred.blocks, variables: deferred.variables, firstMessage: deferred.firstMessage },
       { values, mode: "preview" },
     );
-    const lint = lintPrompt({ prompt: compiled.prompt, firstMessage: compiled.firstMessage }, { warnTokens: WARN_TOKENS, errorTokens: ERROR_TOKENS });
+    const lint = lintPrompt({ prompt: compiled.prompt, firstMessage: compiled.firstMessage }, { warnTokens: WARN_TOKENS, slowTokens: SLOW_TOKENS });
     return { compiled, lint };
   }, [deferred, useSample]);
 
@@ -61,9 +61,9 @@ export function PreviewPanel({
   };
 
   const scoreColour = lint.score >= 90 ? "bg-primary" : lint.score >= 60 ? "bg-warning" : "bg-destructive";
-  const tokenPct = Math.min(100, (compiled.estimatedTokens / ERROR_TOKENS) * 100);
-  const tokenColour = compiled.estimatedTokens > ERROR_TOKENS ? "bg-destructive" : compiled.estimatedTokens > WARN_TOKENS ? "bg-warning" : "bg-primary";
-  const latencyKey = compiled.estimatedTokens > ERROR_TOKENS ? "latencyBad" : compiled.estimatedTokens > WARN_TOKENS ? "latencyWarn" : "latencyOk";
+  const tokenPct = Math.min(100, (compiled.estimatedTokens / SLOW_TOKENS) * 100);
+  const tokenColour = compiled.estimatedTokens > SLOW_TOKENS ? "bg-warning" : compiled.estimatedTokens > WARN_TOKENS ? "bg-warning" : "bg-primary";
+  const latencyKey = compiled.estimatedTokens > SLOW_TOKENS ? "latencyBad" : compiled.estimatedTokens > WARN_TOKENS ? "latencyWarn" : "latencyOk";
 
   return (
     <Card className="gap-3 xl:sticky xl:top-6 xl:max-h-[calc(100dvh-3rem)]">

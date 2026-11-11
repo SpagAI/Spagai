@@ -65,9 +65,12 @@ describe("lintPrompt", () => {
   });
 
   it("warns, then errors, as the prompt grows", () => {
-    expect(rules(lintPrompt({ prompt: SAFE + "x".repeat(7000) }).issues)).toContain("prompt-too-long");
-    expect(lintPrompt({ prompt: SAFE + "x".repeat(7000) }).issues.find((i) => i.rule === "prompt-too-long")?.severity).toBe("warning");
-    expect(lintPrompt({ prompt: SAFE + "x".repeat(13000) }).issues.find((i) => i.rule === "prompt-too-long")?.severity).toBe("error");
+    expect(rules(lintPrompt({ prompt: SAFE + "x".repeat(7000) }).issues)).not.toContain("prompt-too-long");
+    expect(lintPrompt({ prompt: SAFE + "x".repeat(13000) }).issues.find((i) => i.rule === "prompt-too-long")?.severity).toBe("warning");
+    // Very long prompts (up to 50,000 characters) warn, but never block an agent from going live.
+    const long = lintPrompt({ prompt: SAFE + "x".repeat(50000) }).issues.find((i) => i.rule === "prompt-too-long");
+    expect(long?.severity).toBe("warning");
+    expect(long?.message).toMatch(/still works/);
     expect(lintPrompt({ prompt: SAFE + "x".repeat(400) }, { warnTokens: 100 }).issues.map((i) => i.rule)).toContain("prompt-too-long");
   });
 

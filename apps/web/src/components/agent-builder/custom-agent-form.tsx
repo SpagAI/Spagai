@@ -1,6 +1,6 @@
 "use client";
 
-import { DEFAULT_VOICE_SETTINGS, LANGUAGE_NAMES, renderVariables, VOICE_PROVIDERS, type Voice, type VoiceLanguage, type VoiceSettings } from "@spagai/core";
+import { DEFAULT_VOICE_SETTINGS, LANGUAGE_NAMES, MAX_BLOCK_CHARS, renderVariables, VOICE_PROVIDERS, type Voice, type VoiceLanguage, type VoiceSettings } from "@spagai/core";
 import { Loader2, Settings2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { createCustomAgent } from "@/app/(app)/agents/actions";
@@ -115,10 +115,10 @@ export function CustomAgentForm({ voices, company }: { voices: Voice[]; company:
 
       <div className="space-y-1.5">
         <Label htmlFor="c-prompt">Instructions (prompt)</Label>
-        <Textarea id="c-prompt" rows={12} maxLength={8000} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={PROMPT_HINT} className="font-mono text-sm" />
+        <Textarea id="c-prompt" rows={14} maxLength={MAX_BLOCK_CHARS} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={PROMPT_HINT} className="font-mono text-sm" />
         <div className="flex justify-between gap-3 text-xs text-muted-foreground">
           <span>Saved exactly as you write it. Any other {"{{name}}"} you use becomes a value you fill per call or from your lead list.</span>
-          <span className="shrink-0 tabular-nums">{prompt.length.toLocaleString("en-NG")} / 8,000</span>
+          <span className="shrink-0 tabular-nums">{prompt.length.toLocaleString("en-NG")} / {MAX_BLOCK_CHARS.toLocaleString("en-NG")}</span>
         </div>
       </div>
 

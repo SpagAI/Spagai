@@ -1,4 +1,4 @@
-import { DEFAULT_VOICE_SETTINGS, normaliseAgentConfig } from "@spagai/core";
+import { agentReadiness, DEFAULT_VOICE_SETTINGS, normaliseAgentConfig } from "@spagai/core";
 import { describe, expect, it } from "vitest";
 import { customAgentDraft, customAgentSchema, defaultFirstMessage } from "@/lib/custom-agent";
 
@@ -41,5 +41,17 @@ describe("custom agents", () => {
     expect(customAgentSchema.safeParse({ ...input, prompt: "short" }).success).toBe(false);
     expect(customAgentSchema.safeParse({ ...input, voiceSettings: { ...DEFAULT_VOICE_SETTINGS, speed: 3 } }).success).toBe(false);
     expect(defaultFirstMessage("inbound")).toMatch(/thank you for calling/);
+  });
+
+  it("accepts a very long prompt (50,000 characters) and still lets the agent go live", () => {
+    const long = "Answer questions about our products politely and briefly. ".repeat(900).slice(0, 50_000);
+    expect(long).toHaveLength(50_000);
+    expect(customAgentSchema.safeParse({ ...input, prompt: long }).success).toBe(true);
+    expect(customAgentSchema.safeParse({ ...input, prompt: long + "x" }).success).toBe(false);
+    const result = normaliseAgentConfig(customAgentDraft({ ...input, prompt: long }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const ready = agentReadiness({ ...result.config, variableValues: { ...result.config.variableValues } });
+    expect(ready.problems.join(" ")).not.toMatch(/tokens/);
   });
 });
