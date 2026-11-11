@@ -253,6 +253,15 @@ export const agentConfigSchema = z.object({
 
 export type AgentConfig = z.infer<typeof agentConfigSchema>;
 
+/**
+ * Unsaved work in progress (autosave). Looser than agentConfigSchema: a half-written agent may
+ * have no name or first message yet. Never used for calls; only a full save is.
+ */
+export const agentDraftSchema = agentConfigSchema.extend({
+  name: z.string().max(80),
+  firstMessage: z.string().max(1000),
+});
+
 /** Tools every agent must have. */
 export const REQUIRED_TOOLS: ToolId[] = ["end_call"];
 

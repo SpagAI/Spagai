@@ -1,10 +1,12 @@
 "use client";
 
 import { orderVoices, type AgentConfig, type VariableDef, type Voice } from "@spagai/core";
-import { ArrowLeft, AudioLines, BookOpen, Building2, CircleAlert, FlaskConical, MessageSquareText, Mic, Phone, Save, ScrollText, Timer, Trash2, Wrench, type LucideIcon } from "lucide-react";
+import { ArrowLeft, AudioLines, BookOpen, Building2, CircleAlert, FlaskConical, MessageSquareText, Mic, History, Phone, Redo2, Save, ScrollText, Timer, Trash2, TriangleAlert, Undo2, Wrench, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState, useTransition } from "react";
-import { deleteAgent, saveAgent } from "@/app/(app)/agents/actions";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { autosaveAgentDraft, deleteAgent, discardAgentDraft, saveAgent } from "@/app/(app)/agents/actions";
+import { promptLength, record, redo, startHistory, undo, wasCleared } from "@/lib/agent-history";
+import { VersionHistory } from "./version-history";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,12 +45,25 @@ export interface AgentBuilderProps {
   /** For "Talk to agent": which AI brain answers ("mock" = demo replies) and the starting Lagos time. */
   llmProvider?: string;
   initialWhen?: string;
+  /** Unsaved changes kept by autosave last time: the editor opens with them. */
+  draft?: { config: AgentConfig; savedAt: string };
 }
 
-export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt, readOnly, canDelete, connections, isNew, workspaceVoices = [], llmProvider = "mock", initialWhen = "2026-10-13T10:30" }: AgentBuilderProps) {
+export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt, readOnly, canDelete, connections, isNew, workspaceVoices = [], llmProvider = "mock", initialWhen = "2026-10-13T10:30", draft }: AgentBuilderProps) {
   const t = useT();
-  const [config, setConfig] = useState(initialConfig);
+  // Undo/redo history; `config` is what is on screen now.
+  const [hist, setHist] = useState(() => startHistory(draft?.config ?? initialConfig));
+  const config = hist.present;
+  const change = useCallback((fn: (c: AgentConfig) => AgentConfig, force = false) => setHist((h) => record(h, fn(h.present), Date.now(), force)), []);
   const [saved, setSaved] = useState({ config: initialConfig, status: initialStatus, at: updatedAt });
+  // Autosave: the last version kept as a draft on the server, and when.
+  const [autosaved, setAutosaved] = useState(() => JSON.stringify(draft?.config ?? initialConfig));
+  const [draftState, setDraftState] = useState<{ status: "idle" | "saving" | "saved" | "error"; at?: string }>(draft ? { status: "saved", at: draft.savedAt } : { status: "idle" });
+  const hasDraft = useRef(Boolean(draft));
+  const [restoredNotice, setRestoredNotice] = useState<string | null>(draft ? draft.savedAt : null);
+  const [clearedNotice, setClearedNotice] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [versionNotice, setVersionNotice] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("business");
   const [errors, setErrors] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
@@ -63,26 +78,98 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
     { key: "number", label: "Phone number", done: connections.numbers.length > 0, tab: "numbers" },
     { key: "lab", label: "Test in the Lab", done: connections.testedInLab, href: `/lab/${agentId}` },
   ];
-  const update = useCallback((patch: Partial<AgentConfig>) => setConfig((c) => ({ ...c, ...patch })), []);
-  const addVariable = useCallback(
-    (v: VariableDef) => setConfig((c) => (c.variables.some((x) => x.name === v.name) ? c : { ...c, variables: [...c.variables, v] })),
-    [],
+  // Deleting a prompt section is always its own undo step.
+  const update = useCallback(
+    (patch: Partial<AgentConfig>) => change((c) => ({ ...c, ...patch }), Boolean(patch.blocks) && patch.blocks!.length < hist.present.blocks.length),
+    [change, hist.present.blocks.length],
   );
+  const addVariable = useCallback(
+    (v: VariableDef) => change((c) => (c.variables.some((x) => x.name === v.name) ? c : { ...c, variables: [...c.variables, v] })),
+    [change],
+  );
+  const doUndo = useCallback(() => setHist(undo), []);
+  const doRedo = useCallback(() => setHist(redo), []);
 
-  // Warn before leaving with unsaved changes.
+  // Spot a prompt that was suddenly emptied, and offer to undo it.
+  const prevConfig = useRef(config);
   useEffect(() => {
-    if (!dirty) return;
+    if (wasCleared(prevConfig.current, config)) setClearedNotice(true);
+    // Text came back (undo, or typed again): the warning is no longer needed.
+    else if (promptLength(config) >= 200) setClearedNotice(false);
+    prevConfig.current = config;
+  }, [config]);
+
+  // Ctrl+Z / Ctrl+Shift+Z (Cmd on Mac) outside text boxes, which have their own undo for typing.
+  useEffect(() => {
+    if (readOnly) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "z") return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+      e.preventDefault();
+      if (e.shiftKey) doRedo();
+      else doUndo();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [readOnly, doUndo, doRedo]);
+
+  // Autosave unsaved changes as a draft a moment after typing stops. The live agent is not touched.
+  const configJson = JSON.stringify(config);
+  useEffect(() => {
+    if (readOnly || configJson === autosaved) return;
+    if (!dirty) {
+      // Back to exactly the saved version: the draft is not needed any more.
+      if (hasDraft.current) void discardAgentDraft(agentId);
+      hasDraft.current = false;
+      setAutosaved(configJson);
+      setDraftState({ status: "idle" });
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setDraftState((d) => ({ ...d, status: "saving" }));
+      const result = await autosaveAgentDraft(agentId, JSON.parse(configJson));
+      if (result.ok) {
+        hasDraft.current = true;
+        setAutosaved(configJson);
+        setDraftState({ status: "saved", at: result.savedAt });
+      } else {
+        setDraftState({ status: "error" });
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [configJson, autosaved, dirty, readOnly, agentId]);
+
+  // Warn before leaving only if the latest changes are not kept yet.
+  const unkept = dirty && configJson !== autosaved;
+  useEffect(() => {
+    if (!unkept) return;
     const handler = (e: BeforeUnloadEvent) => e.preventDefault();
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [dirty]);
+  }, [unkept]);
+
+  const discardDraft = () => {
+    void discardAgentDraft(agentId);
+    hasDraft.current = false;
+    change(() => saved.config, true);
+    setAutosaved(JSON.stringify(saved.config));
+    setDraftState({ status: "idle" });
+    setRestoredNotice(null);
+  };
 
   const save = (status: "DRAFT" | "READY") =>
     startTransition(async () => {
       const result = await saveAgent(agentId, config, status);
       if (result.ok) {
-        setConfig(result.config);
+        setHist((h) => ({ ...h, present: result.config }));
         setSaved({ config: result.config, status: result.status, at: result.savedAt });
+        // Saving removes the draft on the server.
+        hasDraft.current = false;
+        setAutosaved(JSON.stringify(result.config));
+        setDraftState({ status: "idle" });
+        setRestoredNotice(null);
+        setVersionNotice(null);
         setErrors([]);
       } else {
         setErrors(result.errors);
@@ -106,8 +193,19 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
         </div>
         <Badge variant={saved.status === "READY" ? "default" : "secondary"}>{t(`agents.status.${saved.status}`)}</Badge>
         <span className="text-xs text-muted-foreground">
-          {pending ? t("builder.saving") : dirty ? t("builder.unsaved") : `${t("builder.saved")} ${formatLagos(saved.at)} WAT`}
+          {pending
+            ? t("builder.saving")
+            : dirty
+              ? `${t("builder.unsaved")} · ${draftState.status === "saving" ? "keeping a draft…" : draftState.status === "saved" && !unkept ? "draft kept" : draftState.status === "error" ? "draft not kept" : "draft in a moment"}`
+              : `${t("builder.saved")} ${formatLagos(saved.at)} WAT`}
         </span>
+        {!readOnly && (
+          <div className="flex items-center gap-1">
+            <Button type="button" variant="ghost" size="icon" onClick={doUndo} disabled={!hist.past.length} aria-label="Undo" title="Undo (Ctrl+Z)"><Undo2 /></Button>
+            <Button type="button" variant="ghost" size="icon" onClick={doRedo} disabled={!hist.future.length} aria-label="Redo" title="Redo (Ctrl+Shift+Z)"><Redo2 /></Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setHistoryOpen(true)}><History /> History</Button>
+          </div>
+        )}
         <div className="ml-auto flex flex-wrap gap-2">
           <Button asChild variant="outline">
             <Link
@@ -135,6 +233,43 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
         </div>
       </div>
 
+      {restoredNotice && dirty && (
+        <Alert>
+          <History />
+          <span>
+            We brought back your unsaved changes from {formatLagos(restoredNotice)} WAT. They are not live until you press Save.{" "}
+            <button type="button" onClick={discardDraft} className="font-medium underline underline-offset-2">Discard them</button>
+          </span>
+        </Alert>
+      )}
+      {clearedNotice && (
+        <Alert variant="destructive">
+          <TriangleAlert />
+          <span>
+            The prompt was just cleared.{" "}
+            <button type="button" onClick={() => { doUndo(); setClearedNotice(false); }} className="font-medium underline underline-offset-2">Undo</button>
+            {" "}·{" "}
+            <button type="button" onClick={() => setClearedNotice(false)} className="underline underline-offset-2">Keep it cleared</button>
+          </span>
+        </Alert>
+      )}
+      {versionNotice && (
+        <Alert variant="success">
+          <History />
+          <span>Restored the version from {formatLagos(versionNotice)} WAT. Press Save to keep it, or Undo to go back.</span>
+        </Alert>
+      )}
+      {historyOpen && (
+        <VersionHistory
+          agentId={agentId}
+          onClose={() => setHistoryOpen(false)}
+          onRestore={(c, at) => {
+            change(() => c, true);
+            setVersionNotice(at);
+            setHistoryOpen(false);
+          }}
+        />
+      )}
       {isNew && <Alert variant="success">Your agent is created. Work through the steps below: choose a voice, write its instructions, give it knowledge and a phone number, then test it in the Lab.</Alert>}
       <SetupSteps steps={steps} onPick={(id) => setTab(id as Tab)} />
 

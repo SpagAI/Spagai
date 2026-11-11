@@ -1,4 +1,4 @@
-import { toLagosParts } from "@spagai/core";
+import { agentDraftSchema, toLagosParts } from "@spagai/core";
 import { env } from "@/server/env";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -26,14 +26,20 @@ export default async function AgentBuilderPage({ params, searchParams }: { param
   const agent = await loadAgent(ctx.organisation.id, id);
   if (!agent) notFound();
   const org = { organisationId: ctx.organisation.id };
-  const [knowledge, numbers, free, tested, calls, workspaceVoices] = await Promise.all([
+  const [knowledge, numbers, free, tested, calls, workspaceVoices, draftRow] = await Promise.all([
     db.knowledgeItem.findMany({ where: { ...org, agentId: agent.id }, orderBy: { createdAt: "desc" }, select: { id: true, name: true, kind: true, status: true } }),
     db.phoneNumber.findMany({ where: { ...org, agentId: agent.id, status: "ACTIVE" }, select: { id: true, number: true, label: true } }),
     db.phoneNumber.findMany({ where: { ...org, agentId: null, status: "ACTIVE" }, select: { id: true, number: true, label: true } }),
     db.auditLog.count({ where: { ...org, action: "agent.tested", targetId: agent.id } }),
     db.call.count({ where: { ...org, agentId: agent.id } }),
     listWorkspaceVoices(ctx.organisation.id),
+    db.agentDraft.findUnique({ where: { agentId: agent.id } }),
   ]);
+  // Unsaved changes kept by autosave: reopen the editor where the person stopped.
+  const draftParsed = draftRow ? agentDraftSchema.safeParse(draftRow.config) : null;
+  const draft = draftParsed?.success && draftRow && JSON.stringify(draftParsed.data) !== JSON.stringify(agent.config)
+    ? { config: draftParsed.data as typeof agent.config, savedAt: draftRow.updatedAt.toISOString() }
+    : undefined;
   const show = (n: { id: string; number: string; label: string }) => ({ ...n, number: formatNumber(n.number) });
 
   return (
@@ -46,6 +52,7 @@ export default async function AgentBuilderPage({ params, searchParams }: { param
       canDelete={can(ctx.role, "agent:delete")}
       isNew={isNew}
       workspaceVoices={workspaceVoices}
+      draft={draft}
       llmProvider={env.LLM_PROVIDER}
       initialWhen={lagosNow()}
       connections={{

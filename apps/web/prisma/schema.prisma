@@ -119,8 +119,34 @@ model Agent {
   calls          Call[]
   phoneNumbers   PhoneNumber[]
   knowledgeItems KnowledgeItem[]
+  draft          AgentDraft?
+  versions       AgentVersion[]
 
   @@index([organisationId])
+}
+
+/// Unsaved changes, kept automatically while someone edits an agent. Never used for calls:
+/// only "Save" changes Agent.config. Separate table so autosaving does not touch Agent.updatedAt.
+model AgentDraft {
+  agentId   String   @id
+  config    Json
+  savedById String?
+  updatedAt DateTime @updatedAt
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+}
+
+/// Every saved version of an agent (newest kept: 50), so an earlier prompt can be restored.
+model AgentVersion {
+  id             String      @id @default(cuid())
+  agentId        String
+  organisationId String
+  config         Json
+  status         AgentStatus
+  savedById      String?
+  createdAt      DateTime    @default(now())
+  agent          Agent       @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId, createdAt])
 }
 
 /// Who did what. Extended for call compliance in M4.

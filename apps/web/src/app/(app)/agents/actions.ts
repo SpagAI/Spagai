@@ -1,6 +1,6 @@
 "use server";
 
-import { agentReadiness, getPreset, normaliseAgentConfig, presetToAgentConfig, type AgentConfig } from "@spagai/core";
+import { agentConfigSchema, agentDraftSchema, agentReadiness, getPreset, normaliseAgentConfig, presetToAgentConfig, type AgentConfig } from "@spagai/core";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -55,11 +55,24 @@ export async function saveAgent(agentId: string, input: unknown, status: "DRAFT"
     if (!readiness.ready) return { ok: false, errors: readiness.problems };
   }
 
-  const updated = await db.agent.update({
-    where: { id: existing.id },
-    data: { name: normalised.config.name, config: normalised.config, status },
+  const org = ctx.organisation.id;
+  const updated = await db.$transaction(async (tx) => {
+    // Version history: the first save also keeps what was there before, so it can be restored.
+    if ((await tx.agentVersion.count({ where: { agentId: existing.id } })) === 0) {
+      await tx.agentVersion.create({ data: { agentId: existing.id, organisationId: org, config: existing.config, status: existing.status, savedById: null, createdAt: existing.updatedAt } });
+    }
+    await tx.agentVersion.create({ data: { agentId: existing.id, organisationId: org, config: normalised.config, status, savedById: ctx.user.id } });
+    // Keep the newest 50.
+    const old = await tx.agentVersion.findMany({ where: { agentId: existing.id }, orderBy: { createdAt: "desc" }, skip: MAX_VERSIONS, select: { id: true } });
+    if (old.length) await tx.agentVersion.deleteMany({ where: { id: { in: old.map((v) => v.id) } } });
+    // Saved for real: the autosaved draft is no longer needed.
+    await tx.agentDraft.deleteMany({ where: { agentId: existing.id } });
+    return tx.agent.update({
+      where: { id: existing.id },
+      data: { name: normalised.config.name, config: normalised.config, status },
+    });
   });
-  await audit(ctx.organisation.id, ctx.user.id, "agent.saved", { type: "agent", id: existing.id }, { status });
+  await audit(org, ctx.user.id, "agent.saved", { type: "agent", id: existing.id }, { status });
   revalidatePath("/agents");
   return { ok: true, savedAt: updated.updatedAt.toISOString(), status, config: normalised.config };
 }
@@ -112,4 +125,75 @@ export async function createCustomAgent(input: unknown): Promise<CreateCustomRes
   });
   await audit(ctx.organisation.id, ctx.user.id, "agent.created", { type: "agent", id: agent.id }, { from: "custom" });
   redirect(`/agents/${agent.id}?new=1`);
+}
+
+const MAX_VERSIONS = 50;
+/** Autosaved drafts can be large (long prompts) but not unlimited. */
+const MAX_DRAFT_BYTES = 400_000;
+
+export type AutosaveResult = { ok: true; savedAt: string } | { ok: false; message: string };
+
+/**
+ * Autosave: keep unsaved changes as a draft. The live agent (Agent.config) is not touched,
+ * so half-written changes never reach real calls; only "Save" does that.
+ */
+export async function autosaveAgentDraft(agentId: string, input: unknown): Promise<AutosaveResult> {
+  const ctx = await requirePermission("agent:edit");
+  const id = z.string().min(1).max(100).safeParse(agentId);
+  if (!id.success) return { ok: false, message: "Agent not found." };
+  if (JSON.stringify(input ?? null).length > MAX_DRAFT_BYTES) return { ok: false, message: "This draft is too large to keep." };
+  const parsed = agentDraftSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: "This draft could not be kept." };
+  const agent = await db.agent.findFirst({ where: { id: id.data, organisationId: ctx.organisation.id }, select: { id: true } });
+  if (!agent) return { ok: false, message: "Agent not found." };
+  const draft = await db.agentDraft.upsert({
+    where: { agentId: agent.id },
+    create: { agentId: agent.id, config: parsed.data, savedById: ctx.user.id },
+    update: { config: parsed.data, savedById: ctx.user.id },
+  });
+  return { ok: true, savedAt: draft.updatedAt.toISOString() };
+}
+
+/** Throw away the autosaved draft (the editor goes back to the last saved version). */
+export async function discardAgentDraft(agentId: string): Promise<void> {
+  const ctx = await requirePermission("agent:edit");
+  await db.agentDraft.deleteMany({ where: { agentId: z.string().min(1).max(100).parse(agentId), agent: { organisationId: ctx.organisation.id } } });
+}
+
+export interface AgentVersionSummary {
+  id: string;
+  savedAt: string;
+  savedBy: string | null;
+  status: "DRAFT" | "READY";
+  /** The person's own instructions (not the safety rules), for a quick look. */
+  prompt: string;
+  firstMessage: string;
+}
+
+/** Saved versions of an agent, newest first. */
+export async function listAgentVersions(agentId: string): Promise<{ versions: AgentVersionSummary[]; configs: Record<string, AgentConfig> }> {
+  const ctx = await requirePermission("agent:view");
+  const rows = await db.agentVersion.findMany({
+    where: { agentId: z.string().min(1).max(100).parse(agentId), organisationId: ctx.organisation.id },
+    orderBy: { createdAt: "desc" },
+    take: MAX_VERSIONS,
+  });
+  const userIds = [...new Set(rows.map((r) => r.savedById).filter((x): x is string => !!x))];
+  const users = new Map((await db.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true, email: true } })).map((u) => [u.id, u.name || u.email]));
+  const versions: AgentVersionSummary[] = [];
+  const configs: Record<string, AgentConfig> = {};
+  for (const r of rows) {
+    const parsed = agentConfigSchema.safeParse(r.config);
+    if (!parsed.success) continue;
+    configs[r.id] = parsed.data;
+    versions.push({
+      id: r.id,
+      savedAt: r.createdAt.toISOString(),
+      savedBy: r.savedById ? users.get(r.savedById) ?? null : null,
+      status: r.status,
+      prompt: parsed.data.blocks.filter((b) => !b.guardrail).map((b) => b.content.trim()).filter(Boolean).join("\n\n"),
+      firstMessage: parsed.data.firstMessage,
+    });
+  }
+  return { versions, configs };
 }

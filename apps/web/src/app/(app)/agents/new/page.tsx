@@ -72,7 +72,7 @@ export default async function NewAgentPage({ searchParams }: { searchParams: Pro
             <CardTitle className="flex items-center gap-2"><SlidersHorizontal className="size-5 text-primary" /> Custom agent</CardTitle>
             <CardDescription>Everything is yours to set. Nothing is written for you.</CardDescription>
           </CardHeader>
-          <CardContent><CustomAgentForm voices={all} company={ctx.organisation.name} /></CardContent>
+          <CardContent><CustomAgentForm voices={all} company={ctx.organisation.name} storageKey={`spagai:custom-agent:${ctx.organisation.id}`} /></CardContent>
         </Card>
       )}
 
