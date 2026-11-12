@@ -217,9 +217,9 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
       : `All changes saved`;
 
   return (
-    <div className="space-y-4">
-      {/* Top bar: one row */}
-      <div className="sticky top-0 z-20 -mx-4 flex flex-wrap items-center gap-2 border-b bg-background/95 px-4 py-2.5 backdrop-blur sm:-mx-6 sm:px-6">
+    <div className="space-y-3">
+      {/* Top bar: one row, flush under the page header */}
+      <div className="sticky top-0 z-20 -mx-4 -mt-6 flex flex-wrap items-center gap-2 border-b bg-background/95 px-4 py-2 backdrop-blur lg:-mx-8 lg:-mt-8 lg:px-8">
         <Button asChild variant="ghost" size="icon" aria-label={t("common.back")}>
           <Link href="/agents"><ArrowLeft /></Link>
         </Button>
@@ -228,7 +228,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
           value={config.name}
           disabled={readOnly}
           onChange={(e) => update({ name: e.target.value })}
-          className="h-9 w-auto min-w-24 max-w-56 border-transparent px-2 text-lg font-semibold shadow-none [field-sizing:content] hover:border-input focus-visible:border-input"
+          className="h-9 w-auto min-w-12 max-w-56 border-transparent px-2 text-lg font-semibold shadow-none [field-sizing:content] hover:border-input focus-visible:border-input"
         />
         <Badge variant={saved.status === "READY" ? "default" : "secondary"}>{t(`agents.status.${saved.status}`)}</Badge>
         <span className="hidden items-center gap-1 text-xs text-muted-foreground md:inline-flex">
@@ -315,9 +315,9 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
         </Alert>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[13rem_minmax(0,1fr)] xl:grid-cols-[13rem_minmax(0,1fr)_21rem]">
+      <div className="grid gap-4 lg:grid-cols-[13rem_minmax(0,1fr)] xl:grid-cols-[13rem_minmax(0,1fr)_21rem]">
         {/* Steps */}
-        <nav aria-label="Agent setup steps" className="hidden h-fit space-y-1 rounded-xl border bg-card p-3 lg:sticky lg:top-20 lg:block">
+        <nav aria-label="Agent setup steps" className="hidden h-fit space-y-1 rounded-xl border bg-card p-3 lg:sticky lg:top-16 lg:block">
           <p className="px-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Set up · {doneCount} of {STEPS.length} done</p>
           <div className="mx-2 mb-2 mt-1.5 h-1.5 rounded-full bg-muted"><div className="h-1.5 rounded-full bg-primary transition-all" style={{ width: `${(doneCount / STEPS.length) * 100}%` }} /></div>
           {STEPS.map((x, i) => (
@@ -337,10 +337,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
         </div>
 
         {/* The one section being edited */}
-        <div id="builder-step" className="min-w-0 scroll-mt-20 space-y-4">
-          <p className="hidden text-xs font-medium text-muted-foreground lg:block">
-            {stepIndex >= 0 ? `Step ${stepIndex + 1} of ${STEPS.length}` : "Advanced"}
-          </p>
+        <div id="builder-step" className="min-w-0 scroll-mt-16 space-y-4">
           <fieldset disabled={readOnly} className="min-w-0">
             {tab === "business" && <BusinessTab config={config} update={update} />}
             {tab === "voice" && <VoiceTab config={config} update={update} workspaceVoices={workspaceVoices} />}
@@ -369,7 +366,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
         </div>
 
         {/* Test your agent: always there on wide screens */}
-        <aside aria-label="Test your agent" className="hidden h-[calc(100dvh-7rem)] min-h-[34rem] flex-col rounded-xl border bg-card p-4 xl:sticky xl:top-20 xl:flex">
+        <aside aria-label="Test your agent" className="hidden h-[calc(100dvh-5.5rem)] min-h-[30rem] flex-col rounded-xl border bg-card p-4 xl:sticky xl:top-16 xl:flex">
           <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Test your agent</p>
           <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} />
         </aside>
