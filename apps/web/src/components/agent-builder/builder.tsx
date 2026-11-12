@@ -8,7 +8,6 @@ import { autosaveAgentDraft, deleteAgent, discardAgentDraft, saveAgent } from "@
 import { promptLength, record, redo, startHistory, undo, wasCleared } from "@/lib/agent-history";
 import { VersionHistory } from "./version-history";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/client";
@@ -230,7 +229,17 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
           onChange={(e) => update({ name: e.target.value })}
           className="h-9 w-auto min-w-12 max-w-56 border-transparent px-2 text-lg font-semibold shadow-none [field-sizing:content] hover:border-input focus-visible:border-input"
         />
-        <Badge variant={saved.status === "READY" ? "default" : "secondary"}>{t(`agents.status.${saved.status}`)}</Badge>
+        {/* A status, not a button: a dot and words, no solid fill. */}
+        <span
+          title={saved.status === "READY" ? "This agent is live and can make calls. Change it under More." : "This agent is a draft and cannot make calls yet. Change it under More."}
+          className={cn(
+            "inline-flex items-center gap-1.5 text-xs font-medium",
+            saved.status === "READY" ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground",
+          )}
+        >
+          <span className={cn("size-2 rounded-full", saved.status === "READY" ? "bg-emerald-500" : "bg-muted-foreground/50")} />
+          {saved.status === "READY" ? "Live: Ready" : t("agents.status.DRAFT")}
+        </span>
         <span className="hidden items-center gap-1 text-xs text-muted-foreground md:inline-flex">
           {!dirty && !pending && <Check className="size-3.5" />} {saveText}
         </span>
