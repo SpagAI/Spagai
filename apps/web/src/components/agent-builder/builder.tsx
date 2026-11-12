@@ -1,7 +1,7 @@
 "use client";
 
 import { compilePrompt, lintPrompt, orderVoices, type AgentConfig, type VariableDef, type Voice } from "@spagai/core";
-import { ArrowLeft, ArrowRight, Check, ChevronDown, CircleAlert, CircleCheck, CircleDot, FlaskConical, History, Mic, MoreHorizontal, Redo2, Save, Trash2, TriangleAlert, Undo2, X, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, CircleAlert, CircleCheck, CircleDot, FlaskConical, History, Mic, MoreHorizontal, Redo2, Save, Trash2, TriangleAlert, Undo2, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { autosaveAgentDraft, deleteAgent, discardAgentDraft, saveAgent } from "@/app/(app)/agents/actions";
@@ -73,16 +73,6 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
   const [pending, startTransition] = useTransition();
 
   const dirty = JSON.stringify(config) !== JSON.stringify(saved.config);
-  const detailsFilled = config.variables.filter((v) => v.scope === "agent" && v.required).every((v) => (config.variableValues[v.name] ?? "").trim());
-  const done: Record<string, boolean> = {
-    business: !!config.name.trim() && detailsFilled,
-    voice: !!config.voiceId,
-    instructions: promptLength(config) > 40,
-    firstMessage: !!config.firstMessage.trim(),
-    knowledge: connections.knowledge.length > 0,
-    numbers: connections.numbers.length > 0,
-  };
-  const doneCount = STEPS.filter((x) => done[x.id]).length;
   const [talkOpen, setTalkOpen] = useState(false);
   const deleteRef = useRef<HTMLFormElement>(null);
 
@@ -202,9 +192,6 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
     });
 
   const voice = orderVoices(workspaceVoices).find((v) => v.id === config.voiceId);
-  const stepIndex = STEPS.findIndex((x) => x.id === tab);
-  const prev = stepIndex > 0 ? STEPS[stepIndex - 1] : undefined;
-  const next = stepIndex >= 0 && stepIndex < STEPS.length - 1 ? STEPS[stepIndex + 1] : undefined;
   const go = (id: Tab) => {
     setTab(id);
     requestAnimationFrame(() => document.getElementById("builder-step")?.scrollIntoView({ block: "start", behavior: "smooth" }));
@@ -313,7 +300,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
           }}
         />
       )}
-      {isNew && <Alert variant="success">Your agent is created. Go through the steps on the left, and test it any time with Start talking.</Alert>}
+      {isNew && <Alert variant="success">Your agent is created. Open any tab to change it, in any order, and press Start talking to hear it at any time.</Alert>}
       {readOnly && <Alert>{t("agents.readOnly")}</Alert>}
       {errors.length > 0 && (
         <Alert variant="destructive">
@@ -324,22 +311,18 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
         </Alert>
       )}
 
-      {/* Steps: one row of tabs across the top (wraps, never cut off). Phones get a dropdown. */}
-      <nav aria-label="Agent setup steps" className="hidden flex-wrap items-center gap-x-0.5 gap-y-1 rounded-xl border bg-card px-2 py-1.5 lg:flex">
-        <span className="mr-1 flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide whitespace-nowrap text-muted-foreground" title={`${doneCount} of ${STEPS.length} steps done`}>
-          {doneCount}/{STEPS.length} done
-        </span>
-        {STEPS.map((x, i) => (
-          <StepLink key={x.id} n={i + 1} label={x.label} done={done[x.id]} active={tab === x.id} onClick={() => go(x.id)} />
+      {/* Tabs across the top, in any order (they wrap, never cut off). Phones get a dropdown. */}
+      <nav aria-label="Agent settings" role="tablist" className="hidden flex-wrap items-end border-b lg:flex">
+        {STEPS.map((x) => (
+          <StepLink key={x.id} label={x.label} active={tab === x.id} onClick={() => go(x.id)} />
         ))}
         <AdvancedMenu active={ADVANCED.find((x) => x.id === tab)?.label} onPick={(id) => go(id)} />
       </nav>
-      <div className="space-y-2 rounded-xl border bg-card p-3 lg:hidden">
-        <Select aria-label="Setup step" value={tab} onChange={(e) => go(e.target.value as Tab)}>
-          {STEPS.map((x, i) => <option key={x.id} value={x.id}>Step {i + 1} of {STEPS.length}: {x.label}{done[x.id] ? " ✓" : ""}</option>)}
+      <div className="lg:hidden">
+        <Select aria-label="Agent settings" value={tab} onChange={(e) => go(e.target.value as Tab)}>
+          {STEPS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
           <optgroup label="Advanced">{ADVANCED.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</optgroup>
         </Select>
-        <div className="h-1.5 rounded-full bg-muted"><div className="h-1.5 rounded-full bg-primary" style={{ width: `${(doneCount / STEPS.length) * 100}%` }} /></div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
@@ -366,10 +349,6 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
           {tab === "knowledge" && <KnowledgeTab agentId={agentId} c={connections} />}
           {tab === "numbers" && <NumbersTab agentId={agentId} c={connections} />}
 
-          <div className="flex items-center justify-between gap-2">
-            {prev ? <Button type="button" variant="ghost" onClick={() => go(prev.id)}><ArrowLeft /> {prev.label}</Button> : <span />}
-            {next ? <Button type="button" onClick={() => go(next.id)}>Next: {next.label} <ArrowRight /></Button> : stepIndex === STEPS.length - 1 ? <span className="text-sm text-muted-foreground">Last step. Test your agent, then Save.</span> : null}
-          </div>
         </div>
 
         {/* Test your agent: always there on wide screens */}
@@ -400,22 +379,19 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
   );
 }
 
-function StepLink({ n, label, done, active, onClick }: { n?: number; label: string; done?: boolean; active: boolean; onClick: () => void }) {
+/** A tab. Tabs can be opened in any order; nothing has to be "done" first. */
+function StepLink({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={active}
       onClick={onClick}
-      aria-current={active ? "step" : undefined}
-      className={cn("flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-sm whitespace-nowrap transition-colors", active ? "bg-primary/10 font-semibold text-primary" : "text-foreground hover:bg-muted")}
+      className={cn(
+        "-mb-px shrink-0 border-b-2 px-3 py-2.5 text-sm whitespace-nowrap transition-colors",
+        active ? "border-primary font-semibold text-primary" : "border-transparent text-muted-foreground hover:text-foreground",
+      )}
     >
-      <span
-        className={cn(
-          "grid size-5 shrink-0 place-items-center rounded-full border text-[11px]",
-          done ? "border-primary bg-primary text-primary-foreground" : active ? "border-primary text-primary" : n ? "border-muted-foreground/40 text-muted-foreground" : "border-dashed border-muted-foreground/40",
-        )}
-      >
-        {done ? <Check className="size-3" /> : n ?? ""}
-      </span>
       {label}
     </button>
   );
@@ -438,7 +414,7 @@ function AdvancedMenu({ active, onPick }: { active?: string; onPick: (id: Tab) =
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className={cn("flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm whitespace-nowrap transition-colors", active ? "bg-primary/10 font-semibold text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
+        className={cn("-mb-px flex items-center gap-1 border-b-2 px-3 py-2.5 text-sm whitespace-nowrap transition-colors", active ? "border-primary font-semibold text-primary" : "border-transparent text-muted-foreground hover:text-foreground")}
       >
         {active ? `Advanced: ${active}` : "Advanced"} <ChevronDown className="size-3.5" />
       </button>
