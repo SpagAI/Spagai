@@ -50,6 +50,8 @@ const schema = z.object({
   OPENAI_COMPATIBLE_BASE_URL: z.string().url().optional().or(z.literal("").transform(() => undefined)),
   OPENAI_COMPATIBLE_API_KEY: z.string().optional(),
   OPENAI_COMPATIBLE_MODEL: z.string().optional(),
+  /** Speech-to-text model on the same OpenAI-compatible provider (Groq: whisper-large-v3). Used when LLM_PROVIDER=openai_compatible. */
+  STT_MODEL: z.string().default("whisper-large-v3"),
   OPENAI_COMPATIBLE_TTS_MODEL: z.string().optional(),
   /** Fish Audio (voice bank + real speech). Without a key, voices fall back to browser speech. */
   FISH_AUDIO_API_KEY: z

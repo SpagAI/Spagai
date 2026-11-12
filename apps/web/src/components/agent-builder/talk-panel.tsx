@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useListener } from "@/components/voice/use-listener";
+import { useRecorderListener } from "@/components/voice/use-recorder-listener";
 import { useSpeaker } from "@/components/voice/use-speaker";
 import { cn } from "@/lib/utils";
 import type { TestLead } from "./shared";
@@ -34,15 +35,23 @@ export interface TalkPanelProps {
   initialWhen: string;
   /** The pretend person being called (set in Business details). */
   lead: TestLead;
+  /** True when our server can do the listening (sharp on any browser); otherwise the browser listens. */
+  serverListening?: boolean;
 }
 
 /**
  * "Test your agent": one button. The agent speaks first, then the microphone listens by itself,
  * like a phone call. Uses the settings on screen (even unsaved). Typing is there as a fallback.
  */
-export function TalkPanel({ config, voice, provider, initialWhen, lead }: TalkPanelProps) {
+export function TalkPanel({ config, voice, provider, initialWhen, lead, serverListening = false }: TalkPanelProps) {
   const speaker = useSpeaker();
-  const listener = useListener(config.language);
+  const browserListener = useListener(config.language);
+  // Words to help the listener: the agent's own names and the test person's name.
+  const recorder = useRecorderListener(config.language, () =>
+    [config.name, ...Object.values(config.variableValues), lead.firstName, lead.lastName].filter((w) => w && w.length <= 60),
+  );
+  const listener = serverListening && recorder.supported ? recorder : browserListener;
+  const level = listener === recorder ? recorder.level : 0;
   const callVars = config.variables.filter((v) => v.scope === "call" && !FROM_LEAD.has(v.name));
 
   const [callValues, setCallValues] = useState<Record<string, string>>({});
@@ -240,14 +249,18 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead }: TalkPa
             <p key={e.id} className="ml-auto w-fit max-w-[90%] rounded-2xl rounded-tr-sm bg-primary px-3 py-2 text-primary-foreground">{e.text}</p>
           ),
         )}
-        {phase === "listening" && listener.interim && <p className="ml-auto w-fit max-w-[90%] rounded-2xl bg-primary/40 px-3 py-2 italic text-primary-foreground">{listener.interim}</p>}
+        {listener.interim && <p className="ml-auto w-fit max-w-[90%] rounded-2xl bg-primary/40 px-3 py-2 italic text-primary-foreground">{listener.interim}</p>}
         <div ref={bottomRef} />
       </div>
 
       {/* Status */}
       {phase !== "idle" && (
         <p className={cn("flex items-center justify-center gap-2 text-sm font-medium", phase === "listening" ? "text-primary" : "text-muted-foreground")}>
-          {phase === "listening" && <span className="size-2.5 animate-ping rounded-full bg-primary" />}
+          {phase === "listening" && (level > 0 ? (
+            <span className="flex h-4 items-end gap-[2px]" aria-hidden>
+              {[0.6, 1, 0.8].map((k, i) => <span key={i} className="w-1 rounded-full bg-primary transition-all" style={{ height: `${Math.max(15, Math.min(100, level * 100 * k))}%` }} />)}
+            </span>
+          ) : <span className="size-2.5 animate-ping rounded-full bg-primary" />)}
           {(phase === "thinking" || phase === "connecting") && <Loader2 className="size-4 animate-spin" />}
           {phase === "speaking" && <Volume2 className="size-4" />}
           {PHASE_TEXT[phase]}
@@ -257,7 +270,7 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead }: TalkPa
       {listener.error && <p className="text-xs text-destructive">{listener.error}</p>}
       {speaker.error && <p className="text-xs text-destructive">{speaker.error}</p>}
       {errors.length > 0 && <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">{errors.join(" ")}</div>}
-      {!listener.supported && <p className="text-xs text-muted-foreground">To talk out loud, use Chrome, Edge or Safari. You can type instead.</p>}
+      {!listener.supported && <p className="text-xs text-muted-foreground">This browser cannot use the microphone. You can type instead.</p>}
 
       {heardNothing && live && !typeMode && (
         <Button type="button" variant="outline" className="w-full" onClick={() => listen()}>

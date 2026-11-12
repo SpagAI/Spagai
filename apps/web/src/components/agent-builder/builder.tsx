@@ -49,11 +49,13 @@ export interface AgentBuilderProps {
   /** For "Talk to agent": which AI brain answers ("mock" = demo replies) and the starting Lagos time. */
   llmProvider?: string;
   initialWhen?: string;
+  /** Our server can do the listening for "Test your agent" (Groq Whisper). */
+  serverListening?: boolean;
   /** Unsaved changes kept by autosave last time: the editor opens with them. */
   draft?: { config: AgentConfig; savedAt: string };
 }
 
-export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt, readOnly, canDelete, connections, isNew, workspaceVoices = [], llmProvider = "mock", initialWhen = "2026-10-13T10:30", draft }: AgentBuilderProps) {
+export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt, readOnly, canDelete, connections, isNew, workspaceVoices = [], llmProvider = "mock", initialWhen = "2026-10-13T10:30", draft, serverListening = false }: AgentBuilderProps) {
   const t = useT();
   // Undo/redo history; `config` is what is on screen now.
   const [hist, setHist] = useState(() => startHistory(draft?.config ?? initialConfig));
@@ -364,7 +366,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
         {/* Test your agent: always there on wide screens */}
         <aside aria-label="Test your agent" className="hidden h-fit flex-col rounded-xl border bg-card p-4 xl:sticky xl:top-16 xl:flex">
           <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Test your agent</p>
-          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} />
+          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} serverListening={serverListening} />
         </aside>
       </div>
 
@@ -382,7 +384,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
             <p className="text-sm font-semibold">Test your agent</p>
             <Button type="button" variant="ghost" size="icon" onClick={() => setTalkOpen(false)} aria-label="Close"><X /></Button>
           </div>
-          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} />
+          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} serverListening={serverListening} />
         </div>
       )}
     </div>

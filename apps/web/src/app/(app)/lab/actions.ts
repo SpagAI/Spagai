@@ -21,6 +21,7 @@ import { requirePermission } from "@/server/auth/session";
 import { audit, loadAgent } from "@/server/agents";
 import { getLlm, PHONE_CALL_RULES, todayLine } from "@/server/providers";
 import { RateLimiter } from "@/server/rate-limit";
+import { SpeechToTextError, transcribe } from "@/server/speech-to-text";
 
 const turnSchema = z.object({
   lead: z.object({
@@ -202,5 +203,23 @@ async function runTurn(organisationId: string, config: AgentConfig, input: z.inf
     return { ok: true, provider: llm.name, line: toLine(turn, now) };
   } catch (e) {
     return { ok: false, errors: [e instanceof Error ? e.message : "The agent could not reply."] };
+  }
+}
+
+export type TranscribeResult = { ok: true; text: string } | { ok: false; message: string };
+
+/** "Test your agent": turn a short recording into text on the server (sharp on any browser). */
+export async function transcribeSpeech(form: FormData): Promise<TranscribeResult> {
+  const ctx = await requirePermission("agent:view");
+  const audio = form.get("audio");
+  if (!(audio instanceof Blob) || audio.size === 0) return { ok: false, message: "Nothing was recorded." };
+  if (audio.size > 1_900_000) return { ok: false, message: "That recording is too long. Please speak in shorter turns." };
+  const hints = z.array(z.string().max(80)).max(30).safeParse(JSON.parse(String(form.get("hints") ?? "[]")));
+  const language = z.string().max(10).safeParse(form.get("language"));
+  try {
+    const text = await transcribe(ctx.organisation.id, audio, hints.success ? hints.data : [], language.success ? language.data : "en-NG");
+    return { ok: true, text };
+  } catch (e) {
+    return { ok: false, message: e instanceof SpeechToTextError ? e.message : "The recording could not be understood. Please try again." };
   }
 }

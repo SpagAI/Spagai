@@ -1,5 +1,6 @@
 import { agentDraftSchema, toLagosParts } from "@spagai/core";
 import { env } from "@/server/env";
+import { speechToTextAvailable } from "@/server/speech-to-text";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AgentBuilder } from "@/components/agent-builder/builder";
@@ -54,6 +55,7 @@ export default async function AgentBuilderPage({ params, searchParams }: { param
       workspaceVoices={workspaceVoices}
       draft={draft}
       llmProvider={env.LLM_PROVIDER}
+      serverListening={speechToTextAvailable()}
       initialWhen={lagosNow()}
       connections={{
         knowledge,
