@@ -3,69 +3,43 @@
 import { DEFAULT_VOICE_SETTINGS, type VoiceSettings } from "@spagai/core";
 import { RotateCcw } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import { expressText, roundTo, speedText, volumeText } from "@/lib/voice-settings-text";
+import { roundTo } from "@/lib/voice-settings-text";
 import { Switch } from "@/components/ui/switch";
 import { PlayVoiceButton } from "./play-voice-button";
 
-/**
- * A clear slider: name and current value on top, − and + buttons that move exactly one step,
- * a thick filled track with a big handle, and a marked scale underneath.
- */
-function Slider({ id, label, value, min, max, step, text, marks, defaultValue, onChange, note }: {
-  id: string; label: string; value: number; min: number; max: number; step: number; text: string;
-  marks: { at: number; label: string }[]; defaultValue: number; onChange: (v: number) => void; note?: string;
+/** One slim row: name, − slider +, and the chosen value at the right edge. */
+function Slider({ id, label, value, min, max, step, show, onChange, hint }: {
+  id: string; label: string; value: number; min: number; max: number; step: number; show: string;
+  onChange: (v: number) => void; hint?: string;
 }) {
   const clamp = (v: number) => Math.min(max, Math.max(min, roundTo(v, step)));
   const pct = ((value - min) / (max - min)) * 100;
-  const isDefault = Math.abs(value - defaultValue) < step / 2;
+  const stepBtn = "grid size-6 shrink-0 place-items-center rounded-full text-base leading-none text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30";
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <Label htmlFor={id} className="text-sm font-semibold">{label}</Label>
-        <span className="rounded-md bg-primary/10 px-2 py-0.5 text-sm font-medium tabular-nums text-primary" aria-live="polite">{text}</span>
+    <div className="grid grid-cols-[7.5rem_minmax(0,1fr)_3.5rem] items-center gap-3" title={hint}>
+      <Label htmlFor={id} className="text-sm font-medium">{label}</Label>
+      <div className="flex items-center gap-1.5">
+        <button type="button" onClick={() => onChange(clamp(value - step))} disabled={value <= min} aria-label={`${label}: one step down`} className={stepBtn}>−</button>
+        <input
+          id={id}
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(clamp(Number(e.target.value)))}
+          aria-valuetext={show}
+          className="h-4 w-full cursor-pointer appearance-none bg-transparent focus-visible:outline-none
+            [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-[linear-gradient(to_right,var(--color-primary)_var(--fill),var(--color-muted)_var(--fill))]
+            [&::-webkit-slider-thumb]:-mt-1.5 [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow
+            focus-visible:[&::-webkit-slider-thumb]:ring-4 focus-visible:[&::-webkit-slider-thumb]:ring-primary/25
+            [&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-muted [&::-moz-range-progress]:h-1 [&::-moz-range-progress]:rounded-full [&::-moz-range-progress]:bg-primary
+            [&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-primary"
+          style={{ ["--fill" as string]: `${pct}%` }}
+        />
+        <button type="button" onClick={() => onChange(clamp(value + step))} disabled={value >= max} aria-label={`${label}: one step up`} className={stepBtn}>+</button>
       </div>
-      <div className="flex items-center gap-3">
-        <button type="button" onClick={() => onChange(clamp(value - step))} disabled={value <= min} aria-label={`${label}: one step down`} className="grid size-8 shrink-0 place-items-center rounded-full border bg-card text-lg leading-none hover:border-primary/50 hover:text-primary disabled:opacity-40">−</button>
-        <div className="flex-1">
-          <input
-            id={id}
-            type="range"
-            min={min}
-            max={max}
-            step={step}
-            value={value}
-            onChange={(e) => onChange(clamp(Number(e.target.value)))}
-            aria-valuetext={text}
-            className="h-6 w-full cursor-pointer appearance-none bg-transparent focus-visible:outline-none
-              [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-[linear-gradient(to_right,var(--color-primary)_var(--fill),var(--color-muted)_var(--fill))]
-              [&::-webkit-slider-thumb]:-mt-2 [&::-webkit-slider-thumb]:size-6 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-[3px] [&::-webkit-slider-thumb]:border-primary [&::-webkit-slider-thumb]:bg-background [&::-webkit-slider-thumb]:shadow-md
-              focus-visible:[&::-webkit-slider-thumb]:ring-4 focus-visible:[&::-webkit-slider-thumb]:ring-primary/30
-              [&::-moz-range-track]:h-2 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-muted [&::-moz-range-progress]:h-2 [&::-moz-range-progress]:rounded-full [&::-moz-range-progress]:bg-primary
-              [&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-[3px] [&::-moz-range-thumb]:border-primary [&::-moz-range-thumb]:bg-background"
-            style={{ ["--fill" as string]: `${pct}%` }}
-          />
-        </div>
-        <button type="button" onClick={() => onChange(clamp(value + step))} disabled={value >= max} aria-label={`${label}: one step up`} className="grid size-8 shrink-0 place-items-center rounded-full border bg-card text-lg leading-none hover:border-primary/50 hover:text-primary disabled:opacity-40">+</button>
-      </div>
-      {/* Marked scale, lined up under the track (the − and + buttons are 2rem wide plus the gap) */}
-      <div className="relative mx-11 -mt-1 h-8 text-[11px] text-muted-foreground">
-            {marks.map((m) => {
-              const left = ((m.at - min) / (max - min)) * 100;
-              const isDef = Math.abs(m.at - defaultValue) < step / 2;
-              return (
-                <span key={m.at} className="absolute -translate-x-1/2 text-center whitespace-nowrap" style={{ left: `calc(${left}% + ${(0.5 - left / 100) * 24}px)` }}>
-                  <span className={`mx-auto block h-1.5 w-px ${isDef ? "bg-primary" : "bg-muted-foreground/40"}`} />
-                  <span className={isDef ? "font-medium text-foreground" : undefined}>{m.label}</span>
-                  {isDef && <span className="block text-[10px] text-primary">default</span>}
-                </span>
-              );
-            })}
-          </div>
-
-      <div className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
-        <span>{note ?? `Each − or + is one step of ${step === 1 ? "1" : step}.`}</span>
-        {!isDefault && <button type="button" onClick={() => onChange(defaultValue)} className="text-primary hover:underline">Back to default</button>}
-      </div>
+      <span className="text-right text-sm font-semibold tabular-nums text-foreground" aria-live="polite">{show}</span>
     </div>
   );
 }
@@ -90,7 +64,7 @@ export function VoiceSettingsControls({ value, onChange, voiceId, sampleText, re
         <div>
           <p className="text-sm font-semibold">Voice settings</p>
           <p className="text-xs text-muted-foreground">
-            {realVoice ? "All settings change the real voice." : "Demo voices use speed and loudness only. Choose a Fish Audio voice to use every setting."}
+            {realVoice ? "All settings change the real voice." : "Demo voices use speed and loudness only."}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -107,33 +81,15 @@ export function VoiceSettingsControls({ value, onChange, voiceId, sampleText, re
           )}
         </div>
       </div>
-      <div className="space-y-5">
-        <Slider
-          id="vs-speed" label="Speed" value={value.speed} min={0.5} max={2} step={0.1} defaultValue={DEFAULT_VOICE_SETTINGS.speed}
-          text={speedText(value.speed)}
-          marks={[{ at: 0.5, label: "0.5×" }, { at: 1, label: "1.0×" }, { at: 1.5, label: "1.5×" }, { at: 2, label: "2.0×" }]}
-          onChange={(speed) => set({ speed })}
-          note="Each − or + changes the speed by 0.1× (10%)."
-        />
-        <Slider
-          id="vs-volume" label="Loudness" value={value.volume} min={-10} max={10} step={1} defaultValue={DEFAULT_VOICE_SETTINGS.volume}
-          text={volumeText(value.volume)}
-          marks={[{ at: -10, label: "−10" }, { at: -5, label: "−5" }, { at: 0, label: "0" }, { at: 5, label: "+5" }, { at: 10, label: "+10" }]}
-          onChange={(volume) => set({ volume })}
-          note={realVoice ? "Each − or + is one step louder or quieter." : "Each − or + is one step. Demo voices can only get quieter."}
-        />
-        <Slider
-          id="vs-expr" label="Expressiveness" value={Math.round(value.expressiveness * 10)} min={0} max={10} step={1} defaultValue={Math.round(DEFAULT_VOICE_SETTINGS.expressiveness * 10)}
-          text={expressText(value.expressiveness)}
-          marks={[{ at: 0, label: "0" }, { at: 3, label: "3" }, { at: 7, label: "7" }, { at: 10, label: "10" }]}
-          onChange={(n) => set({ expressiveness: n / 10 })}
-          note={realVoice ? "Each − or + is one point out of 10. The change is subtle." : "Real voices only."}
-        />
+      <div className="space-y-3">
+        <Slider id="vs-speed" label="Speed" value={value.speed} min={0.5} max={2} step={0.1} show={`${roundTo(value.speed, 0.1).toFixed(1)}×`} onChange={(speed) => set({ speed })} hint="0.5× (slow) to 2× (fast). 1.0× is normal." />
+        <Slider id="vs-volume" label="Loudness" value={value.volume} min={-10} max={10} step={1} show={value.volume > 0 ? `+${value.volume}` : String(value.volume)} onChange={(volume) => set({ volume })} hint="−10 (quieter) to +10 (louder). 0 is normal." />
+        <Slider id="vs-expr" label="Expressiveness" value={Math.round(value.expressiveness * 10)} min={0} max={10} step={1} show={`${Math.round(value.expressiveness * 10)}/10`} onChange={(n) => set({ expressiveness: n / 10 })} hint="0 (steady) to 10 (lively). 7 is normal." />
       </div>
       <div className="flex items-start justify-between gap-3 border-t pt-3">
         <div>
           <Label htmlFor="vs-numbers">Read numbers and dates naturally</Label>
-          <p className="text-xs text-muted-foreground">On: “14/11/2026” is read as “the 14th of November 2026”. Off: read as written, like “fourteen eleven two thousand twenty-six”. {realVoice ? "" : "Real voices only."}</p>
+          <p className="text-xs text-muted-foreground">Says “14/11/2026” as “the 14th of November”.{realVoice ? "" : " Real voices only."}</p>
         </div>
         <Switch id="vs-numbers" checked={value.naturalNumbers} onCheckedChange={(naturalNumbers) => set({ naturalNumbers })} />
       </div>
