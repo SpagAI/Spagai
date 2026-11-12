@@ -16,9 +16,10 @@ function Slider({ id, label, value, min, max, step, show, onChange, hint }: {
   const pct = ((value - min) / (max - min)) * 100;
   const stepBtn = "grid size-6 shrink-0 place-items-center rounded-full text-base leading-none text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30";
   return (
-    <div className="grid grid-cols-[7.5rem_minmax(0,1fr)_3.5rem] items-center gap-3" title={hint}>
-      <Label htmlFor={id} className="text-sm font-medium">{label}</Label>
-      <div className="flex items-center gap-1.5">
+    <div className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[7.5rem_minmax(0,1fr)_3.5rem]" title={hint}>
+      <Label htmlFor={id} className="order-1 text-sm font-medium">{label}</Label>
+      {/* Phones: name and value on one line, the slider full width below. */}
+      <div className="order-3 col-span-2 flex items-center gap-1.5 sm:order-2 sm:col-span-1">
         <button type="button" onClick={() => onChange(clamp(value - step))} disabled={value <= min} aria-label={`${label}: one step down`} className={stepBtn}>−</button>
         <input
           id={id}
@@ -39,7 +40,7 @@ function Slider({ id, label, value, min, max, step, show, onChange, hint }: {
         />
         <button type="button" onClick={() => onChange(clamp(value + step))} disabled={value >= max} aria-label={`${label}: one step up`} className={stepBtn}>+</button>
       </div>
-      <span className="text-right text-sm font-semibold tabular-nums text-foreground" aria-live="polite">{show}</span>
+      <span className="order-2 text-right text-sm font-semibold tabular-nums text-foreground sm:order-3" aria-live="polite">{show}</span>
     </div>
   );
 }

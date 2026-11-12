@@ -202,7 +202,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
   return (
     <div className="space-y-3">
       {/* Top bar: one row, flush under the page header */}
-      <div className="sticky top-0 z-20 -mx-4 -mt-6 flex flex-wrap items-center gap-2 border-b bg-background/95 px-4 py-2 backdrop-blur lg:-mx-8 lg:-mt-8 lg:px-8">
+      <div className="z-20 -mx-4 -mt-6 flex lg:sticky lg:top-0 flex-wrap items-center gap-2 border-b bg-background/95 px-4 py-2 backdrop-blur lg:-mx-8 lg:-mt-8 lg:px-8">
         <Button asChild variant="ghost" size="icon" aria-label={t("common.back")}>
           <Link href="/agents"><ArrowLeft /></Link>
         </Button>

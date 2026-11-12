@@ -8,14 +8,14 @@ import {
   sanitiseForSpeech,
   TOOL_DEFINITIONS,
   orderVoices,
-  VOICE_PROVIDERS,
   type AgentConfig,
   type ToolId,
   type Voice,
   type VoiceLanguage,
 } from "@spagai/core";
-import { Check, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { VoiceSettingsControls } from "@/components/voice/voice-settings";
+import { VoicePicker } from "./voice-picker";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,6 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { PlayButton } from "@/components/voice/play-button";
 import { useSpeaker } from "@/components/voice/use-speaker";
 import { useT } from "@/i18n/client";
 import { cn } from "@/lib/utils";
@@ -227,43 +226,13 @@ export function VoiceTab({ config, update, workspaceVoices = [] }: { config: Age
           realVoice={voices.find((v) => v.id === config.voiceId)?.provider === "fish_audio"}
         />
         {speaker.error && <p className="text-sm text-destructive">{speaker.error}</p>}
-        <div className="grid gap-3 sm:grid-cols-2">
-          {voices.map((v) => {
-            const selected = config.voiceId === v.id;
-            const usable = v.status === "available";
-            // The play button sits beside the choose button (a button cannot contain another button).
-            return (
-              <div key={v.id} className={cn("relative rounded-lg border transition-colors", selected ? "border-primary bg-primary/5" : "hover:border-primary/50", !usable && "opacity-60")}>
-                <button
-                  type="button"
-                  disabled={!usable}
-                  onClick={() => update({ voiceId: v.id })}
-                  aria-pressed={selected}
-                  className="w-full space-y-1 p-3 pr-14 text-left disabled:cursor-not-allowed"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{v.name}</span>
-                    {selected ? <Check className="size-4 text-primary" /> : <Badge variant="outline">{VOICE_PROVIDERS[v.provider] ?? v.provider}</Badge>}
-                  </div>
-                  <p className="text-xs text-muted-foreground">{v.gender} · {LANGUAGE_NAMES[v.language]}</p>
-                  <p className="text-xs italic text-muted-foreground">“{v.sampleText}”</p>
-                  {!usable && <Badge variant="warning">{t("builder.voice.notConfigured")}</Badge>}
-                </button>
-                {usable && (
-                  <div className="absolute top-3 right-3">
-                    <PlayButton
-                      size="icon"
-                      playing={speaker.playingKey === v.id}
-                      onPlay={() => void speaker.speak(v.id, renderVariables(config.firstMessage, sampleValues(config)), v.id, config.voiceSettings)}
-                      onStop={speaker.stop}
-                    />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <p className="text-xs text-muted-foreground">{t("builder.voice.playHint")}</p>
+        <VoicePicker
+          voices={voices}
+          selectedId={config.voiceId}
+          playingId={speaker.playingKey}
+          onChoose={(id) => update({ voiceId: id })}
+          onPlay={(v) => (speaker.playingKey === v.id ? speaker.stop() : void speaker.speak(v.id, renderVariables(config.firstMessage, sampleValues(config)), v.id, config.voiceSettings))}
+        />
         {!config.voiceId && <p className="text-sm text-muted-foreground">{t("builder.voice.none")}</p>}
       </CardContent>
     </Card>
