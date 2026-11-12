@@ -191,7 +191,7 @@ export function CustomAgentForm({ voices, company, storageKey }: { voices: Voice
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="c-prompt">Instructions (prompt)</Label>
+        <Label htmlFor="c-prompt">Prompt</Label>
         <Textarea id="c-prompt" rows={14} maxLength={MAX_BLOCK_CHARS} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={PROMPT_HINT} className="font-mono text-sm" />
         <div className="flex justify-between gap-3 text-xs text-muted-foreground">
           <span>Saved exactly as you write it, and kept in this browser as you type. Any other {"{{name}}"} you use becomes a value you fill per call or from your lead list.</span>

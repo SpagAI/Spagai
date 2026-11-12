@@ -23,8 +23,8 @@ import { BusinessTab, FirstMessageTab, SilenceTab, ToolsTab, VoiceTab } from "./
 const STEPS = [
   { id: "business", label: "Business details" },
   { id: "voice", label: "Voice" },
-  { id: "instructions", label: "Instructions" },
   { id: "firstMessage", label: "First message" },
+  { id: "instructions", label: "Prompt" },
   { id: "knowledge", label: "Knowledge base" },
   { id: "numbers", label: "Phone number" },
 ] as const;
@@ -332,8 +332,8 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
             {tab === "instructions" && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Instructions</CardTitle>
-                  <CardDescription>What the agent should do on each call. Templates arrive already written: change anything, or clear it and write your own.</CardDescription>
+                  <CardTitle>Prompt</CardTitle>
+                  <CardDescription>What the agent should know and do on each call. Templates arrive already written: change anything, or clear it and write your own.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <InstructionsStep config={config} onChange={(c) => change(() => c)} onAddVariable={addVariable} readOnly={readOnly} />

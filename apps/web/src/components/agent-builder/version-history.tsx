@@ -84,7 +84,7 @@ export function VersionHistory({ agentId, onClose, onRestore }: { agentId: strin
                     <p className="text-sm">{version.firstMessage || "(empty)"}</p>
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground">Instructions (prompt)</p>
+                    <p className="text-xs font-medium text-muted-foreground">Prompt</p>
                     <pre className="whitespace-pre-wrap rounded-lg border bg-muted/40 p-3 font-mono text-xs leading-relaxed">{version.prompt || "(empty)"}</pre>
                   </div>
                 </div>

@@ -57,7 +57,7 @@ export function InstructionsStep({
     <div className="space-y-4">
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <label htmlFor="prompt-box" className="text-sm font-semibold">Instructions (prompt)</label>
+          <label htmlFor="prompt-box" className="text-sm font-semibold">Prompt</label>
           {!readOnly && text.length > 0 && (
             <Button type="button" variant="ghost" size="sm" onClick={() => onChange(withPromptText(config, ""))}>
               <Eraser /> Clear prompt
