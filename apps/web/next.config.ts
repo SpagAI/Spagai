@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import path from "node:path";
 import type { NextConfig } from "next";
 
@@ -9,7 +10,18 @@ const codespaceHost =
     ? `${process.env.CODESPACE_NAME}-3000.${process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}`
     : null;
 
+/** Which update this build is: shown at /api/version so we can tell when a push is live. */
+function buildCommit(): string {
+  if (process.env.WORKERS_CI_COMMIT_SHA) return process.env.WORKERS_CI_COMMIT_SHA;
+  try {
+    return execSync("git rev-parse HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+  } catch {
+    return "unknown";
+  }
+}
+
 const nextConfig: NextConfig = {
+  env: { BUILD_COMMIT: buildCommit(), BUILD_TIME: new Date().toISOString() },
   // This app lives in a monorepo: trace files from the repository root, so the deployed site
   // (e.g. on Vercel) includes everything it needs, such as the database engine and packages/core.
   outputFileTracingRoot: path.resolve(__dirname, "../.."),
