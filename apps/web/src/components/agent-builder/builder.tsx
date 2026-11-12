@@ -1,7 +1,7 @@
 "use client";
 
 import { compilePrompt, lintPrompt, orderVoices, type AgentConfig, type VariableDef, type Voice } from "@spagai/core";
-import { ArrowLeft, ArrowRight, Check, CircleAlert, CircleCheck, CircleDot, FlaskConical, History, Mic, MoreHorizontal, Redo2, Save, Trash2, TriangleAlert, Undo2, X, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, CircleAlert, CircleCheck, CircleDot, FlaskConical, History, Mic, MoreHorizontal, Redo2, Save, Trash2, TriangleAlert, Undo2, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { autosaveAgentDraft, deleteAgent, discardAgentDraft, saveAgent } from "@/app/(app)/agents/actions";
@@ -324,27 +324,25 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
         </Alert>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[13rem_minmax(0,1fr)] xl:grid-cols-[13rem_minmax(0,1fr)_21rem]">
-        {/* Steps */}
-        <nav aria-label="Agent setup steps" className="hidden h-fit space-y-1 rounded-xl border bg-card p-3 lg:sticky lg:top-16 lg:block">
-          <p className="px-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Set up · {doneCount} of {STEPS.length} done</p>
-          <div className="mx-2 mb-2 mt-1.5 h-1.5 rounded-full bg-muted"><div className="h-1.5 rounded-full bg-primary transition-all" style={{ width: `${(doneCount / STEPS.length) * 100}%` }} /></div>
-          {STEPS.map((x, i) => (
-            <StepLink key={x.id} n={i + 1} label={x.label} done={done[x.id]} active={tab === x.id} onClick={() => go(x.id)} />
-          ))}
-          <p className="px-2 pt-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Advanced</p>
-          {ADVANCED.map((x) => (
-            <StepLink key={x.id} label={x.label} active={tab === x.id} onClick={() => go(x.id)} />
-          ))}
-        </nav>
-        <div className="space-y-2 rounded-xl border bg-card p-3 lg:hidden">
-          <Select aria-label="Setup step" value={tab} onChange={(e) => go(e.target.value as Tab)}>
-            {STEPS.map((x, i) => <option key={x.id} value={x.id}>Step {i + 1} of {STEPS.length}: {x.label}{done[x.id] ? " ✓" : ""}</option>)}
-            <optgroup label="Advanced">{ADVANCED.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</optgroup>
-          </Select>
-          <div className="h-1.5 rounded-full bg-muted"><div className="h-1.5 rounded-full bg-primary" style={{ width: `${(doneCount / STEPS.length) * 100}%` }} /></div>
-        </div>
+      {/* Steps: one row of tabs across the top (wraps, never cut off). Phones get a dropdown. */}
+      <nav aria-label="Agent setup steps" className="hidden flex-wrap items-center gap-x-0.5 gap-y-1 rounded-xl border bg-card px-2 py-1.5 lg:flex">
+        <span className="mr-1 flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide whitespace-nowrap text-muted-foreground" title={`${doneCount} of ${STEPS.length} steps done`}>
+          {doneCount}/{STEPS.length} done
+        </span>
+        {STEPS.map((x, i) => (
+          <StepLink key={x.id} n={i + 1} label={x.label} done={done[x.id]} active={tab === x.id} onClick={() => go(x.id)} />
+        ))}
+        <AdvancedMenu active={ADVANCED.find((x) => x.id === tab)?.label} onPick={(id) => go(id)} />
+      </nav>
+      <div className="space-y-2 rounded-xl border bg-card p-3 lg:hidden">
+        <Select aria-label="Setup step" value={tab} onChange={(e) => go(e.target.value as Tab)}>
+          {STEPS.map((x, i) => <option key={x.id} value={x.id}>Step {i + 1} of {STEPS.length}: {x.label}{done[x.id] ? " ✓" : ""}</option>)}
+          <optgroup label="Advanced">{ADVANCED.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</optgroup>
+        </Select>
+        <div className="h-1.5 rounded-full bg-muted"><div className="h-1.5 rounded-full bg-primary" style={{ width: `${(doneCount / STEPS.length) * 100}%` }} /></div>
+      </div>
 
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
         {/* The one section being edited */}
         <div id="builder-step" className="min-w-0 scroll-mt-16 space-y-4">
           <fieldset disabled={readOnly} className="min-w-0">
@@ -408,7 +406,7 @@ function StepLink({ n, label, done, active, onClick }: { n?: number; label: stri
       type="button"
       onClick={onClick}
       aria-current={active ? "step" : undefined}
-      className={cn("flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm transition-colors", active ? "bg-primary/10 font-semibold text-primary" : "text-foreground hover:bg-muted")}
+      className={cn("flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-sm whitespace-nowrap transition-colors", active ? "bg-primary/10 font-semibold text-primary" : "text-foreground hover:bg-muted")}
     >
       <span
         className={cn(
@@ -420,6 +418,41 @@ function StepLink({ n, label, done, active, onClick }: { n?: number; label: stri
       </span>
       {label}
     </button>
+  );
+}
+
+/** Tools and Silence: less used, so they sit behind one small button. */
+function AdvancedMenu({ active, onPick }: { active?: string; onPick: (id: Tab) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        className={cn("flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm whitespace-nowrap transition-colors", active ? "bg-primary/10 font-semibold text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
+      >
+        {active ? `Advanced: ${active}` : "Advanced"} <ChevronDown className="size-3.5" />
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 z-40 mt-1 w-56 rounded-lg border bg-popover p-1 shadow-lg">
+          {ADVANCED.map((x) => (
+            <button key={x.id} role="menuitem" type="button" onClick={() => { setOpen(false); onPick(x.id); }} className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-muted">
+              <span className="font-medium">{x.label}</span>
+              <span className="block text-xs text-muted-foreground">{x.id === "tools" ? "Booking, saving answers, ending the call" : "What happens when the line goes quiet"}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
