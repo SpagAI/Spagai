@@ -30,7 +30,7 @@ import { sampleValues, type TestLead } from "./shared";
 
 type Update = (patch: Partial<AgentConfig>) => void;
 
-export function BusinessTab({ config, update }: { config: AgentConfig; update: Update }) {
+export function BusinessTab({ config, update, lead, onLeadChange }: { config: AgentConfig; update: Update; lead: TestLead; onLeadChange: (lead: TestLead) => void }) {
   const t = useT();
   const agentVars = config.variables.filter((v) => v.scope === "agent");
   return (
@@ -76,6 +76,24 @@ export function BusinessTab({ config, update }: { config: AgentConfig; update: U
               {t(mode === "A" ? "builder.business.modeA" : "builder.business.modeB")}
             </label>
           ))}
+        </fieldset>
+
+        {/* The person the agent talks to while testing (real calls use each lead's own details). */}
+        <fieldset className="space-y-3 rounded-lg border bg-muted/20 p-4">
+          <legend className="px-1 text-sm font-medium">Person to test with</legend>
+          <p className="text-xs text-muted-foreground">Who the agent talks to when you test it and in the previews. On real calls, each person&apos;s own name from your lead list is used.</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5"><Label htmlFor="tl-first">First name</Label><Input id="tl-first" value={lead.firstName} onChange={(e) => onLeadChange({ ...lead, firstName: e.target.value })} placeholder="e.g. Ngozi" /></div>
+            <div className="space-y-1.5"><Label htmlFor="tl-last">Last name</Label><Input id="tl-last" value={lead.lastName} onChange={(e) => onLeadChange({ ...lead, lastName: e.target.value })} placeholder="e.g. Adeyemi" /></div>
+            <div className="space-y-1.5"><Label htmlFor="tl-title">Title</Label><Input id="tl-title" value={lead.title} onChange={(e) => onLeadChange({ ...lead, title: e.target.value })} placeholder="Mr, Mrs, Dr… (optional)" /></div>
+            <div className="space-y-1.5">
+              <Label htmlFor="tl-gender">Gender</Label>
+              <Select id="tl-gender" value={lead.gender} onChange={(e) => onLeadChange({ ...lead, gender: e.target.value as TestLead["gender"] })}>
+                <option value="male">Male</option><option value="female">Female</option><option value="unknown">Not known</option>
+              </Select>
+            </div>
+          </div>
+          <p className="text-sm">The agent will address them as <span className="font-semibold">“{sampleValues(config, lead).address || "—"}”</span>.</p>
         </fieldset>
       </CardContent>
     </Card>

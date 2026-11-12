@@ -75,7 +75,25 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
   const dirty = JSON.stringify(config) !== JSON.stringify(saved.config);
   const [talkOpen, setTalkOpen] = useState(false);
   /** The pretend person for testing; also used by the previews and play buttons. */
-  const [testLead, setTestLead] = useState<TestLead>(SAMPLE_LEAD);
+  const [testLead, setTestLeadState] = useState<TestLead>(SAMPLE_LEAD);
+  // Remember the test person for this agent on this computer (it is only for testing, not saved with the agent).
+  const leadKey = `spagai:test-person:${agentId}`;
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(leadKey) ?? "null") as TestLead | null;
+      if (saved && typeof saved.firstName === "string") setTestLeadState({ ...SAMPLE_LEAD, ...saved });
+    } catch {
+      // Storage blocked: keep the default person.
+    }
+  }, [leadKey]);
+  const setTestLead = (lead: TestLead) => {
+    setTestLeadState(lead);
+    try {
+      localStorage.setItem(leadKey, JSON.stringify(lead));
+    } catch {
+      // Not kept; still works for this visit.
+    }
+  };
   const deleteRef = useRef<HTMLFormElement>(null);
 
   // Problems to fix, each linked to the step where it is fixed.
@@ -329,7 +347,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
         {/* The one section being edited */}
         <div id="builder-step" className="min-w-0 scroll-mt-16 space-y-4">
           <fieldset disabled={readOnly} className="min-w-0">
-            {tab === "business" && <BusinessTab config={config} update={update} />}
+            {tab === "business" && <BusinessTab config={config} update={update} lead={testLead} onLeadChange={setTestLead} />}
             {tab === "voice" && <VoiceTab config={config} update={update} workspaceVoices={workspaceVoices} lead={testLead} />}
             {tab === "instructions" && (
               <InstructionsStep config={config} onChange={(c) => change(() => c)} onAddVariable={addVariable} readOnly={readOnly} />
@@ -346,7 +364,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
         {/* Test your agent: always there on wide screens */}
         <aside aria-label="Test your agent" className="hidden h-fit flex-col rounded-xl border bg-card p-4 xl:sticky xl:top-16 xl:flex">
           <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Test your agent</p>
-          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} onLeadChange={setTestLead} />
+          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} />
         </aside>
       </div>
 
@@ -364,7 +382,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
             <p className="text-sm font-semibold">Test your agent</p>
             <Button type="button" variant="ghost" size="icon" onClick={() => setTalkOpen(false)} aria-label="Close"><X /></Button>
           </div>
-          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} onLeadChange={setTestLead} />
+          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} />
         </div>
       )}
     </div>

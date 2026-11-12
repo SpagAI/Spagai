@@ -1,13 +1,12 @@
 "use client";
 
-import { buildCallValues, type AgentConfig, type Voice } from "@spagai/core";
-import { Keyboard, Loader2, Mic, Pencil, PhoneOff, Send, Settings2, Volume2 } from "lucide-react";
+import type { AgentConfig, Voice } from "@spagai/core";
+import { Keyboard, Loader2, Mic, PhoneOff, Send, Settings2, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { talkToAgent, type AgentLine, type SimulateInput } from "@/app/(app)/lab/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
 import { useListener } from "@/components/voice/use-listener";
 import { useSpeaker } from "@/components/voice/use-speaker";
 import { cn } from "@/lib/utils";
@@ -33,22 +32,19 @@ export interface TalkPanelProps {
   voice?: Voice;
   provider: string;
   initialWhen: string;
-  /** The pretend person being called (shared with the builder's previews). */
+  /** The pretend person being called (set in Business details). */
   lead: TestLead;
-  onLeadChange: (lead: TestLead) => void;
 }
 
 /**
  * "Test your agent": one button. The agent speaks first, then the microphone listens by itself,
  * like a phone call. Uses the settings on screen (even unsaved). Typing is there as a fallback.
  */
-export function TalkPanel({ config, voice, provider, initialWhen, lead, onLeadChange: setLead }: TalkPanelProps) {
+export function TalkPanel({ config, voice, provider, initialWhen, lead }: TalkPanelProps) {
   const speaker = useSpeaker();
   const listener = useListener(config.language);
   const callVars = config.variables.filter((v) => v.scope === "call" && !FROM_LEAD.has(v.name));
 
-  const [editingPerson, setEditingPerson] = useState(false);
-  const address = buildCallValues({ ...lead, gender: lead.gender === "unknown" ? "" : lead.gender }, new Date(), config.addressMode).address;
   const [callValues, setCallValues] = useState<Record<string, string>>({});
   const [when, setWhen] = useState(initialWhen);
   const [speakAloud, setSpeakAloud] = useState(Boolean(voice));
@@ -207,38 +203,6 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead, onLeadCh
             {voice?.name ?? "No voice chosen"} · {provider === "mock" ? "demo replies (prompt not read)" : "real AI replies"}
           </p>
         </div>
-      </div>
-
-      {/* Who the agent is calling: visible and easy to change */}
-      <div className="rounded-lg border bg-muted/30 px-3 py-2 text-sm">
-        <div className="flex items-center justify-between gap-2">
-          <span className="min-w-0 truncate">
-            <span className="text-muted-foreground">Calling: </span>
-            <span className="font-medium">{[lead.title, lead.firstName, lead.lastName].filter(Boolean).join(" ") || "someone"}</span>
-          </span>
-          <button type="button" onClick={() => setEditingPerson((e) => !e)} disabled={live} className="inline-flex shrink-0 items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50">
-            <Pencil className="size-3" /> {editingPerson ? "Done" : "Change"}
-          </button>
-        </div>
-        {!editingPerson && <p className="text-xs text-muted-foreground">The agent will address them as “{address || "—"}”.</p>}
-        {editingPerson && (
-          <div className="mt-2 space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1"><Label htmlFor="tp-first">First name</Label><Input id="tp-first" value={lead.firstName} onChange={(e) => setLead({ ...lead, firstName: e.target.value })} placeholder="e.g. Ngozi" autoFocus /></div>
-              <div className="space-y-1"><Label htmlFor="tp-last">Last name</Label><Input id="tp-last" value={lead.lastName} onChange={(e) => setLead({ ...lead, lastName: e.target.value })} placeholder="e.g. Adeyemi" /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1"><Label htmlFor="tp-title">Title</Label><Input id="tp-title" value={lead.title} placeholder="Mr, Mrs, Dr…" onChange={(e) => setLead({ ...lead, title: e.target.value })} /></div>
-              <div className="space-y-1">
-                <Label htmlFor="tp-gender">Gender</Label>
-                <Select id="tp-gender" value={lead.gender} onChange={(e) => setLead({ ...lead, gender: e.target.value as TestLead["gender"] })}>
-                  <option value="male">Male</option><option value="female">Female</option><option value="unknown">Not known</option>
-                </Select>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">Addressed as “{address || "—"}”. On real calls, each person&apos;s own name from your lead list is used.</p>
-          </div>
-        )}
       </div>
 
       {/* Conversation */}
