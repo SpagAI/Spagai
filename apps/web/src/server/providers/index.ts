@@ -2,6 +2,7 @@ import "server-only";
 import {
   mockAgentReply,
   sanitiseForSpeech,
+  toLagosParts,
   type SimMessage,
   type SimToolCall,
   type SimTurn,
@@ -97,10 +98,24 @@ export const PHONE_CALL_RULES = `## Phone call rules (always on, these override 
 - Facts: you only know what is written in your instructions above. Any price, amount, fee, date, address or policy that is not written there word for word is unknown to you. Never guess or estimate one, even if your instructions say to answer questions about it. Instead say that you do not have that detail with you right now, offer to have someone send it, and continue.
 - Ask one question at a time and wait for the answer.`;
 
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** Today's date and time in Lagos, so the agent can work out "Thursday" or "tomorrow" correctly. */
+export function todayLine(now: Date): string {
+  const p = toLagosParts(now);
+  const dayAt = (offset: number) => new Date(Date.UTC(p.year, p.month - 1, p.day + offset));
+  const label = (d: Date) => `${DAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
+  const time = `${String(p.hour).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}`;
+  // A ready list of the coming days, so "Thursday" or "next Monday" is looked up, not worked out.
+  const coming = Array.from({ length: 14 }, (_, i) => label(dayAt(i + 1))).join("; ");
+  return `Today is ${label(dayAt(0))} ${p.year}, and the time is ${time} in Lagos (WAT). The coming days are: ${coming}. When someone names a day ("Thursday", "tomorrow", "next week"), take the date from this list, and say the full date when you confirm it. Never offer or book a time that has already passed: if they name today's weekday and that time has gone, use the same day next week.`;
+}
+
 const openAiCompatibleLlm: LlmProvider = {
   name: "openai_compatible",
-  async reply({ systemPrompt, history, tools, runTool }) {
-    const messages: unknown[] = toChatMessages(`${systemPrompt}\n\n${PHONE_CALL_RULES}`, history);
+  async reply({ systemPrompt, history, tools, runTool, now }) {
+    const messages: unknown[] = toChatMessages(`${systemPrompt}\n\n${PHONE_CALL_RULES}\n- ${todayLine(now)}`, history);
     const allCalls: SimToolCall[] = [];
     for (let round = 0; ; round++) {
       const json = await chatCompletion(messages, tools);
