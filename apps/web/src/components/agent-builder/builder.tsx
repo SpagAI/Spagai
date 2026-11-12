@@ -341,7 +341,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
         </div>
 
         {/* Test your agent: always there on wide screens */}
-        <aside aria-label="Test your agent" className="hidden h-[calc(100dvh-5.5rem)] min-h-[30rem] flex-col rounded-xl border bg-card p-4 xl:sticky xl:top-16 xl:flex">
+        <aside aria-label="Test your agent" className="hidden h-fit flex-col rounded-xl border bg-card p-4 xl:sticky xl:top-16 xl:flex">
           <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Test your agent</p>
           <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} />
         </aside>

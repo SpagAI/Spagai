@@ -48,7 +48,7 @@ describe("Zara's voice choice", () => {
   it("picks a real Fish Audio voice for English, and a demo voice for languages Fish does not cover yet", () => {
     const en = draftPlan("Remind customers about repayments, call him Tunde", { company });
     expect(en.voiceId).toMatch(/^fish_audio:/);
-    expect(en.voiceName).toBe("Calm Nigerian Man");
+    expect(en.voiceName).toBe("Segun");
     expect(draftPlan("Book clinic appointments, name her Ada", { company }).voiceId).toMatch(/^fish_audio:/);
     const pidgin = refinePlan(en, "use a Pidgin voice").plan;
     expect(pidgin.voiceId).not.toMatch(/^fish_audio:/);

@@ -108,11 +108,25 @@ export interface WorkspaceVoiceRow {
 
 const SAMPLE_LINE = "Good morning. Thank you for your time today. How may I help you?";
 
+/** Fish Audio titles that describe a voice rather than name it ("Female Nigerian", "nigeria voice"). */
+const GENERIC_TITLE = /nigeria|naija|voice|female|male|woman|\bman\b|girl|boy|lady|narrator|storyteller|speaker|english|official|accent/i;
+const FEMALE_NAMES = ["Ifeoma", "Halima", "Damilola", "Uche", "Hauwa", "Tolani", "Ebere", "Aisha", "Kelechi", "Simisola"];
+const MALE_NAMES = ["Kunle", "Nnamdi", "Sani", "Dayo", "Ikenna", "Yusuf", "Gbenga", "Uchenna", "Bayo", "Kabiru"];
+
+/** A person's name for a voice: its own if it has one, else a Nigerian first name picked from its id. */
+export function friendlyVoiceName(title: string, gender: string, id: string): string {
+  const clean = title.trim();
+  if (clean && !GENERIC_TITLE.test(clean)) return clean;
+  const pool = gender === "male" ? MALE_NAMES : FEMALE_NAMES;
+  const n = [...id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 9973, 7);
+  return pool[n % pool.length]!;
+}
+
 /** A saved workspace voice in the same shape as the built-in catalogue voices. */
 export function workspaceVoiceToVoice(row: WorkspaceVoiceRow): Voice {
   return {
     id: bankVoiceId(row.provider, row.providerVoiceId),
-    name: row.name,
+    name: friendlyVoiceName(row.name, row.gender, row.providerVoiceId),
     language: (["en-NG", "pcm", "yo", "ha", "ig"].includes(row.language) ? row.language : "en-NG") as VoiceLanguage,
     gender: row.gender === "male" ? "male" : "female",
     provider: row.provider,

@@ -89,3 +89,15 @@ describe("voice settings", () => {
     expect(browserSpeechSettings({ speed: 1, volume: -10, expressiveness: 0.7, naturalNumbers: true }).volume).toBeCloseTo(0.2);
   });
 });
+
+import { friendlyVoiceName } from "@/lib/voice-bank";
+
+describe("friendly voice names", () => {
+  it("keeps real names and gives generic titles a Nigerian first name", () => {
+    expect(friendlyVoiceName("Bukola", "female", ID)).toBe("Bukola");
+    const f = friendlyVoiceName("Female Nigerian", "female", ID);
+    expect(f).not.toMatch(/nigeria|female/i);
+    expect(friendlyVoiceName("Female Nigerian", "female", ID)).toBe(f);
+    expect(friendlyVoiceName("nigerian", "male", "abc")).not.toMatch(/nigeria/i);
+  });
+});

@@ -190,7 +190,7 @@ export function TalkPanel({ config, voice, provider, initialWhen }: TalkPanelPro
   const canType = live && (typeMode || !listener.supported);
 
   return (
-    <div className="flex h-full flex-col gap-3">
+    <div className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary/60 to-primary font-semibold text-primary-foreground">{(config.name || "A")[0]}</span>
         <div className="min-w-0">
@@ -202,19 +202,19 @@ export function TalkPanel({ config, voice, provider, initialWhen }: TalkPanelPro
       </div>
 
       {/* Conversation */}
-      <div className="min-h-40 flex-1 space-y-2 overflow-y-auto rounded-xl border bg-muted/20 p-3 text-sm">
+      <div className={cn("space-y-2 text-sm", entries.length > 0 || phase !== "idle" ? "max-h-[min(24rem,50dvh)] min-h-32 overflow-y-auto rounded-xl border bg-muted/20 p-3" : "")}>
         {entries.length === 0 && phase === "idle" && (
-          <div className="flex h-full flex-col items-center justify-center gap-4 py-6 text-center">
+          <div className="flex flex-col items-center gap-3 py-4 text-center">
             <button
               type="button"
               onClick={start}
               aria-label="Start talking"
-              className="grid size-28 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_0_0_12px_color-mix(in_oklab,var(--color-primary)_12%,transparent),0_0_0_24px_color-mix(in_oklab,var(--color-primary)_6%,transparent)] transition-transform hover:scale-105"
+              className="grid size-16 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_0_0_8px_color-mix(in_oklab,var(--color-primary)_12%,transparent)] transition-transform hover:scale-105"
             >
-              <Mic className="size-10" />
+              <Mic className="size-7" />
             </button>
             <p className="max-w-64 text-xs text-muted-foreground">
-              {config.name || "The agent"} says hello first. Then just talk: the microphone listens by itself, like a phone call. Uses your latest changes, even unsaved.
+              {config.name || "The agent"} speaks first, then just talk. Uses your latest changes, even unsaved.
             </p>
           </div>
         )}

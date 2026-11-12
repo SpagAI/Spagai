@@ -3,7 +3,7 @@
   "voices": [
     {
       "id": "fish_audio:f248b08382a244a087ab5ee5fda8f6c2",
-      "name": "Nigerian Storyteller",
+      "name": "Ngozi",
       "language": "en-NG",
       "gender": "female",
       "provider": "fish_audio",
@@ -17,7 +17,7 @@
     },
     {
       "id": "fish_audio:4287969fde684ef68a6a72a314d773cf",
-      "name": "Calm Nigerian Man",
+      "name": "Segun",
       "language": "en-NG",
       "gender": "male",
       "provider": "fish_audio",
@@ -31,7 +31,7 @@
     },
     {
       "id": "fish_audio:90170ece63654d4480166b870a2dd593",
-      "name": "Lively Nigerian Woman",
+      "name": "Yetunde",
       "language": "en-NG",
       "gender": "female",
       "provider": "fish_audio",
@@ -45,7 +45,7 @@
     },
     {
       "id": "fish_audio:502e143036d64df082b70b626058d9ed",
-      "name": "Nigerian Voice-Over",
+      "name": "Chidi",
       "language": "en-NG",
       "gender": "male",
       "provider": "fish_audio",
@@ -73,7 +73,7 @@
     },
     {
       "id": "fish_audio:1419524167d945f0af7279af758f622e",
-      "name": "Warm Nigerian Narrator",
+      "name": "Babajide",
       "language": "en-NG",
       "gender": "male",
       "provider": "fish_audio",
@@ -101,7 +101,7 @@
     },
     {
       "id": "fish_audio:3f04ab7d3a7b453a9a46d173cea19254",
-      "name": "Nigerian English",
+      "name": "Abubakar",
       "language": "en-NG",
       "gender": "male",
       "provider": "fish_audio",
@@ -115,7 +115,7 @@
     },
     {
       "id": "fish_audio:68c4d2918d094396847014eadba619bb",
-      "name": "Gina",
+      "name": "Zainab",
       "language": "en-NG",
       "gender": "female",
       "provider": "fish_audio",
@@ -129,7 +129,7 @@
     },
     {
       "id": "fish_audio:a8b8d23c94354f1e8ed7866c75eccaf0",
-      "name": "Emeka",
+      "name": "Chuka",
       "language": "en-NG",
       "gender": "male",
       "provider": "fish_audio",
@@ -143,7 +143,7 @@
     },
     {
       "id": "fish_audio:9f6a8384e1444b598e0aa7a937c47c57",
-      "name": "Confident Nigerian Woman",
+      "name": "Amina",
       "language": "en-NG",
       "gender": "female",
       "provider": "fish_audio",
@@ -157,7 +157,7 @@
     },
     {
       "id": "fish_audio:48fa2173fe4a436b921d4c55d21bd8aa",
-      "name": "Fabex",
+      "name": "Femi",
       "language": "en-NG",
       "gender": "male",
       "provider": "fish_audio",
