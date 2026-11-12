@@ -13,7 +13,6 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/client";
 import { formatLagos } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { KnowledgeTab, NumbersTab, type AgentConnections } from "./connections";
 import { InstructionsStep } from "./instructions-step";
@@ -330,15 +329,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
             {tab === "business" && <BusinessTab config={config} update={update} />}
             {tab === "voice" && <VoiceTab config={config} update={update} workspaceVoices={workspaceVoices} />}
             {tab === "instructions" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Prompt</CardTitle>
-                  <CardDescription>What the agent should know and do on each call. Templates arrive already written: change anything, or clear it and write your own.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <InstructionsStep config={config} onChange={(c) => change(() => c)} onAddVariable={addVariable} readOnly={readOnly} />
-                </CardContent>
-              </Card>
+              <InstructionsStep config={config} onChange={(c) => change(() => c)} onAddVariable={addVariable} readOnly={readOnly} />
             )}
             {tab === "firstMessage" && <FirstMessageTab config={config} update={update} />}
             {tab === "tools" && <ToolsTab config={config} update={update} />}
