@@ -219,6 +219,13 @@ export function VoiceTab({ config, update, workspaceVoices = [] }: { config: Age
             ))}
           </Select>
         </div>
+        <VoiceSettingsControls
+          value={config.voiceSettings}
+          onChange={(voiceSettings) => update({ voiceSettings })}
+          voiceId={voices.some((v) => v.id === config.voiceId) ? config.voiceId : null}
+          sampleText={renderVariables(config.firstMessage, sampleValues(config))}
+          realVoice={voices.find((v) => v.id === config.voiceId)?.provider === "fish_audio"}
+        />
         {speaker.error && <p className="text-sm text-destructive">{speaker.error}</p>}
         <div className="grid gap-3 sm:grid-cols-2">
           {voices.map((v) => {
@@ -258,13 +265,6 @@ export function VoiceTab({ config, update, workspaceVoices = [] }: { config: Age
         </div>
         <p className="text-xs text-muted-foreground">{t("builder.voice.playHint")}</p>
         {!config.voiceId && <p className="text-sm text-muted-foreground">{t("builder.voice.none")}</p>}
-        <VoiceSettingsControls
-          value={config.voiceSettings}
-          onChange={(voiceSettings) => update({ voiceSettings })}
-          voiceId={voices.some((v) => v.id === config.voiceId) ? config.voiceId : null}
-          sampleText={renderVariables(config.firstMessage, sampleValues(config))}
-          realVoice={voices.find((v) => v.id === config.voiceId)?.provider === "fish_audio"}
-        />
       </CardContent>
     </Card>
   );
