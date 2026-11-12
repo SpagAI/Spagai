@@ -192,10 +192,8 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
     });
 
   const voice = orderVoices(workspaceVoices).find((v) => v.id === config.voiceId);
-  const go = (id: Tab) => {
-    setTab(id);
-    requestAnimationFrame(() => document.getElementById("builder-step")?.scrollIntoView({ block: "start", behavior: "smooth" }));
-  };
+  // Switching tabs only changes what is shown; the page does not scroll (the tabs stay in view).
+  const go = (id: Tab) => setTab(id);
   const saveText = pending
     ? t("builder.saving")
     : dirty
