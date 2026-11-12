@@ -1,7 +1,7 @@
 "use client";
 
 import { VOICE_PROVIDERS, type Voice } from "@spagai/core";
-import { Check, ChevronDown, Pause, Play } from "lucide-react";
+import { Check, Pause, Play } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -69,7 +69,7 @@ function VoiceRow({ v, selected, playing, onChoose, onPlay }: { v: Voice; select
   );
 }
 
-/** Clean, minimal voice list: real voices first, demo voices folded away, a Female / Male filter. */
+/** Clean, minimal voice list: one tab per provider (Fish Audio first), and a Female / Male filter. */
 export function VoicePicker({ voices, selectedId, playingId, onChoose, onPlay }: {
   voices: Voice[];
   selectedId: string | null;
@@ -77,16 +77,12 @@ export function VoicePicker({ voices, selectedId, playingId, onChoose, onPlay }:
   onChoose: (id: string) => void;
   onPlay: (v: Voice) => void;
 }) {
+  // Fish Audio (the real voices) first, then the others in the usual order.
+  const providers = ["fish_audio", ...Object.keys(VOICE_PROVIDERS).filter((p) => p !== "fish_audio")].filter((p) => voices.some((v) => v.provider === p));
+  const selectedProvider = voices.find((v) => v.id === selectedId)?.provider;
+  const [provider, setProvider] = useState(selectedProvider ?? (providers.includes("fish_audio") ? "fish_audio" : providers[0] ?? ""));
   const [gender, setGender] = useState<"" | "female" | "male">("");
-  const shown = voices.filter((v) => !gender || v.gender === gender);
-  const real = shown.filter((v) => v.provider === "fish_audio");
-  const demo = shown.filter((v) => v.provider !== "fish_audio");
-  const selectedIsDemo = demo.some((v) => v.id === selectedId);
-  const [showDemo, setShowDemo] = useState(selectedIsDemo || real.length === 0);
-
-  const row = (v: Voice) => (
-    <VoiceRow key={v.id} v={v} selected={selectedId === v.id} playing={playingId === v.id} onChoose={() => onChoose(v.id)} onPlay={() => onPlay(v)} />
-  );
+  const shown = voices.filter((v) => v.provider === provider && (!gender || v.gender === gender));
 
   return (
     <div className="space-y-3">
@@ -108,38 +104,43 @@ export function VoicePicker({ voices, selectedId, playingId, onChoose, onPlay }:
         </div>
       </div>
 
-      {real.length > 0 && (
-        <div className="space-y-1.5">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{VOICE_PROVIDERS.fish_audio} · real voices ({real.length})</p>
-          <div className="grid gap-1.5 sm:grid-cols-2">{real.map(row)}</div>
-        </div>
+      {/* One tab per provider */}
+      <div role="tablist" aria-label="Voice providers" className="flex flex-wrap gap-1.5">
+        {providers.map((p) => {
+          const count = voices.filter((v) => v.provider === p).length;
+          const active = provider === p;
+          return (
+            <button
+              key={p}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setProvider(p)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors",
+                active ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",
+              )}
+            >
+              {VOICE_PROVIDERS[p] ?? p}
+              <span className={cn("text-xs tabular-nums", active ? "text-primary-foreground/80" : "text-muted-foreground/70")}>{count}</span>
+              {selectedProvider === p && !active && <span className="size-1.5 rounded-full bg-primary" title="The chosen voice is here" />}
+            </button>
+          );
+        })}
+      </div>
+      {provider && provider !== "fish_audio" && (
+        <p className="text-xs text-muted-foreground">{VOICE_PROVIDERS[provider] ?? provider} voices play with your browser&apos;s speech for now. Fish Audio voices are the real ones.</p>
       )}
 
-      {demo.length > 0 && (
-        <div className="space-y-1.5">
-          <button type="button" onClick={() => setShowDemo((s) => !s)} className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground">
-            Demo voices ({demo.length}) · browser speech for now <ChevronDown className={cn("size-3.5 transition-transform", showDemo && "rotate-180")} />
-          </button>
-          {showDemo && (
-            <div className="space-y-3">
-              {/* One group per provider, in the usual provider order */}
-              {Object.keys(VOICE_PROVIDERS)
-                .filter((p) => p !== "fish_audio" && demo.some((v) => v.provider === p))
-                .map((p) => {
-                  const list = demo.filter((v) => v.provider === p);
-                  return (
-                    <div key={p} className="space-y-1.5">
-                      <p className="text-xs font-medium text-muted-foreground">{VOICE_PROVIDERS[p]} ({list.length})</p>
-                      <div className="grid gap-1.5 sm:grid-cols-2">{list.map(row)}</div>
-                    </div>
-                  );
-                })}
-            </div>
-          )}
+      {shown.length > 0 ? (
+        <div className="grid gap-1.5 sm:grid-cols-2">
+          {shown.map((v) => (
+            <VoiceRow key={v.id} v={v} selected={selectedId === v.id} playing={playingId === v.id} onChoose={() => onChoose(v.id)} onPlay={() => onPlay(v)} />
+          ))}
         </div>
+      ) : (
+        <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No voices match this filter.</p>
       )}
-
-      {shown.length === 0 && <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No voices match this filter.</p>}
       <p className="text-xs text-muted-foreground">Press a voice&apos;s circle to hear it say your first message; press the name to use it.</p>
     </div>
   );
