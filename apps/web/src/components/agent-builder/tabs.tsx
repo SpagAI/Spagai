@@ -26,7 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useSpeaker } from "@/components/voice/use-speaker";
 import { useT } from "@/i18n/client";
 import { cn } from "@/lib/utils";
-import { sampleValues } from "./shared";
+import { sampleValues, type TestLead } from "./shared";
 
 type Update = (patch: Partial<AgentConfig>) => void;
 
@@ -82,9 +82,9 @@ export function BusinessTab({ config, update }: { config: AgentConfig; update: U
   );
 }
 
-export function FirstMessageTab({ config, update }: { config: AgentConfig; update: Update }) {
+export function FirstMessageTab({ config, update, lead }: { config: AgentConfig; update: Update; lead?: TestLead }) {
   const t = useT();
-  const filled = renderVariables(config.firstMessage, sampleValues(config));
+  const filled = renderVariables(config.firstMessage, sampleValues(config, lead));
   const issues = lintSpokenLine(config.firstMessage);
   return (
     <Card>
@@ -195,7 +195,7 @@ export function SilenceTab({ config, update }: { config: AgentConfig; update: Up
   );
 }
 
-export function VoiceTab({ config, update, workspaceVoices = [] }: { config: AgentConfig; update: Update; workspaceVoices?: Voice[] }) {
+export function VoiceTab({ config, update, workspaceVoices = [], lead }: { config: AgentConfig; update: Update; workspaceVoices?: Voice[]; lead?: TestLead }) {
   const t = useT();
   const language = (Object.keys(LANGUAGE_NAMES) as VoiceLanguage[]).includes(config.language as VoiceLanguage)
     ? (config.language as VoiceLanguage)
@@ -222,7 +222,7 @@ export function VoiceTab({ config, update, workspaceVoices = [] }: { config: Age
           value={config.voiceSettings}
           onChange={(voiceSettings) => update({ voiceSettings })}
           voiceId={voices.some((v) => v.id === config.voiceId) ? config.voiceId : null}
-          sampleText={renderVariables(config.firstMessage, sampleValues(config))}
+          sampleText={renderVariables(config.firstMessage, sampleValues(config, lead))}
           realVoice={voices.find((v) => v.id === config.voiceId)?.provider === "fish_audio"}
         />
         {speaker.error && <p className="text-sm text-destructive">{speaker.error}</p>}
@@ -231,7 +231,7 @@ export function VoiceTab({ config, update, workspaceVoices = [] }: { config: Age
           selectedId={config.voiceId}
           playingId={speaker.playingKey}
           onChoose={(id) => update({ voiceId: id })}
-          onPlay={(v) => (speaker.playingKey === v.id ? speaker.stop() : void speaker.speak(v.id, renderVariables(config.firstMessage, sampleValues(config)), v.id, config.voiceSettings))}
+          onPlay={(v) => (speaker.playingKey === v.id ? speaker.stop() : void speaker.speak(v.id, renderVariables(config.firstMessage, sampleValues(config, lead)), v.id, config.voiceSettings))}
         />
         {!config.voiceId && <p className="text-sm text-muted-foreground">{t("builder.voice.none")}</p>}
       </CardContent>
