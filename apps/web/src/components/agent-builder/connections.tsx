@@ -1,12 +1,11 @@
 "use client";
 
-import { BookOpen, Check, FileText, Globe, Phone, Plus } from "lucide-react";
+import { BookOpen, FileText, Globe, Phone, Plus } from "lucide-react";
 import Link from "next/link";
 import { assignAgent } from "@/app/(app)/numbers/actions";
 import { AutoSubmitSelect } from "@/components/confirm-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 
 export interface AgentConnections {
   knowledge: { id: string; name: string; kind: "FILE" | "WEBSITE"; status: string }[];
@@ -95,35 +94,3 @@ export function NumbersTab({ agentId, c }: { agentId: string; c: AgentConnection
 }
 
 /** Where the agent is in its setup: name, voice, instructions, knowledge, number, tested. */
-export function SetupSteps({ steps, onPick }: { steps: { key: string; label: string; done: boolean; tab?: string; href?: string }[]; onPick: (tab: string) => void }) {
-  const done = steps.filter((s) => s.done).length;
-  return (
-    <section aria-label="Setup steps" className="rounded-xl border bg-card p-3 sm:p-4">
-      <div className="mb-2.5 flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold">Set up your agent</p>
-        <p className="text-xs tabular-nums text-muted-foreground">{done} of {steps.length} done</p>
-      </div>
-      <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
-        <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${(done / steps.length) * 100}%` }} />
-      </div>
-      <ol className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 2xl:grid-cols-6">
-        {steps.map((s, i) => {
-          const body = (
-            <>
-              <span className={cn("grid size-5 shrink-0 place-items-center rounded-full text-[11px] font-semibold", s.done ? "bg-primary text-primary-foreground" : "border text-muted-foreground")}>
-                {s.done ? <Check className="size-3" /> : i + 1}
-              </span>
-              <span className={cn("truncate", s.done && "text-muted-foreground")}>{s.label}</span>
-            </>
-          );
-          const cls = "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-muted";
-          return (
-            <li key={s.key}>
-              {s.href ? <Link href={s.href} className={cls}>{body}</Link> : <button type="button" onClick={() => s.tab && onPick(s.tab)} className={cls}>{body}</button>}
-            </li>
-          );
-        })}
-      </ol>
-    </section>
-  );
-}

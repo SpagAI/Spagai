@@ -46,18 +46,31 @@ export function useListener(language: string) {
 
   useEffect(() => {
     setSupported(getRecognition() !== null);
-    return () => recRef.current?.abort();
+    return () => {
+      const rec = recRef.current;
+      if (rec) {
+        rec.onend = null;
+        rec.abort();
+      }
+    };
   }, []);
 
-  /** Listen for one thing the person says; `onText` gets the final words. */
+  /** Listen for one thing the person says; `onText` gets the final words, `onNothing` runs if nothing was heard. */
   const listen = useCallback(
-    (onText: (text: string) => void) => {
+    (onText: (text: string) => void, onNothing?: () => void) => {
       const Ctor = getRecognition();
       if (!Ctor) {
         setError("This browser cannot listen. Use Chrome or Edge, or type instead.");
         return;
       }
-      recRef.current?.abort();
+      // Stop any earlier session quietly, so it cannot report "heard nothing" and restart listening.
+      const old = recRef.current;
+      if (old) {
+        old.onend = null;
+        old.onresult = null;
+        old.onerror = null;
+        old.abort();
+      }
       const rec = new Ctor();
       rec.lang = LANG[language] ?? "en-NG";
       rec.interimResults = true;
@@ -80,6 +93,7 @@ export function useListener(language: string) {
         setInterim("");
         const text = finalText.trim();
         if (text) onText(text);
+        else onNothing?.();
       };
       setError(null);
       setListening(true);

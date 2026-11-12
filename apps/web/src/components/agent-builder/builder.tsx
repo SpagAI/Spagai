@@ -1,9 +1,9 @@
 "use client";
 
-import { orderVoices, type AgentConfig, type VariableDef, type Voice } from "@spagai/core";
-import { ArrowLeft, AudioLines, BookOpen, Building2, CircleAlert, FlaskConical, MessageSquareText, Mic, History, Phone, Redo2, Save, ScrollText, Timer, Trash2, TriangleAlert, Undo2, Wrench, type LucideIcon } from "lucide-react";
+import { compilePrompt, lintPrompt, orderVoices, type AgentConfig, type VariableDef, type Voice } from "@spagai/core";
+import { ArrowLeft, ArrowRight, Check, CircleAlert, CircleCheck, CircleDot, FlaskConical, History, Mic, MoreHorizontal, Redo2, Save, Trash2, TriangleAlert, Undo2, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { autosaveAgentDraft, deleteAgent, discardAgentDraft, saveAgent } from "@/app/(app)/agents/actions";
 import { promptLength, record, redo, startHistory, undo, wasCleared } from "@/lib/agent-history";
 import { VersionHistory } from "./version-history";
@@ -14,21 +14,26 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/client";
 import { formatLagos } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { Simulator } from "@/components/simulator/simulator";
-import { BlocksEditor } from "./blocks-editor";
-import { KnowledgeTab, NumbersTab, SetupSteps, type AgentConnections } from "./connections";
-import { PreviewPanel } from "./preview-panel";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
+import { KnowledgeTab, NumbersTab, type AgentConnections } from "./connections";
+import { InstructionsStep } from "./instructions-step";
+import { TalkPanel } from "./talk-panel";
 import { BusinessTab, FirstMessageTab, SilenceTab, ToolsTab, VoiceTab } from "./tabs";
 
-const TABS = ["business", "voice", "blocks", "firstMessage", "knowledge", "numbers", "tools", "silence", "talk"] as const;
-type Tab = (typeof TABS)[number];
-
-/** Tabs in three groups, all visible (they wrap instead of scrolling out of sight). */
-const TAB_GROUPS: { label: string; tabs: { id: Tab; icon: LucideIcon }[] }[] = [
-  { label: "Set up", tabs: [{ id: "business", icon: Building2 }, { id: "voice", icon: AudioLines }, { id: "blocks", icon: ScrollText }, { id: "firstMessage", icon: MessageSquareText }] },
-  { label: "Connect", tabs: [{ id: "knowledge", icon: BookOpen }, { id: "numbers", icon: Phone }, { id: "tools", icon: Wrench }, { id: "silence", icon: Timer }] },
-  { label: "Test", tabs: [{ id: "talk", icon: Mic }] },
-];
+const STEPS = [
+  { id: "business", label: "Business details" },
+  { id: "voice", label: "Voice" },
+  { id: "instructions", label: "Instructions" },
+  { id: "firstMessage", label: "First message" },
+  { id: "knowledge", label: "Knowledge base" },
+  { id: "numbers", label: "Phone number" },
+] as const;
+const ADVANCED = [
+  { id: "tools", label: "Tools" },
+  { id: "silence", label: "Silence" },
+] as const;
+type Tab = (typeof STEPS)[number]["id"] | (typeof ADVANCED)[number]["id"];
 
 export interface AgentBuilderProps {
   agentId: string;
@@ -69,15 +74,36 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
   const [pending, startTransition] = useTransition();
 
   const dirty = JSON.stringify(config) !== JSON.stringify(saved.config);
-  const detailsFilled = saved.config.variables.filter((v) => v.scope === "agent" && v.required).every((v) => (saved.config.variableValues[v.name] ?? "").trim());
-  const steps = [
-    { key: "name", label: "Name & business", done: !!saved.config.name.trim() && detailsFilled, tab: "business" },
-    { key: "voice", label: "Voice", done: !!saved.config.voiceId, tab: "voice" },
-    { key: "prompt", label: "Instructions", done: saved.config.blocks.some((b) => !b.guardrail && b.content.trim().length > 40), tab: "blocks" },
-    { key: "knowledge", label: "Knowledge base", done: connections.knowledge.length > 0, tab: "knowledge" },
-    { key: "number", label: "Phone number", done: connections.numbers.length > 0, tab: "numbers" },
-    { key: "lab", label: "Test in the Lab", done: connections.testedInLab, href: `/lab/${agentId}` },
-  ];
+  const detailsFilled = config.variables.filter((v) => v.scope === "agent" && v.required).every((v) => (config.variableValues[v.name] ?? "").trim());
+  const done: Record<string, boolean> = {
+    business: !!config.name.trim() && detailsFilled,
+    voice: !!config.voiceId,
+    instructions: promptLength(config) > 40,
+    firstMessage: !!config.firstMessage.trim(),
+    knowledge: connections.knowledge.length > 0,
+    numbers: connections.numbers.length > 0,
+  };
+  const doneCount = STEPS.filter((x) => done[x.id]).length;
+  const [talkOpen, setTalkOpen] = useState(false);
+  const deleteRef = useRef<HTMLFormElement>(null);
+
+  // Problems to fix, each linked to the step where it is fixed.
+  const deferred = useDeferredValue(config);
+  const issues = useMemo<BuilderIssue[]>(() => {
+    const compiled = compilePrompt({ blocks: deferred.blocks, variables: deferred.variables, firstMessage: deferred.firstMessage }, { values: deferred.variableValues, mode: "preview" });
+    const out: BuilderIssue[] = [];
+    if (compiled.variables.missingRequired.length) out.push({ message: `Fill in: ${compiled.variables.missingRequired.join(", ").replace(/_/g, " ")}.`, severity: "error", step: "business" });
+    if (compiled.variables.undeclared.length) out.push({ message: `Not values yet: ${compiled.variables.undeclared.map((n) => `{{${n}}}`).join(", ")}.`, severity: "error", step: "instructions" });
+    if (!deferred.voiceId) out.push({ message: "Choose a voice.", severity: "error", step: "voice" });
+    const lint = lintPrompt({ prompt: compiled.prompt, firstMessage: compiled.firstMessage });
+    for (const i of lint.issues) {
+      if (i.severity === "info" || i.rule.startsWith("missing-")) continue;
+      const inFirst = !!i.excerpt && deferred.firstMessage.includes(i.excerpt.slice(0, 20));
+      out.push({ message: i.message, severity: i.severity === "error" ? "error" : "warning", step: inFirst ? "firstMessage" : "instructions" });
+    }
+    return out.slice(0, 12);
+  }, [deferred]);
+
   // Deleting a prompt section is always its own undo step.
   const update = useCallback(
     (patch: Partial<AgentConfig>) => change((c) => ({ ...c, ...patch }), Boolean(patch.blocks) && patch.blocks!.length < hist.present.blocks.length),
@@ -176,61 +202,69 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
       }
     });
 
+  const voice = orderVoices(workspaceVoices).find((v) => v.id === config.voiceId);
+  const stepIndex = STEPS.findIndex((x) => x.id === tab);
+  const prev = stepIndex > 0 ? STEPS[stepIndex - 1] : undefined;
+  const next = stepIndex >= 0 && stepIndex < STEPS.length - 1 ? STEPS[stepIndex + 1] : undefined;
+  const go = (id: Tab) => {
+    setTab(id);
+    requestAnimationFrame(() => document.getElementById("builder-step")?.scrollIntoView({ block: "start", behavior: "smooth" }));
+  };
+  const saveText = pending
+    ? t("builder.saving")
+    : dirty
+      ? draftState.status === "saving" ? "Keeping your changes…" : draftState.status === "saved" && !unkept ? "Changes kept · not live until you save" : draftState.status === "error" ? "Changes not kept yet" : "Unsaved changes"
+      : `All changes saved`;
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex min-w-0 basis-full items-center gap-2 sm:basis-auto">
-          <Button asChild variant="ghost" size="icon" aria-label={t("common.back")}>
-            <Link href="/agents"><ArrowLeft /></Link>
-          </Button>
-          <Input
-            aria-label={t("builder.agentName")}
-            value={config.name}
-            disabled={readOnly}
-            onChange={(e) => update({ name: e.target.value })}
-            className="h-10 min-w-0 flex-1 text-lg font-semibold sm:w-72"
-          />
-        </div>
+      {/* Top bar: one row */}
+      <div className="sticky top-0 z-20 -mx-4 flex flex-wrap items-center gap-2 border-b bg-background/95 px-4 py-2.5 backdrop-blur sm:-mx-6 sm:px-6">
+        <Button asChild variant="ghost" size="icon" aria-label={t("common.back")}>
+          <Link href="/agents"><ArrowLeft /></Link>
+        </Button>
+        <Input
+          aria-label={t("builder.agentName")}
+          value={config.name}
+          disabled={readOnly}
+          onChange={(e) => update({ name: e.target.value })}
+          className="h-9 w-auto min-w-24 max-w-56 border-transparent px-2 text-lg font-semibold shadow-none [field-sizing:content] hover:border-input focus-visible:border-input"
+        />
         <Badge variant={saved.status === "READY" ? "default" : "secondary"}>{t(`agents.status.${saved.status}`)}</Badge>
-        <span className="text-xs text-muted-foreground">
-          {pending
-            ? t("builder.saving")
-            : dirty
-              ? `${t("builder.unsaved")} · ${draftState.status === "saving" ? "keeping a draft…" : draftState.status === "saved" && !unkept ? "draft kept" : draftState.status === "error" ? "draft not kept" : "draft in a moment"}`
-              : `${t("builder.saved")} ${formatLagos(saved.at)} WAT`}
+        <span className="hidden items-center gap-1 text-xs text-muted-foreground md:inline-flex">
+          {!dirty && !pending && <Check className="size-3.5" />} {saveText}
         </span>
-        {!readOnly && (
-          <div className="flex items-center gap-1">
-            <Button type="button" variant="ghost" size="icon" onClick={doUndo} disabled={!hist.past.length} aria-label="Undo" title="Undo (Ctrl+Z)"><Undo2 /></Button>
-            <Button type="button" variant="ghost" size="icon" onClick={doRedo} disabled={!hist.future.length} aria-label="Redo" title="Redo (Ctrl+Shift+Z)"><Redo2 /></Button>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setHistoryOpen(true)}><History /> History</Button>
-          </div>
-        )}
-        <div className="ml-auto flex flex-wrap gap-2">
-          <Button asChild variant="outline">
-            <Link
-              href={`/lab/${agentId}`}
-              data-no-loader
-              onClick={(e) => {
-                if (dirty && !window.confirm(t("builder.testUnsaved"))) e.preventDefault();
-              }}
-            >
-              <FlaskConical /> {t("builder.test")}
-            </Link>
-          </Button>
+        <div className="ml-auto flex items-center gap-1">
+          <IssuesButton issues={issues} onGo={(step) => go(step)} />
           {!readOnly && (
             <>
-              {saved.status === "READY" ? (
-                <Button type="button" variant="outline" disabled={pending} onClick={() => save("DRAFT")}>{t("builder.markDraft")}</Button>
-              ) : (
-                <Button type="button" variant="outline" disabled={pending} onClick={() => save("READY")}>{t("builder.markReady")}</Button>
-              )}
-              <Button type="button" disabled={pending || !dirty} onClick={() => save(saved.status)}>
-                <Save /> {t("builder.save")}
-              </Button>
+              <Button type="button" variant="ghost" size="icon" onClick={doUndo} disabled={!hist.past.length} aria-label="Undo" title="Undo (Ctrl+Z)"><Undo2 /></Button>
+              <Button type="button" variant="ghost" size="icon" onClick={doRedo} disabled={!hist.future.length} aria-label="Redo" title="Redo (Ctrl+Shift+Z)"><Redo2 /></Button>
             </>
           )}
+          <MoreMenu
+            items={[
+              ...(!readOnly
+                ? [saved.status === "READY"
+                    ? { label: t("builder.markDraft"), icon: CircleDot, onClick: () => save("DRAFT") }
+                    : { label: t("builder.markReady"), icon: CircleCheck, onClick: () => save("READY") }]
+                : []),
+              { label: "Version history", icon: History, onClick: () => setHistoryOpen(true) },
+              { label: "Open the full Lab", icon: FlaskConical, href: `/lab/${agentId}` },
+              ...(canDelete ? [{ label: t("agents.delete"), icon: Trash2, danger: true, onClick: () => { if (window.confirm(t("agents.deleteConfirm"))) deleteRef.current?.requestSubmit(); } }] : []),
+            ]}
+          />
+          {!readOnly && (
+            <Button type="button" disabled={pending || !dirty} onClick={() => save(saved.status)}>
+              <Save /> {t("builder.save")}
+            </Button>
+          )}
         </div>
+        {canDelete && (
+          <form ref={deleteRef} action={deleteAgent} className="hidden">
+            <input type="hidden" name="agentId" value={agentId} />
+          </form>
+        )}
       </div>
 
       {restoredNotice && dirty && (
@@ -270,9 +304,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
           }}
         />
       )}
-      {isNew && <Alert variant="success">Your agent is created. Work through the steps below: choose a voice, write its instructions, give it knowledge and a phone number, then test it in the Lab.</Alert>}
-      <SetupSteps steps={steps} onPick={(id) => setTab(id as Tab)} />
-
+      {isNew && <Alert variant="success">Your agent is created. Go through the steps on the left, and test it any time with Start talking.</Alert>}
       {readOnly && <Alert>{t("agents.readOnly")}</Alert>}
       {errors.length > 0 && (
         <Alert variant="destructive">
@@ -283,76 +315,181 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
         </Alert>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]">
-        <div className="min-w-0 space-y-4">
-          <div role="tablist" aria-label="Agent settings" className="flex flex-wrap gap-x-4 gap-y-3 rounded-xl border bg-card p-3">
-            {TAB_GROUPS.map((group) => (
-              <div key={group.label} className="min-w-0 space-y-1.5">
-                <p className="px-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{group.label}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {group.tabs.map(({ id, icon: Icon }) => (
-                    <button
-                      key={id}
-                      type="button"
-                      role="tab"
-                      aria-selected={tab === id}
-                      onClick={() => setTab(id)}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors",
-                        tab === id
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : id === "talk"
-                            ? "border border-primary/40 bg-primary/5 text-primary hover:bg-primary/10"
-                            : "bg-muted text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      <Icon className="size-4" />
-                      {t(`builder.tabs.${id}`)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+      <div className="grid gap-5 lg:grid-cols-[13rem_minmax(0,1fr)] xl:grid-cols-[13rem_minmax(0,1fr)_21rem]">
+        {/* Steps */}
+        <nav aria-label="Agent setup steps" className="hidden h-fit space-y-1 rounded-xl border bg-card p-3 lg:sticky lg:top-20 lg:block">
+          <p className="px-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Set up · {doneCount} of {STEPS.length} done</p>
+          <div className="mx-2 mb-2 mt-1.5 h-1.5 rounded-full bg-muted"><div className="h-1.5 rounded-full bg-primary transition-all" style={{ width: `${(doneCount / STEPS.length) * 100}%` }} /></div>
+          {STEPS.map((x, i) => (
+            <StepLink key={x.id} n={i + 1} label={x.label} done={done[x.id]} active={tab === x.id} onClick={() => go(x.id)} />
+          ))}
+          <p className="px-2 pt-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Advanced</p>
+          {ADVANCED.map((x) => (
+            <StepLink key={x.id} label={x.label} active={tab === x.id} onClick={() => go(x.id)} />
+          ))}
+        </nav>
+        <div className="space-y-2 rounded-xl border bg-card p-3 lg:hidden">
+          <Select aria-label="Setup step" value={tab} onChange={(e) => go(e.target.value as Tab)}>
+            {STEPS.map((x, i) => <option key={x.id} value={x.id}>Step {i + 1} of {STEPS.length}: {x.label}{done[x.id] ? " ✓" : ""}</option>)}
+            <optgroup label="Advanced">{ADVANCED.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</optgroup>
+          </Select>
+          <div className="h-1.5 rounded-full bg-muted"><div className="h-1.5 rounded-full bg-primary" style={{ width: `${(doneCount / STEPS.length) * 100}%` }} /></div>
+        </div>
 
+        {/* The one section being edited */}
+        <div id="builder-step" className="min-w-0 scroll-mt-20 space-y-4">
+          <p className="hidden text-xs font-medium text-muted-foreground lg:block">
+            {stepIndex >= 0 ? `Step ${stepIndex + 1} of ${STEPS.length}` : "Advanced"}
+          </p>
           <fieldset disabled={readOnly} className="min-w-0">
             {tab === "business" && <BusinessTab config={config} update={update} />}
-            {tab === "blocks" && <BlocksEditor blocks={config.blocks} onChange={(blocks) => update({ blocks })} />}
+            {tab === "voice" && <VoiceTab config={config} update={update} workspaceVoices={workspaceVoices} />}
+            {tab === "instructions" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Instructions</CardTitle>
+                  <CardDescription>What the agent should do on each call. Templates arrive already written: change anything, or clear it and write your own.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <InstructionsStep config={config} onChange={(c) => change(() => c)} onAddVariable={addVariable} readOnly={readOnly} />
+                </CardContent>
+              </Card>
+            )}
             {tab === "firstMessage" && <FirstMessageTab config={config} update={update} />}
             {tab === "tools" && <ToolsTab config={config} update={update} />}
             {tab === "silence" && <SilenceTab config={config} update={update} />}
-            {tab === "voice" && <VoiceTab config={config} update={update} workspaceVoices={workspaceVoices} />}
           </fieldset>
           {tab === "knowledge" && <KnowledgeTab agentId={agentId} c={connections} />}
           {tab === "numbers" && <NumbersTab agentId={agentId} c={connections} />}
-          {tab === "talk" && (
-            <Simulator
-              embedded
-              agentId={agentId}
-              config={config}
-              initialWhen={initialWhen}
-              provider={llmProvider}
-              voice={orderVoices(workspaceVoices).find((v) => v.id === config.voiceId)}
-            />
-          )}
 
-          {canDelete && (
-            <form
-              action={deleteAgent}
-              onSubmit={(e) => {
-                if (!window.confirm(t("agents.deleteConfirm"))) e.preventDefault();
-              }}
-            >
-              <input type="hidden" name="agentId" value={agentId} />
-              <Button type="submit" variant="ghost" size="sm" className="text-destructive">
-                <Trash2 /> {t("agents.delete")}
-              </Button>
-            </form>
-          )}
+          <div className="flex items-center justify-between gap-2">
+            {prev ? <Button type="button" variant="ghost" onClick={() => go(prev.id)}><ArrowLeft /> {prev.label}</Button> : <span />}
+            {next ? <Button type="button" onClick={() => go(next.id)}>Next: {next.label} <ArrowRight /></Button> : stepIndex === STEPS.length - 1 ? <span className="text-sm text-muted-foreground">Last step. Test your agent, then Save.</span> : null}
+          </div>
         </div>
 
-        <PreviewPanel config={config} onAddVariable={addVariable} readOnly={readOnly} />
+        {/* Test your agent: always there on wide screens */}
+        <aside aria-label="Test your agent" className="hidden h-[calc(100dvh-7rem)] min-h-[34rem] flex-col rounded-xl border bg-card p-4 xl:sticky xl:top-20 xl:flex">
+          <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Test your agent</p>
+          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} />
+        </aside>
       </div>
+
+      {/* Smaller screens: a button that opens the test panel full screen */}
+      <button
+        type="button"
+        onClick={() => setTalkOpen(true)}
+        className="fixed right-4 bottom-4 z-30 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 font-semibold text-primary-foreground shadow-lg xl:hidden"
+      >
+        <Mic className="size-5" /> Talk to {config.name || "agent"}
+      </button>
+      {talkOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-background p-4 xl:hidden" role="dialog" aria-modal="true" aria-label="Test your agent">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-semibold">Test your agent</p>
+            <Button type="button" variant="ghost" size="icon" onClick={() => setTalkOpen(false)} aria-label="Close"><X /></Button>
+          </div>
+          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StepLink({ n, label, done, active, onClick }: { n?: number; label: string; done?: boolean; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active ? "step" : undefined}
+      className={cn("flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm transition-colors", active ? "bg-primary/10 font-semibold text-primary" : "text-foreground hover:bg-muted")}
+    >
+      <span
+        className={cn(
+          "grid size-5 shrink-0 place-items-center rounded-full border text-[11px]",
+          done ? "border-primary bg-primary text-primary-foreground" : active ? "border-primary text-primary" : n ? "border-muted-foreground/40 text-muted-foreground" : "border-dashed border-muted-foreground/40",
+        )}
+      >
+        {done ? <Check className="size-3" /> : n ?? ""}
+      </span>
+      {label}
+    </button>
+  );
+}
+
+type MenuItem = { label: string; icon: LucideIcon; onClick?: () => void; href?: string; danger?: boolean };
+
+function MoreMenu({ items }: { items: MenuItem[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  return (
+    <div ref={ref} className="relative">
+      <Button type="button" variant="outline" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-haspopup="menu"><MoreHorizontal /> More</Button>
+      {open && (
+        <div role="menu" className="absolute right-0 z-40 mt-1 w-56 rounded-lg border bg-popover p-1 shadow-lg">
+          {items.map((item) => {
+            const cls = cn("flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-muted", item.danger && "text-destructive");
+            const body = <><item.icon className="size-4" /> {item.label}</>;
+            return item.href ? (
+              <Link key={item.label} role="menuitem" href={item.href} className={cls} onClick={() => setOpen(false)}>{body}</Link>
+            ) : (
+              <button key={item.label} role="menuitem" type="button" className={cls} onClick={() => { setOpen(false); item.onClick?.(); }}>{body}</button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export interface BuilderIssue {
+  message: string;
+  severity: "error" | "warning";
+  step: Tab;
+}
+
+function IssuesButton({ issues, onGo }: { issues: BuilderIssue[]; onGo: (step: Tab) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+  if (!issues.length) return null;
+  const errors = issues.filter((i) => i.severity === "error").length;
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={cn("inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold", errors ? "border-destructive/40 bg-destructive/5 text-destructive" : "border-warning/40 bg-warning/10 text-warning")}
+      >
+        <TriangleAlert className="size-3.5" /> {issues.length} {issues.length === 1 ? "issue" : "issues"}
+      </button>
+      {open && (
+        <div className="absolute right-0 z-40 mt-1 w-80 space-y-1 rounded-lg border bg-popover p-2 shadow-lg">
+          <p className="px-1 text-xs text-muted-foreground">Fix these before the agent goes live:</p>
+          {issues.map((issue, i) => (
+            <button key={i} type="button" onClick={() => { setOpen(false); onGo(issue.step); }} className="flex w-full gap-2 rounded-md p-2 text-left text-sm hover:bg-muted">
+              <TriangleAlert className={cn("mt-0.5 size-4 shrink-0", issue.severity === "error" ? "text-destructive" : "text-warning")} />
+              <span>{issue.message} <span className="text-primary">Fix →</span></span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
