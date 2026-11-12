@@ -1,6 +1,6 @@
 "use client";
 
-import type { Voice } from "@spagai/core";
+import { VOICE_PROVIDERS, type Voice } from "@spagai/core";
 import { Check, ChevronDown, Pause, Play } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -50,7 +50,12 @@ function VoiceRow({ v, selected, playing, onChoose, onPlay }: { v: Voice; select
       {/* Choose: the rest of the row */}
       <button type="button" onClick={onChoose} disabled={!usable} aria-pressed={selected} className="flex min-w-0 flex-1 items-center gap-2 text-left outline-none disabled:cursor-not-allowed">
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold">{v.name}</span>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-sm font-semibold">{v.name}</span>
+            <span className={cn("shrink-0 rounded px-1.5 py-px text-[10px] font-medium", v.provider === "fish_audio" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+              {VOICE_PROVIDERS[v.provider] ?? v.provider}
+            </span>
+          </span>
           <span className="block truncate text-xs text-muted-foreground">{usable ? meta : "Not connected"}</span>
         </span>
         {playing && <Bars />}
@@ -105,7 +110,7 @@ export function VoicePicker({ voices, selectedId, playingId, onChoose, onPlay }:
 
       {real.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Real voices</p>
+          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{VOICE_PROVIDERS.fish_audio} · real voices ({real.length})</p>
           <div className="grid gap-1.5 sm:grid-cols-2">{real.map(row)}</div>
         </div>
       )}
@@ -113,9 +118,24 @@ export function VoicePicker({ voices, selectedId, playingId, onChoose, onPlay }:
       {demo.length > 0 && (
         <div className="space-y-1.5">
           <button type="button" onClick={() => setShowDemo((s) => !s)} className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground">
-            Demo voices · browser speech ({demo.length}) <ChevronDown className={cn("size-3.5 transition-transform", showDemo && "rotate-180")} />
+            Demo voices ({demo.length}) · browser speech for now <ChevronDown className={cn("size-3.5 transition-transform", showDemo && "rotate-180")} />
           </button>
-          {showDemo && <div className="grid gap-1.5 sm:grid-cols-2">{demo.map(row)}</div>}
+          {showDemo && (
+            <div className="space-y-3">
+              {/* One group per provider, in the usual provider order */}
+              {Object.keys(VOICE_PROVIDERS)
+                .filter((p) => p !== "fish_audio" && demo.some((v) => v.provider === p))
+                .map((p) => {
+                  const list = demo.filter((v) => v.provider === p);
+                  return (
+                    <div key={p} className="space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground">{VOICE_PROVIDERS[p]} ({list.length})</p>
+                      <div className="grid gap-1.5 sm:grid-cols-2">{list.map(row)}</div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
         </div>
       )}
 

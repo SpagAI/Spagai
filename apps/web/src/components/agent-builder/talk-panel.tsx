@@ -67,7 +67,10 @@ export function TalkPanel({ config, voice, provider, initialWhen }: TalkPanelPro
   const [heardNothing, setHeardNothing] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), [entries.length, phase]);
+  // Braces matter: newer browsers return a value from scrollIntoView, and an effect may only return a clean-up function.
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [entries.length, phase]);
   useEffect(() => () => { liveRef.current = false; }, []);
 
   const setAll = (list: Entry[]) => {

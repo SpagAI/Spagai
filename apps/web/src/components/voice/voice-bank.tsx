@@ -41,7 +41,9 @@ export function VoiceBank({ configured, canEdit, addedIds }: VoiceBankProps) {
   const [playing, setPlaying] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  useEffect(() => setAdded(new Set(addedIds)), [addedIds]);
+  useEffect(() => {
+    setAdded(new Set(addedIds));
+  }, [addedIds]);
 
   const run = useCallback(async (q: string, g: typeof gender, p: number) => {
     setLoading(true);
