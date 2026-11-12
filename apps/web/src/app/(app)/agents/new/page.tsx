@@ -34,7 +34,8 @@ export default async function NewAgentPage({ searchParams }: { searchParams: Pro
   if (!can(ctx.role, "agent:edit")) redirect("/agents");
   const start = (await searchParams).start;
   const t = await getT();
-  const all = orderVoices(await listWorkspaceVoices(ctx.organisation.id)).filter((v) => v.status === "available");
+  // Only working (real) voices are offered: Fish Audio.
+  const all = orderVoices(await listWorkspaceVoices(ctx.organisation.id)).filter((v) => v.status === "available" && v.provider === "fish_audio");
   // English voices, real Fish Audio voices first. A conversational one is picked to start with.
   const voices = all.filter((v) => v.language === "en-NG");
   const initial = (voices.find((v) => v.provider === "fish_audio" && v.category === "Conversational") ?? voices[0])?.id ?? "";

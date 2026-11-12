@@ -77,12 +77,15 @@ export function VoicePicker({ voices, selectedId, playingId, onChoose, onPlay }:
   onChoose: (id: string) => void;
   onPlay: (v: Voice) => void;
 }) {
-  // Fish Audio (the real voices) first, then the others in the usual order.
-  const providers = ["fish_audio", ...Object.keys(VOICE_PROVIDERS).filter((p) => p !== "fish_audio")].filter((p) => voices.some((v) => v.provider === p));
-  const selectedProvider = voices.find((v) => v.id === selectedId)?.provider;
-  const [provider, setProvider] = useState(selectedProvider ?? (providers.includes("fish_audio") ? "fish_audio" : providers[0] ?? ""));
+  // Only working (real) voices are offered: Fish Audio. The other providers keep an empty tab
+  // until they are connected.
+  const PROVIDER_TABS = ["fish_audio", "elevenlabs", "cartesia", "openai"];
+  const active = voices.filter((v) => v.provider === "fish_audio" && v.status === "available");
+  const providers = PROVIDER_TABS;
+  const chosen = voices.find((v) => v.id === selectedId);
+  const [provider, setProvider] = useState("fish_audio");
   const [gender, setGender] = useState<"" | "female" | "male">("");
-  const shown = voices.filter((v) => v.provider === provider && (!gender || v.gender === gender));
+  const shown = active.filter((v) => v.provider === provider && (!gender || v.gender === gender));
 
   return (
     <div className="space-y-3">
@@ -107,29 +110,31 @@ export function VoicePicker({ voices, selectedId, playingId, onChoose, onPlay }:
       {/* One tab per provider */}
       <div role="tablist" aria-label="Voice providers" className="flex flex-wrap gap-1.5">
         {providers.map((p) => {
-          const count = voices.filter((v) => v.provider === p).length;
-          const active = provider === p;
+          const count = active.filter((v) => v.provider === p).length;
+          const isOpen = provider === p;
           return (
             <button
               key={p}
               type="button"
               role="tab"
-              aria-selected={active}
+              aria-selected={isOpen}
               onClick={() => setProvider(p)}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors",
-                active ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                isOpen ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",
               )}
             >
               {VOICE_PROVIDERS[p] ?? p}
-              <span className={cn("text-xs tabular-nums", active ? "text-primary-foreground/80" : "text-muted-foreground/70")}>{count}</span>
-              {selectedProvider === p && !active && <span className="size-1.5 rounded-full bg-primary" title="The chosen voice is here" />}
+              <span className={cn("text-xs tabular-nums", isOpen ? "text-primary-foreground/80" : "text-muted-foreground/70")}>{count}</span>
+
             </button>
           );
         })}
       </div>
-      {provider && provider !== "fish_audio" && (
-        <p className="text-xs text-muted-foreground">{VOICE_PROVIDERS[provider] ?? provider} voices play with your browser&apos;s speech for now. Fish Audio voices are the real ones.</p>
+      {chosen && chosen.provider !== "fish_audio" && (
+        <p className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs">
+          This agent still uses <span className="font-medium">{chosen.name}</span> ({VOICE_PROVIDERS[chosen.provider] ?? chosen.provider}), a demo voice that is no longer offered. Choose a Fish Audio voice below.
+        </p>
       )}
 
       {shown.length > 0 ? (
@@ -137,6 +142,11 @@ export function VoicePicker({ voices, selectedId, playingId, onChoose, onPlay }:
           {shown.map((v) => (
             <VoiceRow key={v.id} v={v} selected={selectedId === v.id} playing={playingId === v.id} onChoose={() => onChoose(v.id)} onPlay={() => onPlay(v)} />
           ))}
+        </div>
+      ) : provider !== "fish_audio" ? (
+        <div className="rounded-xl border border-dashed p-8 text-center">
+          <p className="text-sm font-medium">{VOICE_PROVIDERS[provider] ?? provider} is not connected yet</p>
+          <p className="mt-1 text-xs text-muted-foreground">Its voices will appear here once it is connected. For now, use the Fish Audio voices.</p>
         </div>
       ) : (
         <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No voices match this filter.</p>
