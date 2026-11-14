@@ -33,7 +33,9 @@ describe("custom agents", () => {
 
   it("turns the person's own {{placeholders}} into per-call values, but not built-in ones", () => {
     const names = customAgentDraft(input).variables.map((v) => v.name);
-    expect(names).toEqual(["company_name", "agent_name", "property_name", "viewing_date"]);
+    // The agent's two, this outbound agent's own (optional) fields, then the person's placeholders.
+    expect(names).toEqual(["company_name", "agent_name", "offer", "call_reason", "callback_number", "lead_source", "property_name", "viewing_date"]);
+    expect(customAgentDraft(input).variables.filter((v) => !["company_name", "agent_name"].includes(v.name)).every((v) => !v.required)).toBe(true);
   });
 
   it("checks the form", () => {

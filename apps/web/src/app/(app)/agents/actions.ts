@@ -97,7 +97,9 @@ export async function createBlankAgent(form: FormData): Promise<void> {
   }).parse({ name: form.get("name"), direction: form.get("direction"), purpose: form.get("purpose") ?? "", company: form.get("company") ?? "" });
 
   const voiceId = await chosenVoice(ctx.organisation.id, form, "en-NG");
-  const draft = blankAgentDraft({ ...input, company: input.company || ctx.organisation.name, language: "en-NG", voiceId });
+  // This kind's business details, sent as detail_<name>.
+  const details = Object.fromEntries([...form.entries()].filter(([k, v]) => k.startsWith("detail_") && typeof v === "string").map(([k, v]) => [k.slice(7), v]));
+  const draft = blankAgentDraft({ ...input, company: input.company || ctx.organisation.name, language: "en-NG", voiceId, details });
   const normalised = normaliseAgentConfig(draft);
   if (!normalised.ok) throw new Error(normalised.errors.join("; "));
   const agent = await db.agent.create({

@@ -162,7 +162,7 @@ async function runTurn(organisationId: string, config: AgentConfig, input: z.inf
 
   // Call mode: every required value must be present, exactly as when dialling.
   const compiled = compilePrompt(
-    { blocks: config.blocks, variables: config.variables, firstMessage: config.firstMessage },
+    { blocks: config.blocks, variables: config.variables, firstMessage: config.firstMessage, direction: config.direction },
     { values, mode: "call" },
   );
   if (compiled.errors.length) return { ok: false, errors: compiled.errors };
@@ -176,7 +176,8 @@ async function runTurn(organisationId: string, config: AgentConfig, input: z.inf
       ok: true,
       provider: llm.name,
       line: toLine({ text: compiled.firstMessage, toolCalls: [], endsCall: false }, now),
-      callingWindow: { allowed: window.allowed, reason: window.reason },
+      // Calling hours only limit agents that call people; inbound agents answer whenever someone calls.
+      callingWindow: config.direction === "inbound" ? { allowed: true, reason: null } : { allowed: window.allowed, reason: window.reason },
       // Exactly what a real model receives (the phone call rules are added for real models only).
       prompt: llm.name === "mock" ? compiled.prompt : `${compiled.prompt}\n\n${PHONE_CALL_RULES}\n- ${todayLine(now)}`,
     };

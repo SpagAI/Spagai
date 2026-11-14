@@ -9,6 +9,8 @@ export interface TestLead {
   gender: "male" | "female" | "unknown";
   firstName: string;
   lastName: string;
+  /** Inbound agents: the number the test caller is calling from. */
+  phone?: string;
 }
 
 export const SAMPLE_LEAD: TestLead = { title: "", gender: "male", firstName: "Chinedu", lastName: "Okafor" };
@@ -20,6 +22,7 @@ export function sampleValues(config: AgentConfig, lead: TestLead = SAMPLE_LEAD):
   const person = { ...lead, gender: lead.gender === "unknown" ? "" : lead.gender };
   return {
     ...callExamples,
+    ...(lead.phone ? { caller_number: lead.phone } : {}),
     ...buildCallValues({ ...person, ...callExamples }, SAMPLE_NOW, config.addressMode),
     ...config.variableValues,
   };

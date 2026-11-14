@@ -91,6 +91,8 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead, serverLi
   const valuesFor = () => {
     const out: Record<string, string> = {};
     for (const v of callVars) out[v.name] = callValues[v.name] ?? v.example ?? v.defaultValue ?? "";
+    // Inbound: the number the test caller is calling from (set in Business details).
+    if (lead.phone && config.variables.some((v) => v.name === "caller_number")) out.caller_number = lead.phone;
     return out;
   };
 

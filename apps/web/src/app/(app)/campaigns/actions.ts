@@ -41,6 +41,8 @@ export async function createCampaign(form: FormData): Promise<void> {
 
   const agent = await db.agent.findFirst({ where: { id: data.agentId, organisationId: ctx.organisation.id } });
   if (!agent) redirect("/campaigns?error=agent");
+  // Campaigns call people: an inbound agent (it answers calls) cannot run one.
+  if ((agent.config as { direction?: string } | null)?.direction === "inbound") redirect("/campaigns?error=agent");
 
   // Every matching lead is added, including ones the gate will block, so the blocks are visible and logged.
   const leads = await db.lead.findMany({

@@ -55,6 +55,8 @@ export interface LintInput {
   firstMessage?: string;
   /** Extra lines the agent will say word for word. */
   scriptedLines?: string[];
+  /** Inbound agents answer calls, so a calling-hours guard is not required. Default "outbound". */
+  direction?: "outbound" | "inbound";
 }
 
 export interface LintReport {
@@ -174,6 +176,7 @@ export function lintPrompt(input: LintInput, options: LintOptions = {}): LintRep
     ["data_safety", "missing-data-safety", "No instruction to refuse PINs, OTPs, BVN or card numbers."],
   ];
   for (const [id, rule, message] of missing) {
+    if (id === "calling_hours" && input.direction === "inbound") continue;
     if (!GUARDRAIL_PATTERNS[id].test(prompt)) issues.push({ rule, severity: "error", message });
   }
 

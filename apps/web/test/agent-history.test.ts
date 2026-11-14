@@ -5,7 +5,7 @@ import { promptLength, record, redo, startHistory, STEP_MS, undo, wasCleared } f
 const config = (prompt: string): AgentConfig => ({
   name: "Kemi", language: "en-NG", voiceId: null, addressMode: "B", firstMessage: "Hello",
   blocks: [{ id: "custom_instructions", section: "beginning", part: "main", title: "Your instructions", content: prompt }],
-  variables: [], variableValues: {}, tools: ["end_call"], silence: DEFAULT_SILENCE, voiceSettings: DEFAULT_VOICE_SETTINGS,
+  variables: [], variableValues: {}, tools: ["end_call"], silence: DEFAULT_SILENCE, voiceSettings: DEFAULT_VOICE_SETTINGS, direction: "outbound",
 });
 
 describe("undo and redo", () => {

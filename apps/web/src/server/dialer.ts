@@ -129,7 +129,7 @@ export async function runCampaignBatch(args: {
       ...config.variableValues,
     };
     const compiled = compilePrompt(
-      { blocks: config.blocks, variables: config.variables, firstMessage: config.firstMessage },
+      { blocks: config.blocks, variables: config.variables, firstMessage: config.firstMessage, direction: config.direction },
       { values, mode: "call" },
     );
     if (compiled.errors.length) {

@@ -1,26 +1,32 @@
 import "server-only";
 import { DEFAULT_SILENCE, getPreset, presetToAgentConfig } from "@spagai/core";
+import { defaultFirstMessage, directionValues, fieldsFor, starterPrompt, type Direction } from "@/lib/agent-direction";
+import { PROMPT_BLOCK_ID } from "@/lib/prompt-text";
 
-/** The starting config for an agent built from scratch: a name, what it does and its business. */
-export function blankAgentDraft(input: { name: string; direction: "inbound" | "outbound"; purpose: string; company: string; language?: string; voiceId?: string | null }) {
+/**
+ * The starting config for an agent built from scratch (Quick start). Outbound and inbound agents
+ * get their own business details, first message and starting prompt.
+ */
+export function blankAgentDraft(input: {
+  name: string;
+  direction: Direction;
+  purpose: string;
+  company: string;
+  language?: string;
+  voiceId?: string | null;
+  /** Business details for this kind of agent (offer, call_reason… or business_description, opening_hours…). */
+  details?: Record<string, unknown>;
+}) {
   return {
     name: input.name,
+    direction: input.direction,
     language: input.language ?? "en-NG",
     voiceId: input.voiceId ?? null,
     addressMode: "B",
-    firstMessage: input.direction === "outbound"
-      ? "Hello, this is {{agent_name}}, an AI assistant calling from {{company_name}}. Is this a good time to talk?"
-      : "Hello, thank you for calling {{company_name}}. My name is {{agent_name}}, an AI assistant. How can I help you today?",
-    blocks: [
-      { id: "identity", section: "beginning", part: "main", title: "Who you are", content: "You are {{agent_name}}, a friendly AI voice assistant for {{company_name}}. You speak clear, simple Nigerian English and keep your answers short." },
-      { id: "purpose", section: "body", part: "solution", title: "What you do", content: input.purpose || "Describe what this agent should do on each call: the questions it answers, the information it collects and when to book a meeting." },
-      { id: "goodbye", section: "end", part: "goodbye", title: "Before you go", content: "Before ending, check if there is anything else you can help with, thank the person and say goodbye." },
-    ],
-    variables: [
-      { name: "company_name", label: "Your company name", scope: "agent", required: true, example: "Spag Finance" },
-      { name: "agent_name", label: "Agent's name", scope: "agent", required: true, defaultValue: input.name },
-    ],
-    variableValues: { company_name: input.company, agent_name: input.name },
+    firstMessage: defaultFirstMessage(input.direction),
+    blocks: [{ id: PROMPT_BLOCK_ID, section: "beginning", part: "main", title: "Your instructions", content: starterPrompt(input.direction, input.purpose) }],
+    variables: fieldsFor(input.direction, input.name),
+    variableValues: { company_name: input.company, agent_name: input.name, ...directionValues(input.direction, input.details ?? {}) },
     tools: ["end_call"],
     silence: DEFAULT_SILENCE,
   };

@@ -4,7 +4,7 @@
  */
 
 import { DEFAULT_GUARDRAILS, GUARDRAIL_ORDER } from "./guardrails";
-import type { BlockPart, GuardrailId, PromptBlock, PromptTemplate, SectionId, VariableDef } from "./types";
+import type { AgentDirection, BlockPart, GuardrailId, PromptBlock, PromptTemplate, SectionId, VariableDef } from "./types";
 import { SYSTEM_VARIABLES, findVariables, renderVariables } from "./variables";
 
 export const SECTION_ORDER: SectionId[] = ["beginning", "adjunct", "body", "anything_else", "end"];
@@ -85,16 +85,23 @@ export interface CompileResult {
 }
 
 /** Ensure every locked guardrail is present, filling empty ones with default wording. */
-export function withGuardrails(blocks: PromptBlock[]): { blocks: PromptBlock[]; injected: GuardrailId[] } {
+/** Guardrails each kind of agent must have. Inbound agents answer calls, so no calling-hours rule. */
+export function guardrailsFor(direction: AgentDirection = "outbound"): GuardrailId[] {
+  return direction === "inbound" ? GUARDRAIL_ORDER.filter((id) => id !== "calling_hours") : GUARDRAIL_ORDER;
+}
+
+export function withGuardrails(blocks: PromptBlock[], direction: AgentDirection = "outbound"): { blocks: PromptBlock[]; injected: GuardrailId[] } {
   const injected: GuardrailId[] = [];
-  const result = blocks.map((b) => {
+  const needed = guardrailsFor(direction);
+  // A guardrail this kind of agent does not need (calling hours on an inbound agent) is dropped.
+  const result = blocks.filter((b) => !b.guardrail || needed.includes(b.guardrail)).map((b) => {
     if (b.guardrail && !b.content.trim()) {
       injected.push(b.guardrail);
       return { ...DEFAULT_GUARDRAILS[b.guardrail], ...b, content: DEFAULT_GUARDRAILS[b.guardrail].content, enabled: true };
     }
     return b.guardrail ? { ...b, enabled: true } : b;
   });
-  for (const id of GUARDRAIL_ORDER) {
+  for (const id of needed) {
     if (!result.some((b) => b.guardrail === id)) {
       injected.push(id);
       result.push({ ...DEFAULT_GUARDRAILS[id] });
@@ -113,7 +120,7 @@ export function compilePrompt(template: PromptTemplate, options: CompileOptions 
   const values = options.values ?? {};
   const errors: string[] = [];
 
-  const { blocks, injected } = withGuardrails(template.blocks);
+  const { blocks, injected } = withGuardrails(template.blocks, template.direction);
   const active = blocks.filter((b) => b.enabled !== false && b.content.trim());
 
   // Variable defaults

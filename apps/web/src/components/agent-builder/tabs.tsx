@@ -61,6 +61,7 @@ export function BusinessTab({ config, update, lead, onLeadChange }: { config: Ag
           );
         })}
 
+        {config.direction !== "inbound" && (
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium">{t("builder.business.addressMode")}</legend>
           {(["A", "B"] as const).map((mode) => (
@@ -77,24 +78,36 @@ export function BusinessTab({ config, update, lead, onLeadChange }: { config: Ag
             </label>
           ))}
         </fieldset>
+        )}
 
-        {/* The person the agent talks to while testing (real calls use each lead's own details). */}
-        <fieldset className="space-y-3 rounded-lg border bg-muted/20 p-4">
-          <legend className="px-1 text-sm font-medium">Person to test with</legend>
-          <p className="text-xs text-muted-foreground">Who the agent talks to when you test it and in the previews. On real calls, each person&apos;s own name from your lead list is used.</p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5"><Label htmlFor="tl-first">First name</Label><Input id="tl-first" value={lead.firstName} onChange={(e) => onLeadChange({ ...lead, firstName: e.target.value })} placeholder="e.g. Ngozi" /></div>
-            <div className="space-y-1.5"><Label htmlFor="tl-last">Last name</Label><Input id="tl-last" value={lead.lastName} onChange={(e) => onLeadChange({ ...lead, lastName: e.target.value })} placeholder="e.g. Adeyemi" /></div>
-            <div className="space-y-1.5"><Label htmlFor="tl-title">Title</Label><Input id="tl-title" value={lead.title} onChange={(e) => onLeadChange({ ...lead, title: e.target.value })} placeholder="Mr, Mrs, Dr… (optional)" /></div>
-            <div className="space-y-1.5">
-              <Label htmlFor="tl-gender">Gender</Label>
-              <Select id="tl-gender" value={lead.gender} onChange={(e) => onLeadChange({ ...lead, gender: e.target.value as TestLead["gender"] })}>
-                <option value="male">Male</option><option value="female">Female</option><option value="unknown">Not known</option>
-              </Select>
+        {/* The person the agent talks to while testing (real calls use each lead's or caller's own details). */}
+        {config.direction === "inbound" ? (
+          <fieldset className="space-y-3 rounded-lg border bg-muted/20 p-4">
+            <legend className="px-1 text-sm font-medium">Caller to test with</legend>
+            <p className="text-xs text-muted-foreground">An inbound agent answers strangers, so it asks the caller&apos;s name. On real calls, the caller&apos;s number comes from the incoming call.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5"><Label htmlFor="tl-phone">Caller&apos;s phone number</Label><Input id="tl-phone" value={lead.phone ?? ""} onChange={(e) => onLeadChange({ ...lead, phone: e.target.value })} placeholder="e.g. 0803 555 0101" inputMode="tel" /></div>
+              <div className="space-y-1.5"><Label htmlFor="tl-first">Caller&apos;s first name</Label><Input id="tl-first" value={lead.firstName} onChange={(e) => onLeadChange({ ...lead, firstName: e.target.value })} placeholder="e.g. Ngozi" /></div>
             </div>
-          </div>
-          <p className="text-sm">The agent will address them as <span className="font-semibold">“{sampleValues(config, lead).address || "—"}”</span>.</p>
-        </fieldset>
+          </fieldset>
+        ) : (
+          <fieldset className="space-y-3 rounded-lg border bg-muted/20 p-4">
+            <legend className="px-1 text-sm font-medium">Person to test with</legend>
+            <p className="text-xs text-muted-foreground">Who the agent calls when you test it and in the previews. On real calls, each person&apos;s own name from your lead list is used.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5"><Label htmlFor="tl-first">First name</Label><Input id="tl-first" value={lead.firstName} onChange={(e) => onLeadChange({ ...lead, firstName: e.target.value })} placeholder="e.g. Ngozi" /></div>
+              <div className="space-y-1.5"><Label htmlFor="tl-last">Last name</Label><Input id="tl-last" value={lead.lastName} onChange={(e) => onLeadChange({ ...lead, lastName: e.target.value })} placeholder="e.g. Adeyemi" /></div>
+              <div className="space-y-1.5"><Label htmlFor="tl-title">Title</Label><Input id="tl-title" value={lead.title} onChange={(e) => onLeadChange({ ...lead, title: e.target.value })} placeholder="Mr, Mrs, Dr… (optional)" /></div>
+              <div className="space-y-1.5">
+                <Label htmlFor="tl-gender">Gender</Label>
+                <Select id="tl-gender" value={lead.gender} onChange={(e) => onLeadChange({ ...lead, gender: e.target.value as TestLead["gender"] })}>
+                  <option value="male">Male</option><option value="female">Female</option><option value="unknown">Not known</option>
+                </Select>
+              </div>
+            </div>
+            <p className="text-sm">The agent will address them as <span className="font-semibold">“{sampleValues(config, lead).address || "—"}”</span>.</p>
+          </fieldset>
+        )}
       </CardContent>
     </Card>
   );

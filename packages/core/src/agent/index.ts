@@ -249,6 +249,8 @@ export const agentConfigSchema = z.object({
   silence: silenceSchema,
   /** Older agents have none saved: they get the defaults. */
   voiceSettings: voiceSettingsSchema.default(DEFAULT_VOICE_SETTINGS),
+  /** Outbound agents call people; inbound agents answer calls. Older agents count as outbound. */
+  direction: z.enum(["outbound", "inbound"]).default("outbound"),
 });
 
 export type AgentConfig = z.infer<typeof agentConfigSchema>;
@@ -281,7 +283,7 @@ export function normaliseAgentConfig(
     };
   }
   const config = parsed.data;
-  const { blocks } = withGuardrails(config.blocks);
+  const { blocks } = withGuardrails(config.blocks, config.direction);
   const ids = new Set<string>();
   for (const b of blocks) {
     if (ids.has(b.id)) return { ok: false, errors: [`blocks: duplicate block id "${b.id}"`] };
@@ -301,12 +303,13 @@ export function presetToAgentConfig(preset: AgentPreset): AgentConfig {
     voiceId: null,
     addressMode: preset.addressMode,
     firstMessage: preset.firstMessage,
-    blocks: withGuardrails(preset.blocks).blocks,
+    blocks: withGuardrails(preset.blocks, preset.direction).blocks,
     variables: preset.variables,
     variableValues,
     tools: preset.tools,
     silence: preset.silence ?? DEFAULT_SILENCE,
     voiceSettings: DEFAULT_VOICE_SETTINGS,
+    direction: preset.direction,
   };
 }
 
@@ -316,10 +319,10 @@ export function presetToAgentConfig(preset: AgentPreset): AgentConfig {
  */
 export function agentReadiness(config: AgentConfig): { ready: boolean; problems: string[] } {
   const compiled = compilePrompt(
-    { blocks: config.blocks, variables: config.variables, firstMessage: config.firstMessage },
+    { blocks: config.blocks, variables: config.variables, firstMessage: config.firstMessage, direction: config.direction },
     { values: config.variableValues, mode: "preview" },
   );
-  const lint = lintPrompt({ prompt: compiled.prompt, firstMessage: compiled.firstMessage });
+  const lint = lintPrompt({ prompt: compiled.prompt, firstMessage: compiled.firstMessage, direction: config.direction });
   const problems = [...compiled.errors, ...lint.issues.filter((i) => i.severity === "error").map((i) => i.message)];
   if (!config.voiceId) problems.push("Choose a voice.");
   return { ready: problems.length === 0, problems };

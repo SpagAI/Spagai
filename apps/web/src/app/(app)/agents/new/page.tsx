@@ -10,11 +10,11 @@ import { can } from "@/server/permissions";
 import { Bot, LayoutTemplate, PenLine, SlidersHorizontal, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { CustomAgentForm } from "@/components/agent-builder/custom-agent-form";
+import { DirectionFields } from "@/components/agent-builder/direction-fields";
 import { cn } from "@/lib/utils";
 import { PendingButton } from "@/components/confirm-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { NewAgentVoiceInput, NewAgentVoicePicker, NewAgentVoiceProvider } from "@/components/agent-builder/new-agent-voice";
 import { listWorkspaceVoices } from "@/server/voices";
@@ -97,15 +97,9 @@ export default async function NewAgentPage({ searchParams }: { searchParams: Pro
             <NewAgentVoiceInput />
             <div className="space-y-1.5"><Label htmlFor="agent-name">Agent name</Label><Input id="agent-name" name="name" required maxLength={80} placeholder="e.g. Ada" /></div>
             <div className="space-y-1.5"><Label htmlFor="agent-company">Business name</Label><Input id="agent-company" name="company" maxLength={120} defaultValue={ctx.organisation.name} /></div>
-            <div className="space-y-1.5">
-              <Label htmlFor="agent-direction">Calls</Label>
-              <Select id="agent-direction" name="direction" defaultValue="outbound">
-                <option value="outbound">It calls customers (outbound)</option>
-                <option value="inbound">It answers calls (inbound)</option>
-              </Select>
-            </div>
+            <DirectionFields />
             <div className="space-y-1.5 md:col-span-2">
-              <Label htmlFor="agent-purpose">What should it do?</Label>
+              <Label htmlFor="agent-purpose">What should it do? <span className="font-normal text-muted-foreground">(optional)</span></Label>
               <Textarea id="agent-purpose" name="purpose" rows={3} maxLength={2000} placeholder="e.g. Call people who filled our website form, answer questions about our two-bedroom flats in Lekki, and book a viewing." />
             </div>
             <div className="md:col-span-2"><PendingButton pendingText="Creating your agent…"><Sparkles /> Create agent</PendingButton></div>

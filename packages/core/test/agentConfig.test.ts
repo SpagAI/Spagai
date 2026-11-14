@@ -7,7 +7,9 @@ describe("presetToAgentConfig", () => {
   it("starts from the preset with guardrails and default silence", () => {
     const c = base();
     expect(c.name).toBe("Halima");
-    expect(c.blocks.filter((b) => b.guardrail)).toHaveLength(4);
+    // clinic-booking answers calls (inbound): no calling-hours rule, the other three are there.
+    expect(c.direction).toBe("inbound");
+    expect(c.blocks.filter((b) => b.guardrail).map((b) => b.guardrail).sort()).toEqual(["ai_disclosure", "data_safety", "opt_out"]);
     expect(c.silence.checkInAfterSeconds).toBe(7);
     expect(c.silence.endCallAfterSeconds).toBe(15);
     expect(c.variableValues).toEqual({ agent_name: "Halima" });
@@ -26,7 +28,7 @@ describe("normaliseAgentConfig", () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     const guards = r.config.blocks.filter((b) => b.guardrail);
-    expect(guards.map((b) => b.guardrail).sort()).toEqual(["ai_disclosure", "calling_hours", "data_safety", "opt_out"]);
+    expect(guards.map((b) => b.guardrail).sort()).toEqual(["ai_disclosure", "data_safety", "opt_out"]);
     expect(guards.every((b) => b.enabled !== false)).toBe(true);
   });
 
@@ -93,5 +95,23 @@ describe("agentReadiness", () => {
     c.variableValues = { agent_name: "Halima", company_name: "Ikeja Clinic", clinic_address: "12 Allen Avenue", emergency_line: "112" };
     c.voiceId = "mock-en-ng-female-1";
     expect(agentReadiness(c)).toEqual({ ready: true, problems: [] });
+  });
+});
+
+describe("inbound and outbound agents", () => {
+  it("outbound agents get the calling-hours rule; inbound agents do not", () => {
+    const out = presetToAgentConfig(getPreset("fintech-outbound-zara")!);
+    expect(out.direction).toBe("outbound");
+    expect(out.blocks.some((b) => b.guardrail === "calling_hours")).toBe(true);
+    const switched = normaliseAgentConfig({ ...out, direction: "inbound" });
+    expect(switched.ok && switched.config.blocks.some((b) => b.guardrail === "calling_hours")).toBe(false);
+    const back = normaliseAgentConfig({ ...(switched.ok ? switched.config : out), direction: "outbound" });
+    expect(back.ok && back.config.blocks.some((b) => b.guardrail === "calling_hours")).toBe(true);
+  });
+
+  it("older agents without a type count as outbound", () => {
+    const { direction: _d, ...old } = presetToAgentConfig(getPreset("fintech-outbound-zara")!);
+    const r = normaliseAgentConfig(old);
+    expect(r.ok && r.config.direction).toBe("outbound");
   });
 });

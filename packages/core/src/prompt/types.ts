@@ -58,8 +58,13 @@ export interface VariableDef {
   allowEmpty?: boolean;
 }
 
+/** Outbound agents call people; inbound agents answer calls. */
+export type AgentDirection = "outbound" | "inbound";
+
 export interface PromptTemplate {
   blocks: PromptBlock[];
   variables: VariableDef[];
   firstMessage?: string;
+  /** "inbound" agents answer calls, so the calling-hours rule does not apply to them. Default "outbound". */
+  direction?: AgentDirection;
 }

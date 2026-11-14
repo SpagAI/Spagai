@@ -37,7 +37,7 @@ export function InstructionsStep({
   const values = [...config.variables.filter((v) => v.scope === "agent" || v.scope === "call"), ...SYSTEM_VARIABLES.filter((v) => ["lead_name", "address", "greeting", "current_day"].includes(v.name))]
     .filter((v, i, all) => all.findIndex((x) => x.name === v.name) === i);
   const undeclared = useMemo(
-    () => compilePrompt({ blocks: config.blocks, variables: config.variables, firstMessage: config.firstMessage }, { values: sampleValues(config), mode: "preview" }).variables.undeclared,
+    () => compilePrompt({ blocks: config.blocks, variables: config.variables, firstMessage: config.firstMessage, direction: config.direction }, { values: sampleValues(config), mode: "preview" }).variables.undeclared,
     [config],
   );
   const tokens = estimateTokens(text);

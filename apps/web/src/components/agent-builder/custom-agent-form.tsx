@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PlayVoiceButton } from "@/components/voice/play-voice-button";
 import { VoiceSettingsControls } from "@/components/voice/voice-settings";
 import { defaultFirstMessage } from "@/lib/custom-agent";
+import { DirectionFields } from "./direction-fields";
 
 const PROMPT_HINT = `Write the instructions in your own words, or paste a prompt you already have. For example:
 
@@ -27,6 +28,8 @@ export function CustomAgentForm({ voices, company, storageKey }: { voices: Voice
   const [name, setName] = useState("");
   const [business, setBusiness] = useState(company);
   const [direction, setDirection] = useState<"outbound" | "inbound">("outbound");
+  /** This kind's business details (optional here: the prompt is the person's own). */
+  const [details, setDetails] = useState<Record<string, string>>({});
   const [language, setLanguage] = useState<VoiceLanguage>("en-NG");
   const forLanguage = voices.filter((v) => v.language === language);
   const [voiceId, setVoiceId] = useState<string>(forLanguage[0]?.id ?? "");
@@ -117,7 +120,7 @@ export function CustomAgentForm({ voices, company, storageKey }: { voices: Voice
       const kept = snapshot;
       // The agent is being created: this browser's copy is no longer needed (put back if it fails).
       write(null);
-      const result = await createCustomAgent({ name, company: business, direction, language, voiceId: voiceId || null, firstMessage, prompt, voiceSettings: settings });
+      const result = await createCustomAgent({ name, company: business, direction, language, voiceId: voiceId || null, firstMessage, prompt, voiceSettings: settings, details });
       if (result && !result.ok) {
         setErrors(result.errors);
         write(kept);
@@ -148,13 +151,7 @@ export function CustomAgentForm({ voices, company, storageKey }: { voices: Voice
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-1.5"><Label htmlFor="c-name">Agent name</Label><Input id="c-name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} placeholder="e.g. Kemi" /></div>
         <div className="space-y-1.5"><Label htmlFor="c-company">Business name</Label><Input id="c-company" value={business} onChange={(e) => setBusiness(e.target.value)} required maxLength={120} /></div>
-        <div className="space-y-1.5">
-          <Label htmlFor="c-direction">Calls</Label>
-          <Select id="c-direction" value={direction} onChange={(e) => changeDirection(e.target.value as "outbound" | "inbound")}>
-            <option value="outbound">It calls customers (outbound)</option>
-            <option value="inbound">It answers calls (inbound)</option>
-          </Select>
-        </div>
+        <DirectionFields requiredFields={false} value={direction} onChange={changeDirection} details={details} onDetailsChange={setDetails} />
         <div className="space-y-1.5">
           <Label htmlFor="c-language">Language</Label>
           <Select id="c-language" value={language} onChange={(e) => changeLanguage(e.target.value as VoiceLanguage)}>

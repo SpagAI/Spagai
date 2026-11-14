@@ -1,7 +1,7 @@
 "use client";
 
 import { compilePrompt, lintPrompt, orderVoices, type AgentConfig, type VariableDef, type Voice } from "@spagai/core";
-import { ArrowLeft, Check, ChevronDown, CircleAlert, CircleCheck, CircleDot, FlaskConical, History, Mic, MoreHorizontal, Redo2, Save, Trash2, TriangleAlert, Undo2, X, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, Check, ChevronDown, CircleAlert, CircleCheck, CircleDot, FlaskConical, History, Mic, MoreHorizontal, Redo2, Save, Trash2, TriangleAlert, Undo2, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { autosaveAgentDraft, deleteAgent, discardAgentDraft, saveAgent } from "@/app/(app)/agents/actions";
@@ -17,6 +17,7 @@ import { Select } from "@/components/ui/select";
 import { KnowledgeTab, NumbersTab, type AgentConnections } from "./connections";
 import { InstructionsStep } from "./instructions-step";
 import { SAMPLE_LEAD, type TestLead } from "./shared";
+import { DIRECTION_LABEL, switchDirection } from "@/lib/agent-direction";
 import { TalkPanel } from "./talk-panel";
 import { BusinessTab, FirstMessageTab, SilenceTab, ToolsTab, VoiceTab } from "./tabs";
 
@@ -101,12 +102,12 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
   // Problems to fix, each linked to the step where it is fixed.
   const deferred = useDeferredValue(config);
   const issues = useMemo<BuilderIssue[]>(() => {
-    const compiled = compilePrompt({ blocks: deferred.blocks, variables: deferred.variables, firstMessage: deferred.firstMessage }, { values: deferred.variableValues, mode: "preview" });
+    const compiled = compilePrompt({ blocks: deferred.blocks, variables: deferred.variables, firstMessage: deferred.firstMessage, direction: deferred.direction }, { values: deferred.variableValues, mode: "preview" });
     const out: BuilderIssue[] = [];
     if (compiled.variables.missingRequired.length) out.push({ message: `Fill in: ${compiled.variables.missingRequired.join(", ").replace(/_/g, " ")}.`, severity: "error", step: "business" });
     if (compiled.variables.undeclared.length) out.push({ message: `Not values yet: ${compiled.variables.undeclared.map((n) => `{{${n}}}`).join(", ")}.`, severity: "error", step: "instructions" });
     if (!deferred.voiceId) out.push({ message: "Choose a voice.", severity: "error", step: "voice" });
-    const lint = lintPrompt({ prompt: compiled.prompt, firstMessage: compiled.firstMessage });
+    const lint = lintPrompt({ prompt: compiled.prompt, firstMessage: compiled.firstMessage, direction: deferred.direction });
     for (const i of lint.issues) {
       if (i.severity === "info" || i.rule.startsWith("missing-")) continue;
       const inFirst = !!i.excerpt && deferred.firstMessage.includes(i.excerpt.slice(0, 20));
@@ -247,6 +248,9 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
           <span className={cn("size-2 rounded-full", saved.status === "READY" ? "bg-emerald-500" : "bg-muted-foreground/50")} />
           {saved.status === "READY" ? "Live: Ready" : t("agents.status.DRAFT")}
         </span>
+        <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground" title={DIRECTION_LABEL[config.direction]}>
+          {config.direction === "inbound" ? "Inbound" : "Outbound"}
+        </span>
         <span className="hidden items-center gap-1 text-xs text-muted-foreground md:inline-flex">
           {!dirty && !pending && <Check className="size-3.5" />} {saveText}
         </span>
@@ -264,6 +268,19 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
                 ? [saved.status === "READY"
                     ? { label: t("builder.markDraft"), icon: CircleDot, onClick: () => save("DRAFT") }
                     : { label: t("builder.markReady"), icon: CircleCheck, onClick: () => save("READY") }]
+                : []),
+              ...(!readOnly
+                ? [{
+                    label: config.direction === "inbound" ? "Change to an outbound agent" : "Change to an inbound agent",
+                    icon: ArrowLeftRight,
+                    onClick: () => {
+                      const to = config.direction === "inbound" ? "outbound" : "inbound";
+                      const msg = to === "inbound"
+                        ? "Change to an inbound agent (it answers calls)? Its business details switch to inbound ones (opening hours, address…). Your prompt is not changed, so check it reads well for callers."
+                        : "Change to an outbound agent (it calls people)? Its business details switch to outbound ones (what you offer, why you call…). Your prompt is not changed, so check it reads well for calling people.";
+                      if (window.confirm(msg)) change((c) => switchDirection(c, to), true);
+                    },
+                  }]
                 : []),
               { label: "Version history", icon: History, onClick: () => setHistoryOpen(true) },
               { label: "Open the full Lab", icon: FlaskConical, href: `/lab/${agentId}` },

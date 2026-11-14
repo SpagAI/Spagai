@@ -37,7 +37,8 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
       include: { agent: { select: { name: true } }, _count: { select: { leads: true, calls: true } } },
       orderBy: { createdAt: "desc" },
     }),
-    db.agent.findMany({ where: org, select: { id: true, name: true, status: true }, orderBy: { name: "asc" } }),
+    // Campaigns call people, so only outbound agents can run them.
+    db.agent.findMany({ where: org, select: { id: true, name: true, status: true, config: true }, orderBy: { name: "asc" } }).then((list) => list.filter((a) => (a.config as { direction?: string } | null)?.direction !== "inbound")),
     db.lead.groupBy({ by: ["source"], where: org, _count: true, orderBy: { source: "asc" } }),
   ]);
   const totalLeads = sources.reduce((s, x) => s + x._count, 0);
