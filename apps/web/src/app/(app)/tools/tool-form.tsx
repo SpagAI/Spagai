@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { BLANK_TOOL, CONTEXT_KEYS, PARAM_TYPES, STARTERS, type ContextKey, type ParamType, type ToolInput, type ToolParam } from "@/lib/custom-tools";
+import { BLANK_TOOL, CONTEXT_KEYS, PARAM_TYPES, STARTERS, webhookUrlProblem, type ContextKey, type ParamType, type ToolInput, type ToolParam } from "@/lib/custom-tools";
 import { cn } from "@/lib/utils";
 import { deleteTool, revealSigningSecret, rotateSigningSecret, saveTool, sendTestCall, type ToolSummary } from "./actions";
 
@@ -32,6 +32,16 @@ const EXAMPLE: Record<ParamType, string> = {
 
 /** Short names for the example buttons, so they fit on one line. */
 const SHORT: Record<string, string> = { calendar: "Calendar booking", crm_lead: "CRM lead", update_record: "Update record", lookup: "Look up", sheet: "Google Sheet" };
+
+/** A believable example value for a detail, used in the preview and the test. */
+function exampleFor(p: ToolParam): string {
+  if (p.type === "choice") return p.options?.[0] ?? "";
+  if (p.type !== "text") return EXAMPLE[p.type];
+  if (/name/.test(p.name)) return "Ngozi Adeyemi";
+  if (/note|summary|comment|message/.test(p.name)) return "Wants a call back next week";
+  if (/id$|ref|number/.test(p.name)) return "AB1234";
+  return "example";
+}
 
 const SOURCE: Record<string, string> = { test: "Test", talk: "Test your agent", call: "Call" };
 
@@ -226,36 +236,34 @@ export function ToolForm({ id, initial, runs = [], starterLabel, mode = "page", 
             </div>
           </Section>
 
-          <Section title="Also send" hint="Facts about the call sent with every request, under “context”.">
-            <div className="grid gap-2 sm:grid-cols-2">
+          {id && !dialog && <SigningSecret id={id} />}
+        </div>
+
+        <aside className="h-fit space-y-5">
+          {id ? <TestBox id={id} params={initial.parameters} dirty={JSON.stringify(t) !== JSON.stringify(initial)} /> : <Checklist t={t} />}
+
+          <Section title="Also send" hint="Sent with every request, under “context”.">
+            <div className="space-y-2">
               {(Object.keys(CONTEXT_KEYS) as ContextKey[]).map((k) => (
-                <label key={k} className="flex items-center gap-2 text-sm">
-                  <Switch checked={t.sendContext[k]} onCheckedChange={(v) => set({ sendContext: { ...t.sendContext, [k]: v } })} /> {CONTEXT_KEYS[k]}
+                <label key={k} className="flex items-center justify-between gap-3 text-sm">
+                  {CONTEXT_KEYS[k]}
+                  <Switch checked={t.sendContext[k]} onCheckedChange={(v) => set({ sendContext: { ...t.sendContext, [k]: v } })} aria-label={CONTEXT_KEYS[k]} />
                 </label>
               ))}
             </div>
           </Section>
 
           <Section title="While it runs">
-            <div className="grid gap-3 sm:grid-cols-[160px_minmax(0,1fr)]">
-              <Field label="Wait at most">
-                <Select value={t.timeoutMs} onChange={(e) => set({ timeoutMs: Number(e.target.value) })}>
-                  {[3000, 5000, 10000, 15000, 20000].map((ms) => <option key={ms} value={ms}>{ms / 1000} seconds</option>)}
-                </Select>
-              </Field>
-              <Field label="What the agent says while waiting (optional)">
-                <Input value={t.waitMessage} maxLength={200} placeholder="One moment while I book that for you." onChange={(e) => set({ waitMessage: e.target.value })} />
-              </Field>
-            </div>
+            <Field label="Wait at most">
+              <Select value={t.timeoutMs} onChange={(e) => set({ timeoutMs: Number(e.target.value) })}>
+                {[3000, 5000, 10000, 15000, 20000].map((ms) => <option key={ms} value={ms}>{ms / 1000} seconds</option>)}
+              </Select>
+            </Field>
+            <Field label="Agent says while waiting (optional)">
+              <Input value={t.waitMessage} maxLength={200} placeholder="One moment while I book that for you." onChange={(e) => set({ waitMessage: e.target.value })} />
+            </Field>
           </Section>
 
-          {id && !dialog && <SigningSecret id={id} />}
-        </div>
-
-        <aside className="h-fit space-y-5">
-          {id ? <TestBox id={id} params={initial.parameters} dirty={JSON.stringify(t) !== JSON.stringify(initial)} /> : (
-            <div className="rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground">Create the tool first, then you can send a test to your webhook and see exactly what it receives.</div>
-          )}
           <Preview t={t} />
         </aside>
       </div>
@@ -275,9 +283,36 @@ export function ToolForm({ id, initial, runs = [], starterLabel, mode = "page", 
   );
 }
 
+/** What is still needed before the tool can be created, ticking off as the form is filled in. */
+function Checklist({ t }: { t: ToolInput }) {
+  const items = [
+    { done: Boolean(t.label.trim() && t.name), label: "Label and name" },
+    { done: t.description.trim().length >= 10, label: "When the agent should use it" },
+    { done: t.parameters.length > 0 && t.parameters.every((p) => p.name), label: t.parameters.length ? `Details to collect (${t.parameters.length})` : "Details to collect (optional)", optional: true },
+    { done: Boolean(t.url) && !webhookUrlProblem(t.url), label: "Webhook address (https)" },
+  ];
+  const left = items.filter((i) => !i.done && !i.optional).length;
+  return (
+    <div className="space-y-3 rounded-xl border p-4">
+      <div>
+        <h2 className="font-medium">{left === 0 ? "Ready to create" : `${left} thing${left === 1 ? "" : "s"} left`}</h2>
+        <p className="text-xs text-muted-foreground">After creating it you can send a test to your webhook.</p>
+      </div>
+      <ul className="space-y-1.5 text-sm">
+        {items.map((i) => (
+          <li key={i.label} className={cn("flex items-center gap-2", i.done ? "text-foreground" : "text-muted-foreground")}>
+            <span className={cn("grid size-4 shrink-0 place-items-center rounded-full border", i.done && "border-emerald-500 bg-emerald-500 text-white")}>{i.done && <Check className="size-3" />}</span>
+            {i.label}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /** What the webhook will receive, live as you edit. */
 function Preview({ t }: { t: ToolInput }) {
-  const args = Object.fromEntries(t.parameters.filter((p) => p.name).map((p) => [p.name, p.type === "choice" ? p.options?.[0] ?? "" : p.type === "number" ? 2 : p.type === "boolean" ? true : EXAMPLE[p.type]]));
+  const args = Object.fromEntries(t.parameters.filter((p) => p.name).map((p) => [p.name, p.type === "number" ? 2 : p.type === "boolean" ? true : exampleFor(p)]));
   const context: Record<string, unknown> = {};
   if (t.sendContext.agent) context.agent = { id: "…", name: "Zara" };
   if (t.sendContext.call) context.call_id = "…";
@@ -295,7 +330,7 @@ function Preview({ t }: { t: ToolInput }) {
 }
 
 function TestBox({ id, params, dirty }: { id: string; params: ToolParam[]; dirty: boolean }) {
-  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(params.map((p) => [p.name, p.type === "choice" ? p.options?.[0] ?? "" : EXAMPLE[p.type]])));
+  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(params.map((p) => [p.name, exampleFor(p)])));
   const [result, setResult] = useState<Awaited<ReturnType<typeof sendTestCall>> | null>(null);
   const [pending, start] = useTransition();
   const router = useRouter();
