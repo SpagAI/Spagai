@@ -3,15 +3,15 @@
 import { ArrowLeft, Check, ChevronDown, Copy, Eye, KeyRound, Loader2, Plus, RefreshCw, Send, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { CONTEXT_KEYS, PARAM_TYPES, type ContextKey, type ParamType, type ToolInput, type ToolParam } from "@/lib/custom-tools";
+import { BLANK_TOOL, CONTEXT_KEYS, PARAM_TYPES, STARTERS, type ContextKey, type ParamType, type ToolInput, type ToolParam } from "@/lib/custom-tools";
 import { cn } from "@/lib/utils";
-import { deleteTool, revealSigningSecret, rotateSigningSecret, saveTool, sendTestCall } from "./actions";
+import { deleteTool, revealSigningSecret, rotateSigningSecret, saveTool, sendTestCall, type ToolSummary } from "./actions";
 
 export interface RunRow {
   id: string;
@@ -54,8 +54,21 @@ function Field({ label, hint, children, className }: { label: string; hint?: str
   );
 }
 
-export function ToolForm({ id, initial, runs = [], starterLabel }: { id: string | null; initial: ToolInput; runs?: RunRow[]; starterLabel?: string }) {
+interface ToolFormProps {
+  id: string | null;
+  initial: ToolInput;
+  runs?: RunRow[];
+  starterLabel?: string;
+  /** "dialog": shown in a pop-up (e.g. from an agent), stays on the same page. */
+  mode?: "page" | "dialog";
+  onSaved?: (tool: ToolSummary, created: boolean) => void;
+  onCancel?: () => void;
+}
+
+export function ToolForm({ id, initial, runs = [], starterLabel, mode = "page", onSaved, onCancel }: ToolFormProps) {
+  const dialog = mode === "dialog";
   const router = useRouter();
+  const topRef = useRef<HTMLDivElement>(null);
   const [t, setT] = useState<ToolInput>(initial);
   const [nameTouched, setNameTouched] = useState(Boolean(initial.name));
   const [errors, setErrors] = useState<string[]>([]);
@@ -71,15 +84,44 @@ export function ToolForm({ id, initial, runs = [], starterLabel }: { id: string 
     startSave(async () => {
       setErrors([]);
       const r = await saveTool(id, t);
-      if (!r.ok) { setErrors(r.errors); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+      if (!r.ok) {
+        setErrors(r.errors);
+        if (dialog) topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        else window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
       setSaved(true);
-      if (!id) router.replace(`/tools/${r.id}`);
+      if (onSaved) onSaved(r.tool, !id);
+      else if (!id) router.replace(`/tools/${r.id}`);
       else router.refresh();
     });
 
+  const header = dialog ? (
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <h2 className="text-lg font-semibold">{id ? `Edit ${initial.label || "tool"}` : "New tool"}</h2>
+        <p className="text-sm text-muted-foreground">{id ? "Changes apply to every agent that uses this tool." : "It is added to your workspace's Tools and switched on for this agent."}</p>
+      </div>
+      <Button variant="ghost" size="icon" aria-label="Close" onClick={onCancel}><X /></Button>
+    </div>
+  ) : null;
+
   return (
-    <div className="mx-auto max-w-5xl space-y-5 pb-16">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div ref={topRef} className={cn(dialog ? "space-y-5" : "mx-auto max-w-5xl space-y-5 pb-16")}>
+      {header}
+      {dialog && !id && (
+        <div className="space-y-1.5">
+          <p className="text-sm font-medium">Start from an example <span className="font-normal text-muted-foreground">(optional)</span></p>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(STARTERS).map(([key, st]) => (
+              <button key={key} type="button" title={st.blurb} onClick={() => { setT({ ...BLANK_TOOL, ...st.input, url: t.url, headers: t.headers }); setNameTouched(true); }} className={cn("rounded-full border px-3 py-1 text-sm hover:border-primary/50 hover:bg-muted", t.name === st.input.name && "border-primary bg-primary/5 text-primary")}>
+                {st.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className={cn("flex flex-wrap items-center justify-between gap-3", dialog && "hidden")}>
         <div className="min-w-0">
           <Link href="/tools" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" /> Tools</Link>
           <h1 className="truncate text-2xl font-semibold tracking-tight">{id ? t.label || "Tool" : starterLabel ? `New tool: ${starterLabel}` : "New tool"}</h1>
@@ -103,7 +145,7 @@ export function ToolForm({ id, initial, runs = [], starterLabel }: { id: string 
         </div>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className={cn("grid gap-5", !dialog && "lg:grid-cols-[minmax(0,1fr)_340px]")}>
         <div className="space-y-5">
           <Section title="What it does">
             <div className="grid gap-3 sm:grid-cols-2">
@@ -198,10 +240,10 @@ export function ToolForm({ id, initial, runs = [], starterLabel }: { id: string 
             </div>
           </Section>
 
-          {id && <SigningSecret id={id} />}
+          {id && !dialog && <SigningSecret id={id} />}
         </div>
 
-        <aside className="space-y-5 lg:sticky lg:top-4 lg:h-fit">
+        <aside className={cn("space-y-5 lg:sticky lg:top-4 lg:h-fit", dialog && "hidden")}>
           {id ? <TestBox id={id} params={initial.parameters} dirty={JSON.stringify(t) !== JSON.stringify(initial)} /> : (
             <div className="rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground">Create the tool first, then you can send a test to your webhook and see exactly what it receives.</div>
           )}
@@ -209,7 +251,17 @@ export function ToolForm({ id, initial, runs = [], starterLabel }: { id: string 
         </aside>
       </div>
 
-      {id && <RunLog runs={runs} />}
+      {id && !dialog && <RunLog runs={runs} />}
+
+      {dialog && (
+        <div className="sticky bottom-0 -mx-5 flex items-center justify-between gap-3 border-t bg-background px-5 py-3">
+          <Link href={id ? `/tools/${id}` : "/tools"} className="text-sm text-muted-foreground hover:text-foreground">{id ? "Test it and see recent runs on the Tools page" : "All tools"}</Link>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onCancel}>Cancel</Button>
+            <Button onClick={save} disabled={saving}>{saving ? <Loader2 className="animate-spin" /> : null} {id ? "Save" : "Create and switch on"}</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

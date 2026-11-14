@@ -141,6 +141,20 @@ export function buildRequest(tool: { name: string; url: string; method: string; 
   return { url: tool.url, method: tool.method, body: JSON.stringify(payload), payload };
 }
 
+/** A blank tool: what "New tool" starts from. */
+export const BLANK_TOOL: ToolInput = {
+  name: "",
+  label: "",
+  description: "",
+  parameters: [],
+  url: "",
+  method: "POST",
+  headers: [],
+  sendContext: { agent: true, call: true, caller: true, lead: true, time: true },
+  timeoutMs: 10000,
+  waitMessage: "",
+};
+
 /** Ready-made starting points. */
 export const STARTERS: Record<string, { label: string; blurb: string; input: Omit<ToolInput, "url" | "headers" | "timeoutMs" | "sendContext" | "method"> }> = {
   calendar: {

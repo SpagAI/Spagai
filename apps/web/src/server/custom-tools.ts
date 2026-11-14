@@ -1,7 +1,7 @@
 import "server-only";
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from "node:crypto";
 import type { Tool } from "@prisma/client";
-import { buildRequest, cleanArguments, toJsonSchema, webhookUrlProblem, type ContextKey, type ToolContext, type ToolParam } from "@/lib/custom-tools";
+import { buildRequest, cleanArguments, toJsonSchema, webhookUrlProblem, type ContextKey, type ToolContext, type ToolInput, type ToolParam } from "@/lib/custom-tools";
 import { db } from "./db";
 import { env } from "./env";
 import { RateLimiter } from "./rate-limit";
@@ -47,6 +47,22 @@ export interface StoredHeader { name: string; value: string; secret: boolean }
 
 export const toolParams = (tool: Pick<Tool, "parameters">) => (tool.parameters as unknown as ToolParam[]) ?? [];
 export const toolHeaders = (tool: Pick<Tool, "headers">) => (tool.headers as unknown as StoredHeader[]) ?? [];
+
+/** A saved tool as form values. Saved secrets are never sent to the browser: an empty value means "keep it". */
+export function toolToInput(tool: Tool): ToolInput {
+  return {
+    name: tool.name,
+    label: tool.label,
+    description: tool.description,
+    parameters: toolParams(tool),
+    url: tool.url,
+    method: tool.method as ToolInput["method"],
+    headers: toolHeaders(tool).map((h) => ({ name: h.name, value: h.secret ? "" : h.value, secret: h.secret })),
+    sendContext: tool.sendContext as unknown as Record<ContextKey, boolean>,
+    timeoutMs: tool.timeoutMs,
+    waitMessage: tool.waitMessage,
+  };
+}
 
 /** What the AI is told about a tool (OpenAI "function" format). */
 export function functionSpec(tool: Pick<Tool, "name" | "description" | "parameters">) {

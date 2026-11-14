@@ -2,15 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { toolInputSchema, webhookUrlProblem } from "@/lib/custom-tools";
+import { toolInputSchema, webhookUrlProblem, type ToolInput } from "@/lib/custom-tools";
 import { audit } from "@/server/agents";
 import { requirePermission } from "@/server/auth/session";
-import { runCustomTool, decryptSecret, encryptSecret, newSigningSecret, toolHeaders, type StoredHeader, type ToolRunResult } from "@/server/custom-tools";
+import { runCustomTool, toolToInput, decryptSecret, encryptSecret, newSigningSecret, toolHeaders, type StoredHeader, type ToolRunResult } from "@/server/custom-tools";
 import { db } from "@/server/db";
 
 const MAX_TOOLS = 50;
 
-export type SaveToolResult = { ok: true; id: string } | { ok: false; errors: string[] };
+/** What lists of tools (e.g. the agent Tools tab) show. */
+export interface ToolSummary { id: string; name: string; label: string; description: string; host: string }
+
+export type SaveToolResult = { ok: true; id: string; tool: ToolSummary } | { ok: false; errors: string[] };
 
 /** Create (id null) or update a tool. Secret header values are encrypted; an empty secret keeps the saved one. */
 export async function saveTool(id: string | null, input: unknown): Promise<SaveToolResult> {
@@ -51,7 +54,8 @@ export async function saveTool(id: string | null, input: unknown): Promise<SaveT
   if (existing && existing.name !== t.name) await renameInAgents(org, existing.name, t.name);
   await audit(org, ctx.user.id, existing ? "tool.updated" : "tool.created", { type: "tool", id: saved.id }, { name: t.name });
   revalidatePath("/tools");
-  return { ok: true, id: saved.id };
+  revalidatePath("/agents/[id]", "page");
+  return { ok: true, id: saved.id, tool: { id: saved.id, name: saved.name, label: saved.label, description: saved.description, host: new URL(saved.url).host } };
 }
 
 async function renameInAgents(org: string, from: string, to: string) {
@@ -79,6 +83,13 @@ export async function deleteTool(id: string): Promise<void> {
   }
   await audit(org, ctx.user.id, "tool.deleted", { type: "tool", id: tool.id }, { name: tool.name });
   revalidatePath("/tools");
+}
+
+/** A tool's settings for editing it somewhere else (e.g. from an agent). Secrets stay hidden. */
+export async function loadToolForEditing(id: string): Promise<ToolInput | null> {
+  const ctx = await requirePermission("integration:manage");
+  const tool = await db.tool.findFirst({ where: { id: z.string().min(1).parse(id), organisationId: ctx.organisation.id } });
+  return tool ? toolToInput(tool) : null;
 }
 
 /** "Send a test": calls the saved tool with example details, marked test: true. */

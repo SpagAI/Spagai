@@ -63,6 +63,8 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
   const [hist, setHist] = useState(() => startHistory(draft?.config ?? initialConfig));
   const config = hist.present;
   const change = useCallback((fn: (c: AgentConfig) => AgentConfig, force = false) => setHist((h) => record(h, fn(h.present), Date.now(), force)), []);
+  /** The workspace's tools; a tool made from the Tools tab pop-up is added here straight away. */
+  const [tools, setTools] = useState(workspaceTools);
   const [saved, setSaved] = useState({ config: initialConfig, status: initialStatus, at: updatedAt });
   // Autosave: the last version kept as a draft on the server, and when.
   const [autosaved, setAutosaved] = useState(() => JSON.stringify(draft?.config ?? initialConfig));
@@ -373,7 +375,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
               <InstructionsStep config={config} onChange={(c) => change(() => c)} onAddVariable={addVariable} readOnly={readOnly} />
             )}
             {tab === "firstMessage" && <FirstMessageTab config={config} update={update} lead={testLead} />}
-            {tab === "tools" && <ToolsTab config={config} update={update} workspaceTools={workspaceTools} canManageTools={canManageTools} />}
+            {tab === "tools" && <ToolsTab config={config} update={update} workspaceTools={tools} canManageTools={canManageTools} onToolSaved={(tool) => setTools((list) => [...list.filter((x) => x.id !== tool.id), tool].sort((a, b) => a.label.localeCompare(b.label)))} />}
             {tab === "silence" && <SilenceTab config={config} update={update} />}
           </fieldset>
           {tab === "knowledge" && <KnowledgeTab agentId={agentId} c={connections} />}
