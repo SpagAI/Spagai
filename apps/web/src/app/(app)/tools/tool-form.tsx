@@ -30,6 +30,9 @@ const EXAMPLE: Record<ParamType, string> = {
   text: "Ngozi Adeyemi", number: "2", boolean: "true", date: "2026-11-20", time: "10:00", email: "ngozi@example.com", phone: "08031234567", choice: "",
 };
 
+/** Short names for the example buttons, so they fit on one line. */
+const SHORT: Record<string, string> = { calendar: "Calendar booking", crm_lead: "CRM lead", update_record: "Update record", lookup: "Look up", sheet: "Google Sheet" };
+
 const SOURCE: Record<string, string> = { test: "Test", talk: "Test your agent", call: "Call" };
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
@@ -97,28 +100,34 @@ export function ToolForm({ id, initial, runs = [], starterLabel, mode = "page", 
     });
 
   const header = dialog ? (
-    <div className="space-y-1">
-      <button type="button" onClick={onCancel} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" /> Your tools</button>
-      <h2 className="text-lg font-semibold">{id ? `Edit ${initial.label || "tool"}` : "New tool"}</h2>
-      <p className="text-sm text-muted-foreground">{id ? "Changes apply to every agent that uses this tool." : "It is added to your workspace's Tools and switched on for this agent."}</p>
+    <div>
+      <div className="flex items-center gap-1.5">
+        <Button variant="ghost" size="icon" className="-ml-2 size-8" aria-label="Back to your tools" onClick={onCancel}><ArrowLeft /></Button>
+        <h2 className="text-lg font-semibold">{id ? `Edit ${initial.label || "tool"}` : "New tool"}</h2>
+      </div>
+      <p className="text-sm text-muted-foreground">{id ? "Changes apply to every agent that uses this tool." : "Added to your workspace's Tools and switched on for this agent."}</p>
     </div>
   ) : null;
 
-  return (
-    <div ref={topRef} className={cn(dialog ? "space-y-5" : "mx-auto max-w-5xl space-y-5 pb-16")}>
-      {header}
-      {dialog && !id && (
-        <div className="space-y-1.5">
-          <p className="text-sm font-medium">Start from an example <span className="font-normal text-muted-foreground">(optional)</span></p>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(STARTERS).map(([key, st]) => (
-              <button key={key} type="button" title={st.blurb} onClick={() => { setT({ ...BLANK_TOOL, ...st.input, url: t.url, headers: t.headers }); setNameTouched(true); }} className={cn("rounded-full border px-3 py-1 text-sm hover:border-primary/50 hover:bg-muted", t.name === st.input.name && "border-primary bg-primary/5 text-primary")}>
-                {st.label}
-              </button>
-            ))}
-          </div>
+  const starters = !id ? (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="mr-1 text-sm text-muted-foreground">Start from:</span>
+      {Object.entries(STARTERS).map(([key, st]) => (
+        <button key={key} type="button" title={st.blurb} onClick={() => { setT({ ...BLANK_TOOL, ...st.input, url: t.url, headers: t.headers }); setNameTouched(true); }} className={cn("rounded-full border px-2.5 py-0.5 text-[13px] hover:border-primary/50 hover:bg-muted", t.name === st.input.name && "border-primary bg-primary/5 text-primary")}>
+          {SHORT[key] ?? st.label}
+        </button>
+      ))}
+    </div>
+  ) : null;
+
+  const errorList = errors.length > 0 ? (
+    <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <ul className="list-inside list-disc space-y-0.5">{errors.map((e) => <li key={e}>{e}</li>)}</ul>
         </div>
-      )}
+  ) : null;
+
+  return (
+    <div ref={topRef} className={cn(dialog ? "space-y-4" : "mx-auto max-w-5xl space-y-5 pb-16")}>
       <div className={cn("flex flex-wrap items-center justify-between gap-3", dialog && "hidden")}>
         <div className="min-w-0">
           <Link href="/tools" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" /> Tools</Link>
@@ -137,14 +146,16 @@ export function ToolForm({ id, initial, runs = [], starterLabel, mode = "page", 
         </div>
       </div>
 
-      {errors.length > 0 && (
-        <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          <ul className="list-inside list-disc space-y-0.5">{errors.map((e) => <li key={e}>{e}</li>)}</ul>
-        </div>
-      )}
-
+      {!dialog && errorList}
       <div className={cn("grid gap-5", dialog ? "xl:grid-cols-[minmax(0,1fr)_320px]" : "lg:grid-cols-[minmax(0,1fr)_340px]")}>
         <div className="space-y-5">
+          {dialog && (
+            <div className="space-y-4">
+              {header}
+              {starters}
+              {errorList}
+            </div>
+          )}
           <Section title="What it does">
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Label" hint="What you see in the studio.">
