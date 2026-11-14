@@ -19,6 +19,7 @@ import { InstructionsStep } from "./instructions-step";
 import { SAMPLE_LEAD, type TestLead } from "./shared";
 import { DIRECTION_LABEL, switchDirection } from "@/lib/agent-direction";
 import { TalkPanel } from "./talk-panel";
+import { VariablesTab } from "./variables-tab";
 import { BusinessTab, FirstMessageTab, SilenceTab, ToolsTab, VoiceTab, type WorkspaceTool } from "./tabs";
 
 const STEPS = [
@@ -26,6 +27,7 @@ const STEPS = [
   { id: "voice", label: "Voice" },
   { id: "firstMessage", label: "First message" },
   { id: "instructions", label: "Prompt" },
+  { id: "variables", label: "Variables" },
   { id: "knowledge", label: "Knowledge base" },
   { id: "tools", label: "Tools" },
   { id: "numbers", label: "Phone number" },
@@ -102,6 +104,25 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
       // Not kept; still works for this visit.
     }
   };
+  /** Per-call values typed for testing (Variables tab); kept on this computer, not saved with the agent. */
+  const [testValues, setTestValuesState] = useState<Record<string, string>>({});
+  const valuesKey = `spagai:test-values:${agentId}`;
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(valuesKey) ?? "null") as Record<string, string> | null;
+      if (saved && typeof saved === "object") setTestValuesState(saved);
+    } catch {
+      // Storage blocked: start empty.
+    }
+  }, [valuesKey]);
+  const setTestValues = (values: Record<string, string>) => {
+    setTestValuesState(values);
+    try {
+      localStorage.setItem(valuesKey, JSON.stringify(values));
+    } catch {
+      // Not kept; still works for this visit.
+    }
+  };
   const deleteRef = useRef<HTMLFormElement>(null);
 
   // Problems to fix, each linked to the step where it is fixed.
@@ -110,7 +131,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
     const compiled = compilePrompt({ blocks: deferred.blocks, variables: deferred.variables, firstMessage: deferred.firstMessage, direction: deferred.direction }, { values: deferred.variableValues, mode: "preview" });
     const out: BuilderIssue[] = [];
     if (compiled.variables.missingRequired.length) out.push({ message: `Fill in: ${compiled.variables.missingRequired.join(", ").replace(/_/g, " ")}.`, severity: "error", step: "business" });
-    if (compiled.variables.undeclared.length) out.push({ message: `Not values yet: ${compiled.variables.undeclared.map((n) => `{{${n}}}`).join(", ")}.`, severity: "error", step: "instructions" });
+    if (compiled.variables.undeclared.length) out.push({ message: `${compiled.variables.undeclared.length} variable${compiled.variables.undeclared.length === 1 ? " is" : "s are"} used in the prompt but not set up.`, severity: "error", step: "variables" });
     if (!deferred.voiceId) out.push({ message: "Choose a voice.", severity: "error", step: "voice" });
     const lint = lintPrompt({ prompt: compiled.prompt, firstMessage: compiled.firstMessage, direction: deferred.direction });
     for (const i of lint.issues) {
@@ -385,6 +406,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
               <InstructionsStep config={config} onChange={(c) => change(() => c)} onAddVariable={addVariable} readOnly={readOnly} />
             )}
             {tab === "firstMessage" && <FirstMessageTab config={config} update={update} lead={testLead} />}
+            {tab === "variables" && <VariablesTab config={config} update={update} testValues={testValues} onTestValues={setTestValues} />}
             {tab === "tools" && <ToolsTab config={config} update={update} workspaceTools={tools} canManageTools={canManageTools} onToolSaved={(tool) => setTools((list) => [...list.filter((x) => x.id !== tool.id), tool].sort((a, b) => a.label.localeCompare(b.label)))} />}
             {tab === "silence" && <SilenceTab config={config} update={update} />}
           </fieldset>
@@ -397,7 +419,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
             (only hidden), so a test call carries on while you switch tabs. */}
         <aside aria-label="Test your agent" className={cn("hidden h-fit flex-col rounded-xl border bg-card p-4 xl:sticky xl:top-16", !roomy && "xl:flex")}>
           <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Test your agent</p>
-          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} serverListening={serverListening} agentId={agentId} />
+          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} serverListening={serverListening} agentId={agentId} testValues={testValues} onOpenVariables={() => { setTalkOpen(false); go("variables"); }} />
         </aside>
       </div>
 
@@ -415,7 +437,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
             <p className="text-sm font-semibold">Test your agent</p>
             <Button type="button" variant="ghost" size="icon" onClick={() => setTalkOpen(false)} aria-label="Close"><X /></Button>
           </div>
-          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} serverListening={serverListening} agentId={agentId} />
+          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} serverListening={serverListening} agentId={agentId} testValues={testValues} onOpenVariables={() => { setTalkOpen(false); go("variables"); }} />
         </div>
       )}
     </div>

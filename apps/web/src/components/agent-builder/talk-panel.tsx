@@ -38,13 +38,16 @@ export interface TalkPanelProps {
   /** True when our server can do the listening (sharp on any browser); otherwise the browser listens. */
   serverListening?: boolean;
   agentId?: string;
+  /** Per-call values for testing, typed in the Variables tab. */
+  testValues?: Record<string, string>;
+  onOpenVariables?: () => void;
 }
 
 /**
  * "Test your agent": one button. The agent speaks first, then the microphone listens by itself,
  * like a phone call. Uses the settings on screen (even unsaved). Typing is there as a fallback.
  */
-export function TalkPanel({ config, voice, provider, initialWhen, lead, serverListening = false, agentId }: TalkPanelProps) {
+export function TalkPanel({ config, voice, provider, initialWhen, lead, serverListening = false, agentId, testValues = {}, onOpenVariables }: TalkPanelProps) {
   const speaker = useSpeaker();
   const browserListener = useListener(config.language);
   // Words to help the listener: the agent's own names and the test person's name.
@@ -55,7 +58,6 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead, serverLi
   const level = listener === recorder ? recorder.level : 0;
   const callVars = config.variables.filter((v) => v.scope === "call" && !FROM_LEAD.has(v.name));
 
-  const [callValues, setCallValues] = useState<Record<string, string>>({});
   const [when, setWhen] = useState(initialWhen);
   const [speakAloud, setSpeakAloud] = useState(Boolean(voice));
   /** Your own tools call their real webhooks while testing (switch off to simulate them). */
@@ -93,7 +95,7 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead, serverLi
 
   const valuesFor = () => {
     const out: Record<string, string> = {};
-    for (const v of callVars) out[v.name] = callValues[v.name] ?? v.example ?? v.defaultValue ?? "";
+    for (const v of callVars) out[v.name] = testValues[v.name] ?? v.example ?? v.defaultValue ?? "";
     // Inbound: the number the test caller is calling from (set in Business details).
     if (lead.phone && config.variables.some((v) => v.name === "caller_number")) out.caller_number = lead.phone;
     return out;
@@ -153,7 +155,6 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead, serverLi
       if (event.type === "start") {
         liveRef.current = false;
         setPhase("idle");
-        if (result.errors.some((e) => /placeholder|value/i.test(e))) setShowSettings(true);
       } else {
         afterAgent(false);
       }
@@ -276,7 +277,23 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead, serverLi
       {outsideHours && <p className="text-center text-xs text-warning">A real call would be blocked now: {outsideHours}</p>}
       {listener.error && <p className="text-xs text-destructive">{listener.error}</p>}
       {speaker.error && <p className="text-xs text-destructive">{speaker.error}</p>}
-      {errors.length > 0 && <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">{errors.join(" ")}</div>}
+      {errors.length > 0 && (() => {
+        // Missing or unknown placeholders: a short note and a way to fix them, not a long list of names.
+        const valueErrors = errors.filter((e) => /^(Missing required values|Unknown variables|Unfilled placeholders)/.test(e));
+        const count = new Set(valueErrors.flatMap((e) => e.replace(/^[^:]+:\s*/, "").replace(/\.$/, "").split(/,\s*/))).size;
+        const other = errors.filter((e) => !valueErrors.includes(e));
+        return (
+          <div className="space-y-1.5 rounded-lg border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
+            {valueErrors.length > 0 && (
+              <p className="flex flex-wrap items-center justify-between gap-2">
+                <span>{count} variable{count === 1 ? " needs" : "s need"} a value before you can test.</span>
+                {onOpenVariables && <button type="button" onClick={onOpenVariables} className="font-medium underline underline-offset-2">Fill them in</button>}
+              </p>
+            )}
+            {other.length > 0 && <p>{other.join(" ")}</p>}
+          </div>
+        );
+      })()}
       {!listener.supported && <p className="text-xs text-muted-foreground">This browser cannot use the microphone. You can type instead.</p>}
 
       {heardNothing && live && !typeMode && (
@@ -311,13 +328,13 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead, serverLi
 
       {showSettings && (
         <fieldset disabled={live} className="space-y-3 rounded-lg border p-3 text-sm">
-          <p className="text-xs text-muted-foreground">Details for this test call. Change these before starting.</p>
-          {callVars.map((v) => (
-            <div key={v.name} className="space-y-1">
-              <Label htmlFor={`tp-${v.name}`}>{v.label}{v.required && <span className="text-destructive"> *</span>}</Label>
-              <Input id={`tp-${v.name}`} value={callValues[v.name] ?? v.example ?? v.defaultValue ?? ""} onChange={(e) => setCallValues({ ...callValues, [v.name]: e.target.value })} />
-            </div>
-          ))}
+          <p className="text-xs text-muted-foreground">Settings for this test call.</p>
+          {callVars.length > 0 && (
+            <p className="flex items-center justify-between gap-2">
+              <span>{callVars.length} per-call value{callVars.length === 1 ? "" : "s"}</span>
+              {onOpenVariables && <button type="button" onClick={onOpenVariables} className="text-primary hover:underline">Edit in Variables</button>}
+            </p>
+          )}
           <div className="space-y-1"><Label htmlFor="tp-when">Call time (WAT)</Label><Input id="tp-when" type="datetime-local" value={when} onChange={(e) => e.target.value && setWhen(e.target.value)} /></div>
           <label className="flex items-center gap-2"><input type="checkbox" checked={speakAloud} disabled={!voice} onChange={(e) => setSpeakAloud(e.target.checked)} className="accent-[var(--color-primary)]" /> Speak the agent&apos;s lines aloud</label>
           {config.customTools.length > 0 && (
