@@ -41,13 +41,15 @@ export interface TalkPanelProps {
   /** Per-call values for testing, typed in the Variables tab. */
   testValues?: Record<string, string>;
   onOpenVariables?: () => void;
+  /** Fill missing values with samples so a test can start straight away. */
+  onUseSamples?: () => void;
 }
 
 /**
  * "Test your agent": one button. The agent speaks first, then the microphone listens by itself,
  * like a phone call. Uses the settings on screen (even unsaved). Typing is there as a fallback.
  */
-export function TalkPanel({ config, voice, provider, initialWhen, lead, serverListening = false, agentId, testValues = {}, onOpenVariables }: TalkPanelProps) {
+export function TalkPanel({ config, voice, provider, initialWhen, lead, serverListening = false, agentId, testValues = {}, onOpenVariables, onUseSamples }: TalkPanelProps) {
   const speaker = useSpeaker();
   const browserListener = useListener(config.language);
   // Words to help the listener: the agent's own names and the test person's name.
@@ -285,10 +287,17 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead, serverLi
         return (
           <div className="space-y-1.5 rounded-lg border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
             {valueErrors.length > 0 && (
-              <p className="flex flex-wrap items-center justify-between gap-2">
-                <span>{count} variable{count === 1 ? " needs" : "s need"} a value before you can test.</span>
-                {onOpenVariables && <button type="button" onClick={onOpenVariables} className="font-medium underline underline-offset-2">Fill them in</button>}
-              </p>
+              <div className="space-y-1.5">
+                <p>{count} variable{count === 1 ? " needs" : "s need"} a value before you can test.</p>
+                <div className="flex flex-wrap items-center gap-3">
+                  {onUseSamples && (
+                    <button type="button" onClick={() => { onUseSamples(); setErrors([]); }} className="rounded-md bg-destructive px-2 py-1 font-medium text-white hover:bg-destructive/90">
+                      Use sample values
+                    </button>
+                  )}
+                  {onOpenVariables && <button type="button" onClick={onOpenVariables} className="font-medium underline underline-offset-2">Fill them in myself</button>}
+                </div>
+              </div>
             )}
             {other.length > 0 && <p>{other.join(" ")}</p>}
           </div>

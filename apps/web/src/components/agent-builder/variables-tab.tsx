@@ -1,12 +1,13 @@
 "use client";
 
 import { findVariables, SYSTEM_VARIABLES, type AgentConfig, type VariableDef } from "@spagai/core";
-import { ArrowLeftRight, Plus, Search, TriangleAlert, X } from "lucide-react";
+import { ArrowLeftRight, Plus, Search, Sparkles, TriangleAlert, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { fillSampleValues } from "@/lib/sample-values";
 import { cn } from "@/lib/utils";
 
 type Update = (patch: Partial<AgentConfig>) => void;
@@ -16,6 +17,20 @@ export const FROM_LEAD = new Set(["lead_name", "first_name", "last_name", "title
 
 const nameRe = /^[a-z][a-z0-9_]{0,39}$/;
 const pretty = (name: string) => name.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+
+/**
+ * Get an agent ready for a quick test: placeholders the prompt uses but that are not set up become
+ * per-call values, and every empty per-call test value gets a believable sample.
+ */
+export function readyForTesting(config: AgentConfig, testValues: Record<string, string>) {
+  const declared = new Set([...config.variables.map((v) => v.name), ...SYSTEM_VARIABLES.map((v) => v.name)]);
+  const added = [...usedNames(config)].filter((n) => !declared.has(n) && !FROM_LEAD.has(n)).map((n): VariableDef => ({ name: n, label: pretty(n), scope: "call", required: false }));
+  const variables = [...config.variables, ...added];
+  const perCall = variables.filter((v) => v.scope === "call" && !FROM_LEAD.has(v.name));
+  // Examples count as filled (the test already uses them).
+  const current = Object.fromEntries(perCall.map((v) => [v.name, testValues[v.name] ?? v.example ?? v.defaultValue ?? ""]));
+  return { variables, added: added.length, testValues: { ...testValues, ...fillSampleValues(perCall, current) } };
+}
 
 /** Placeholders used in the first message or prompt. */
 function usedNames(config: AgentConfig): Set<string> {
@@ -54,6 +69,12 @@ export function VariablesTab({
     update({ variables: [...config.variables, ...names.filter((n) => !declared.has(n)).map((n): VariableDef => ({ name: n, label: pretty(n), scope, required: false }))] });
   const setScope = (name: string, scope: "agent" | "call") => update({ variables: config.variables.map((v) => (v.name === name ? { ...v, scope } : v)) });
   const remove = (name: string) => update({ variables: config.variables.filter((v) => v.name !== name) });
+  const useSamples = () => {
+    const r = readyForTesting(config, testValues);
+    if (r.added) update({ variables: r.variables });
+    onTestValues(r.testValues);
+  };
+  const emptyTest = perCall.filter((v) => !(testValues[v.name] ?? v.example ?? v.defaultValue ?? "").trim()).length;
 
   return (
     <Card>
@@ -87,7 +108,8 @@ export function VariablesTab({
               {notSetUp.map((n) => <code key={n} className="rounded bg-background px-1.5 py-0.5 font-mono text-xs">{`{{${n}}}`}</code>)}
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => addAll(notSetUp, "call")}>Add all as per-call values</Button>
+              <Button size="sm" onClick={useSamples}>Add all with sample values</Button>
+              <Button size="sm" variant="outline" onClick={() => addAll(notSetUp, "call")}>Add all as per-call values</Button>
               <Button size="sm" variant="outline" onClick={() => addAll(notSetUp, "agent")}>Add all as business details</Button>
             </div>
           </div>
@@ -108,7 +130,19 @@ export function VariablesTab({
           ))}
         </Group>
 
-        <Group title="Per-call values" hint="Different on every call (from your lead list or the incoming call). What you type here is only used when you test." empty="No per-call values.">
+        <Group
+          title="Per-call values"
+          hint="Different on every call (from your lead list or the incoming call). What you type here is only used when you test."
+          empty="No per-call values."
+          actions={perCall.length > 0 && (
+            <>
+              <Button size="sm" variant={emptyTest ? "default" : "outline"} onClick={useSamples} disabled={!emptyTest} title="Fill every empty value with a believable example, just for testing">
+                <Sparkles /> {emptyTest ? `Fill ${emptyTest} with sample values` : "All filled"}
+              </Button>
+              {Object.keys(testValues).length > 0 && <Button size="sm" variant="ghost" onClick={() => onTestValues({})}>Clear</Button>}
+            </>
+          )}
+        >
           {perCall.filter(match).map((v) => (
             <VarField
               key={v.name}
@@ -152,12 +186,15 @@ function Chip({ children, tone }: { children: React.ReactNode; tone?: "warn" | "
   );
 }
 
-function Group({ title, hint, empty, children }: { title: string; hint: string; empty: string; children: React.ReactNode[] }) {
+function Group({ title, hint, empty, children, actions }: { title: string; hint: string; empty: string; children: React.ReactNode[]; actions?: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <div>
-        <h3 className="text-sm font-medium">{title}</h3>
-        <p className="text-xs text-muted-foreground">{hint}</p>
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div className="min-w-0">
+          <h3 className="text-sm font-medium">{title}</h3>
+          <p className="text-xs text-muted-foreground">{hint}</p>
+        </div>
+        {actions && <div className="flex shrink-0 items-center gap-1">{actions}</div>}
       </div>
       {children.length ? <div className="grid gap-x-3 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3">{children}</div> : <p className="text-sm text-muted-foreground">{empty}</p>}
     </div>

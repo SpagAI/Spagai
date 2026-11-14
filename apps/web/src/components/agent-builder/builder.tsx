@@ -19,7 +19,7 @@ import { InstructionsStep } from "./instructions-step";
 import { SAMPLE_LEAD, type TestLead } from "./shared";
 import { DIRECTION_LABEL, switchDirection } from "@/lib/agent-direction";
 import { TalkPanel } from "./talk-panel";
-import { VariablesTab } from "./variables-tab";
+import { readyForTesting, VariablesTab } from "./variables-tab";
 import { BusinessTab, FirstMessageTab, SilenceTab, ToolsTab, VoiceTab, type WorkspaceTool } from "./tabs";
 
 const STEPS = [
@@ -122,6 +122,12 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
     } catch {
       // Not kept; still works for this visit.
     }
+  };
+  /** Test now: set up missing placeholders and fill empty test values with samples. */
+  const useSamples = () => {
+    const r = readyForTesting(config, testValues);
+    if (r.added) change((c) => ({ ...c, variables: r.variables }));
+    setTestValues(r.testValues);
   };
   const deleteRef = useRef<HTMLFormElement>(null);
 
@@ -419,7 +425,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
             (only hidden), so a test call carries on while you switch tabs. */}
         <aside aria-label="Test your agent" className={cn("hidden h-fit flex-col rounded-xl border bg-card p-4 xl:sticky xl:top-16", !roomy && "xl:flex")}>
           <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Test your agent</p>
-          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} serverListening={serverListening} agentId={agentId} testValues={testValues} onOpenVariables={() => { setTalkOpen(false); go("variables"); }} />
+          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} serverListening={serverListening} agentId={agentId} testValues={testValues} onOpenVariables={() => { setTalkOpen(false); go("variables"); }} onUseSamples={useSamples} />
         </aside>
       </div>
 
@@ -437,7 +443,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
             <p className="text-sm font-semibold">Test your agent</p>
             <Button type="button" variant="ghost" size="icon" onClick={() => setTalkOpen(false)} aria-label="Close"><X /></Button>
           </div>
-          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} serverListening={serverListening} agentId={agentId} testValues={testValues} onOpenVariables={() => { setTalkOpen(false); go("variables"); }} />
+          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} serverListening={serverListening} agentId={agentId} testValues={testValues} onOpenVariables={() => { setTalkOpen(false); go("variables"); }} onUseSamples={useSamples} />
         </div>
       )}
     </div>
