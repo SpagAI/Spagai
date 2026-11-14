@@ -241,7 +241,7 @@ export function ToolForm({ id, initial, runs = [], starterLabel, mode = "page", 
           {id && !dialog && <SigningSecret id={id} />}
         </div>
 
-        <aside className={cn("space-y-5", dialog ? "xl:sticky xl:top-20 xl:h-fit" : "lg:sticky lg:top-4 lg:h-fit")}>
+        <aside className="h-fit space-y-5">
           {id ? <TestBox id={id} params={initial.parameters} dirty={JSON.stringify(t) !== JSON.stringify(initial)} /> : (
             <div className="rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground">Create the tool first, then you can send a test to your webhook and see exactly what it receives.</div>
           )}
