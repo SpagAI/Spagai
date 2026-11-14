@@ -75,6 +75,8 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
   const [historyOpen, setHistoryOpen] = useState(false);
   const [versionNotice, setVersionNotice] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("business");
+  /** Tabs that need the full width: the test panel moves to a small button there. */
+  const roomy = tab === "tools" || tab === "numbers";
   const [errors, setErrors] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
 
@@ -352,12 +354,20 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
       )}
 
       {/* Tabs across the top, in any order (they wrap, never cut off). Phones get a dropdown. */}
-      <nav aria-label="Agent settings" role="tablist" className="hidden flex-wrap items-end border-b lg:flex">
-        {STEPS.map((x) => (
-          <StepLink key={x.id} label={x.label} active={tab === x.id} onClick={() => go(x.id)} />
-        ))}
-        <AdvancedMenu active={ADVANCED.find((x) => x.id === tab)?.label} onPick={(id) => go(id)} />
-      </nav>
+      <div className="hidden items-end gap-2 border-b lg:flex">
+        <nav aria-label="Agent settings" role="tablist" className="flex min-w-0 flex-1 flex-wrap items-end">
+          {STEPS.map((x) => (
+            <StepLink key={x.id} label={x.label} active={tab === x.id} onClick={() => go(x.id)} />
+          ))}
+          <AdvancedMenu active={ADVANCED.find((x) => x.id === tab)?.label} onPick={(id) => go(id)} />
+        </nav>
+        {/* Tabs without the test panel: open it from here (wide screens). */}
+        {roomy && (
+          <Button type="button" size="sm" variant="outline" className="mb-1.5 hidden shrink-0 xl:inline-flex" onClick={() => setTalkOpen(true)}>
+            <Mic /> Talk to {config.name || "agent"}
+          </Button>
+        )}
+      </div>
       <div className="lg:hidden">
         <Select aria-label="Agent settings" value={tab} onChange={(e) => go(e.target.value as Tab)}>
           {[...STEPS, ...ADVANCED].map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
@@ -365,7 +375,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
         </Select>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
+      <div className={cn("grid gap-4", !roomy && "xl:grid-cols-[minmax(0,1fr)_21rem]")}>
         {/* The one section being edited */}
         <div id="builder-step" className="min-w-0 scroll-mt-16 space-y-4">
           <fieldset disabled={readOnly} className="min-w-0">
@@ -383,8 +393,9 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
 
         </div>
 
-        {/* Test your agent: always there on wide screens */}
-        <aside aria-label="Test your agent" className="hidden h-fit flex-col rounded-xl border bg-card p-4 xl:sticky xl:top-16 xl:flex">
+        {/* Test your agent: there on wide screens, except on tabs that need the room. It stays mounted
+            (only hidden), so a test call carries on while you switch tabs. */}
+        <aside aria-label="Test your agent" className={cn("hidden h-fit flex-col rounded-xl border bg-card p-4 xl:sticky xl:top-16", !roomy && "xl:flex")}>
           <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Test your agent</p>
           <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} serverListening={serverListening} agentId={agentId} />
         </aside>
@@ -399,7 +410,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
         <Mic className="size-5" /> Talk to {config.name || "agent"}
       </button>
       {talkOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-background p-4 xl:hidden" role="dialog" aria-modal="true" aria-label="Test your agent">
+        <div className={cn("fixed inset-0 z-50 flex flex-col bg-background p-4", !roomy && "xl:hidden")} role="dialog" aria-modal="true" aria-label="Test your agent">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-sm font-semibold">Test your agent</p>
             <Button type="button" variant="ghost" size="icon" onClick={() => setTalkOpen(false)} aria-label="Close"><X /></Button>

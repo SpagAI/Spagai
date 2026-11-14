@@ -143,7 +143,7 @@ export function ToolForm({ id, initial, runs = [], starterLabel, mode = "page", 
         </div>
       )}
 
-      <div className={cn("grid gap-5", !dialog && "lg:grid-cols-[minmax(0,1fr)_340px]")}>
+      <div className={cn("grid gap-5", dialog ? "xl:grid-cols-[minmax(0,1fr)_320px]" : "lg:grid-cols-[minmax(0,1fr)_340px]")}>
         <div className="space-y-5">
           <Section title="What it does">
             <div className="grid gap-3 sm:grid-cols-2">
@@ -241,7 +241,7 @@ export function ToolForm({ id, initial, runs = [], starterLabel, mode = "page", 
           {id && !dialog && <SigningSecret id={id} />}
         </div>
 
-        <aside className={cn("space-y-5 lg:sticky lg:top-4 lg:h-fit", dialog && "hidden")}>
+        <aside className={cn("space-y-5", dialog ? "xl:sticky xl:top-20 xl:h-fit" : "lg:sticky lg:top-4 lg:h-fit")}>
           {id ? <TestBox id={id} params={initial.parameters} dirty={JSON.stringify(t) !== JSON.stringify(initial)} /> : (
             <div className="rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground">Create the tool first, then you can send a test to your webhook and see exactly what it receives.</div>
           )}
@@ -252,8 +252,8 @@ export function ToolForm({ id, initial, runs = [], starterLabel, mode = "page", 
       {id && !dialog && <RunLog runs={runs} />}
 
       {dialog && (
-        <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background/95 px-4 py-3 shadow-sm backdrop-blur">
-          <Link href={id ? `/tools/${id}` : "/tools"} className="text-sm text-muted-foreground hover:text-foreground">{id ? "Test it and see recent runs on the Tools page" : "All tools"}</Link>
+        <div className="sticky bottom-20 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background/95 px-4 py-3 shadow-sm backdrop-blur xl:bottom-0">
+          <Link href={id ? `/tools/${id}` : "/tools"} className="text-sm text-muted-foreground hover:text-foreground">{id ? "Recent runs and signing secret: Tools page" : "All tools"}</Link>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onCancel}>Cancel</Button>
             <Button onClick={save} disabled={saving}>{saving ? <Loader2 className="animate-spin" /> : null} {id ? "Save tool" : "Create and switch on"}</Button>
