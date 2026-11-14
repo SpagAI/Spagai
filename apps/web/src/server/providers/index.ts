@@ -85,6 +85,17 @@ async function chatCompletion(messages: unknown[], tools: unknown[], retried = f
   }
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
+    // The model tried a tool that is not available (e.g. one the prompt names but the agent does not have).
+    // Ask again once, telling it plainly to carry on without that tool.
+    if (res.status === 400 && /tool_use_failed|not in request\.tools/i.test(detail) && !retried) {
+      const missing = detail.match(/call tool '([^']+)'/)?.[1];
+      const names = (tools as { function?: { name?: string } }[]).map((t) => t.function?.name).filter(Boolean).join(", ") || "none";
+      return chatCompletion(
+        [...messages, { role: "system", content: `${missing ? `The tool "${missing}" does not exist on this call. ` : ""}Only these tools exist: ${names}. Do not call any other tool; reply to the person in words instead.` }],
+        tools,
+        true,
+      );
+    }
     console.error("Language model error", res.status, detail.slice(0, 300));
     throw new Error(`The language model returned an error (${res.status}).`);
   }
@@ -114,12 +125,17 @@ export function todayLine(now: Date): string {
   return `Today is ${label(dayAt(0))} ${p.year}, and the time is ${time} in Lagos (WAT). The coming days are: ${coming}. When someone names a day ("Thursday", "tomorrow", "next week"), take the date from this list, and say the full date when you confirm it. Never offer or book a time that has already passed: if they name today's weekday and that time has gone, use the same day next week.`;
 }
 
+/** The tools that really exist on this call, so a tool named in the prompt but not switched on is never called. */
+export function toolsLine(allowed: string[]): string {
+  return `Tools you can use on this call: ${allowed.join(", ") || "none"}. If your instructions mention any other tool, it is not available: never call it, just carry on the conversation in words.`;
+}
+
 const openAiCompatibleLlm: LlmProvider = {
   name: "openai_compatible",
   async reply({ systemPrompt, history, tools, runTool, now, customTools = [] }) {
-    const messages: unknown[] = toChatMessages(`${systemPrompt}\n\n${PHONE_CALL_RULES}\n- ${todayLine(now)}`, history);
     const specs = [...toOpenAiTools(tools), ...customTools];
     const allowed = [...tools, ...customTools.map((t) => t.function.name)];
+    const messages: unknown[] = toChatMessages(`${systemPrompt}\n\n${PHONE_CALL_RULES}\n- ${todayLine(now)}\n- ${toolsLine(allowed)}`, history);
     const allCalls: SimToolCall[] = [];
     for (let round = 0; ; round++) {
       const json = await chatCompletion(messages, specs);

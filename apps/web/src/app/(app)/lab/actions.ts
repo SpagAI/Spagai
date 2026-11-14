@@ -21,7 +21,7 @@ import { requirePermission } from "@/server/auth/session";
 import { audit, loadAgent } from "@/server/agents";
 import { activeBuiltInTools } from "@spagai/core";
 import { functionSpec, resultForAi, runCustomTool, toolsForAgent } from "@/server/custom-tools";
-import { getLlm, PHONE_CALL_RULES, todayLine } from "@/server/providers";
+import { getLlm, PHONE_CALL_RULES, todayLine, toolsLine } from "@/server/providers";
 import { RateLimiter } from "@/server/rate-limit";
 import { SpeechToTextError, transcribe } from "@/server/speech-to-text";
 
@@ -202,7 +202,7 @@ async function runTurn(organisationId: string, config: AgentConfig, input: z.inf
       // Calling hours only limit agents that call people; inbound agents answer whenever someone calls.
       callingWindow: config.direction === "inbound" ? { allowed: true, reason: null } : { allowed: window.allowed, reason: window.reason },
       // Exactly what a real model receives (the phone call rules are added for real models only).
-      prompt: llm.name === "mock" ? compiled.prompt : `${compiled.prompt}\n\n${PHONE_CALL_RULES}\n- ${todayLine(now)}`,
+      prompt: llm.name === "mock" ? compiled.prompt : `${compiled.prompt}\n\n${PHONE_CALL_RULES}\n- ${todayLine(now)}\n- ${toolsLine([...activeBuiltInTools(config.tools), ...config.customTools])}`,
     };
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { compilePrompt, lintPrompt, orderVoices, type AgentConfig, type VariableDef, type Voice } from "@spagai/core";
+import { activeBuiltInTools, compilePrompt, lintPrompt, orderVoices, TOOL_DEFINITIONS, type AgentConfig, type VariableDef, type Voice } from "@spagai/core";
 import { ArrowLeft, ArrowLeftRight, Check, ChevronDown, CircleAlert, CircleCheck, CircleDot, FlaskConical, History, Mic, MoreHorizontal, Redo2, Save, Trash2, TriangleAlert, Undo2, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -139,6 +139,11 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
     if (compiled.variables.missingRequired.length) out.push({ message: `Fill in: ${compiled.variables.missingRequired.join(", ").replace(/_/g, " ")}.`, severity: "error", step: "business" });
     if (compiled.variables.undeclared.length) out.push({ message: `${compiled.variables.undeclared.length} variable${compiled.variables.undeclared.length === 1 ? " is" : "s are"} used in the prompt but not set up.`, severity: "error", step: "variables" });
     if (!deferred.voiceId) out.push({ message: "Choose a voice.", severity: "error", step: "voice" });
+    // Tools the prompt names but the agent does not have (e.g. built-in tools, switched off for now).
+    const text = [deferred.firstMessage, ...deferred.blocks.filter((b) => !b.guardrail && b.enabled !== false).map((b) => b.content)].join(" ");
+    const active = new Set<string>([...activeBuiltInTools(deferred.tools), ...deferred.customTools]);
+    const missingTools = Object.keys(TOOL_DEFINITIONS).filter((id) => !active.has(id) && new RegExp(`\\b${id}\\b`).test(text));
+    if (missingTools.length) out.push({ message: `Your prompt mentions ${missingTools.join(", ")}, which this agent does not have. Remove ${missingTools.length === 1 ? "it" : "them"} from the prompt, or create a tool with that name.`, severity: "warning", step: "instructions" });
     const lint = lintPrompt({ prompt: compiled.prompt, firstMessage: compiled.firstMessage, direction: deferred.direction });
     for (const i of lint.issues) {
       if (i.severity === "info" || i.rule.startsWith("missing-")) continue;
