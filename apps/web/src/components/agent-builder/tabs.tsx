@@ -12,7 +12,7 @@ import {
 } from "@spagai/core";
 import { Loader2, Pencil, Plus, TriangleAlert, Webhook } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { loadToolForEditing, type ToolSummary } from "@/app/(app)/tools/actions";
 import { ToolForm } from "@/app/(app)/tools/tool-form";
 import { Button } from "@/components/ui/button";
@@ -143,42 +143,47 @@ export function FirstMessageTab({ config, update, lead }: { config: AgentConfig;
 
 export type WorkspaceTool = ToolSummary;
 
-/** The tool form in a pop-up, so a tool can be made or changed without leaving the agent. */
-function ToolDialog({ id, initial, onClose, onSaved }: { id: string | null; initial: ToolInput; onClose: () => void; onSaved: (tool: ToolSummary, created: boolean) => void }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = overflow;
-    };
-  }, [onClose]);
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-label={id ? "Edit tool" : "New tool"} className="max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-t-2xl bg-background px-5 pt-5 shadow-xl sm:rounded-2xl">
-        <ToolForm id={id} initial={initial} mode="dialog" onCancel={onClose} onSaved={onSaved} />
-      </div>
-    </div>
-  );
-}
-
 export function ToolsTab({ config, update, workspaceTools, canManageTools, onToolSaved }: { config: AgentConfig; update: Update; workspaceTools: WorkspaceTool[]; canManageTools: boolean; onToolSaved: (tool: ToolSummary) => void }) {
   const [editing, setEditing] = useState<{ id: string | null; initial: ToolInput } | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const topRef = useRef<HTMLDivElement>(null);
+  // The form opens in place of the list; if its top is above the screen, bring it into view.
+  const showTop = () => requestAnimationFrame(() => {
+    const el = topRef.current;
+    if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: "start" });
+  });
+  const close = () => { setEditing(null); showTop(); };
   const openEdit = async (id: string) => {
     setLoadingId(id);
     const initial = await loadToolForEditing(id).catch(() => null);
     setLoadingId(null);
-    if (initial) setEditing({ id, initial });
+    if (initial) { setEditing({ id, initial }); showTop(); }
   };
   const toggleCustom = (name: string, on: boolean) =>
     update({ customTools: on ? [...new Set([...config.customTools, name])] : config.customTools.filter((x) => x !== name) });
   // A tool that was deleted or renamed elsewhere: shown so it can be switched off.
   const missing = config.customTools.filter((n) => !workspaceTools.some((w) => w.name === n));
+  if (editing) {
+    return (
+      <div ref={topRef} className="scroll-mt-4">
+        <ToolForm
+          id={editing.id}
+          initial={editing.initial}
+          mode="inline"
+          onCancel={close}
+          onSaved={(tool, created) => {
+            onToolSaved(tool);
+            // A new tool is switched on for this agent straight away.
+            if (created) update({ customTools: [...new Set([...config.customTools, tool.name])] });
+            close();
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-5">
+    <div ref={topRef} className="scroll-mt-4 space-y-5">
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -187,14 +192,14 @@ export function ToolsTab({ config, update, workspaceTools, canManageTools, onToo
               <CardDescription>Your own actions, such as booking in your calendar or adding a lead to your CRM. When the agent uses one, the details it collected are sent to your webhook.</CardDescription>
             </div>
             {canManageTools && (
-              <Button variant="outline" size="sm" onClick={() => setEditing({ id: null, initial: BLANK_TOOL })}><Plus /> New tool</Button>
+              <Button variant="outline" size="sm" onClick={() => (setEditing({ id: null, initial: BLANK_TOOL }), showTop())}><Plus /> New tool</Button>
             )}
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
           {workspaceTools.length === 0 && missing.length === 0 && (
             <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-              No tools yet. {canManageTools ? <><button type="button" onClick={() => setEditing({ id: null, initial: BLANK_TOOL })} className="text-primary underline-offset-4 hover:underline">Create one here</button> (calendar booking, CRM lead, Google Sheet and more) or on the <Link href="/tools" className="text-primary underline-offset-4 hover:underline">Tools page</Link>.</> : "Ask an owner or admin to create one."}
+              No tools yet. {canManageTools ? <><button type="button" onClick={() => (setEditing({ id: null, initial: BLANK_TOOL }), showTop())} className="text-primary underline-offset-4 hover:underline">Create one here</button> (calendar booking, CRM lead, Google Sheet and more) or on the <Link href="/tools" className="text-primary underline-offset-4 hover:underline">Tools page</Link>.</> : "Ask an owner or admin to create one."}
             </p>
           )}
           {workspaceTools.map((tool) => {
@@ -233,19 +238,6 @@ export function ToolsTab({ config, update, workspaceTools, canManageTools, onToo
         </CardContent>
       </Card>
 
-      {editing && (
-        <ToolDialog
-          id={editing.id}
-          initial={editing.initial}
-          onClose={() => setEditing(null)}
-          onSaved={(tool, created) => {
-            onToolSaved(tool);
-            // A new tool is switched on for this agent straight away.
-            if (created) update({ customTools: [...new Set([...config.customTools, tool.name])] });
-            setEditing(null);
-          }}
-        />
-      )}
     </div>
   );
 }

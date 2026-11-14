@@ -59,14 +59,14 @@ interface ToolFormProps {
   initial: ToolInput;
   runs?: RunRow[];
   starterLabel?: string;
-  /** "dialog": shown in a pop-up (e.g. from an agent), stays on the same page. */
-  mode?: "page" | "dialog";
+  /** "inline": shown in place inside another page (e.g. an agent's Tools tab), no page change. */
+  mode?: "page" | "inline";
   onSaved?: (tool: ToolSummary, created: boolean) => void;
   onCancel?: () => void;
 }
 
 export function ToolForm({ id, initial, runs = [], starterLabel, mode = "page", onSaved, onCancel }: ToolFormProps) {
-  const dialog = mode === "dialog";
+  const dialog = mode === "inline";
   const router = useRouter();
   const topRef = useRef<HTMLDivElement>(null);
   const [t, setT] = useState<ToolInput>(initial);
@@ -97,12 +97,10 @@ export function ToolForm({ id, initial, runs = [], starterLabel, mode = "page", 
     });
 
   const header = dialog ? (
-    <div className="flex items-start justify-between gap-3">
-      <div>
-        <h2 className="text-lg font-semibold">{id ? `Edit ${initial.label || "tool"}` : "New tool"}</h2>
-        <p className="text-sm text-muted-foreground">{id ? "Changes apply to every agent that uses this tool." : "It is added to your workspace's Tools and switched on for this agent."}</p>
-      </div>
-      <Button variant="ghost" size="icon" aria-label="Close" onClick={onCancel}><X /></Button>
+    <div className="space-y-1">
+      <button type="button" onClick={onCancel} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" /> Your tools</button>
+      <h2 className="text-lg font-semibold">{id ? `Edit ${initial.label || "tool"}` : "New tool"}</h2>
+      <p className="text-sm text-muted-foreground">{id ? "Changes apply to every agent that uses this tool." : "It is added to your workspace's Tools and switched on for this agent."}</p>
     </div>
   ) : null;
 
@@ -254,11 +252,11 @@ export function ToolForm({ id, initial, runs = [], starterLabel, mode = "page", 
       {id && !dialog && <RunLog runs={runs} />}
 
       {dialog && (
-        <div className="sticky bottom-0 -mx-5 flex items-center justify-between gap-3 border-t bg-background px-5 py-3">
+        <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background/95 px-4 py-3 shadow-sm backdrop-blur">
           <Link href={id ? `/tools/${id}` : "/tools"} className="text-sm text-muted-foreground hover:text-foreground">{id ? "Test it and see recent runs on the Tools page" : "All tools"}</Link>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onCancel}>Cancel</Button>
-            <Button onClick={save} disabled={saving}>{saving ? <Loader2 className="animate-spin" /> : null} {id ? "Save" : "Create and switch on"}</Button>
+            <Button onClick={save} disabled={saving}>{saving ? <Loader2 className="animate-spin" /> : null} {id ? "Save tool" : "Create and switch on"}</Button>
           </div>
         </div>
       )}
