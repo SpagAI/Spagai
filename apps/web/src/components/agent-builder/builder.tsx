@@ -19,7 +19,7 @@ import { InstructionsStep } from "./instructions-step";
 import { SAMPLE_LEAD, type TestLead } from "./shared";
 import { DIRECTION_LABEL, switchDirection } from "@/lib/agent-direction";
 import { TalkPanel } from "./talk-panel";
-import { BusinessTab, FirstMessageTab, SilenceTab, ToolsTab, VoiceTab } from "./tabs";
+import { BusinessTab, FirstMessageTab, SilenceTab, ToolsTab, VoiceTab, type WorkspaceTool } from "./tabs";
 
 const STEPS = [
   { id: "business", label: "Business details" },
@@ -27,12 +27,10 @@ const STEPS = [
   { id: "firstMessage", label: "First message" },
   { id: "instructions", label: "Prompt" },
   { id: "knowledge", label: "Knowledge base" },
+  { id: "tools", label: "Tools" },
   { id: "numbers", label: "Phone number" },
 ] as const;
-const ADVANCED = [
-  { id: "tools", label: "Tools" },
-  { id: "silence", label: "Silence" },
-] as const;
+const ADVANCED = [{ id: "silence", label: "Silence" }] as const;
 type Tab = (typeof STEPS)[number]["id"] | (typeof ADVANCED)[number]["id"];
 
 export interface AgentBuilderProps {
@@ -52,11 +50,14 @@ export interface AgentBuilderProps {
   initialWhen?: string;
   /** Our server can do the listening for "Test your agent" (Groq Whisper). */
   serverListening?: boolean;
+  /** The workspace's own tools (Tools page), to switch on per agent. */
+  workspaceTools?: WorkspaceTool[];
+  canManageTools?: boolean;
   /** Unsaved changes kept by autosave last time: the editor opens with them. */
   draft?: { config: AgentConfig; savedAt: string };
 }
 
-export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt, readOnly, canDelete, connections, isNew, workspaceVoices = [], llmProvider = "mock", initialWhen = "2026-10-13T10:30", draft, serverListening = false }: AgentBuilderProps) {
+export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt, readOnly, canDelete, connections, isNew, workspaceVoices = [], llmProvider = "mock", initialWhen = "2026-10-13T10:30", draft, serverListening = false, workspaceTools = [], canManageTools = false }: AgentBuilderProps) {
   const t = useT();
   // Undo/redo history; `config` is what is on screen now.
   const [hist, setHist] = useState(() => startHistory(draft?.config ?? initialConfig));
@@ -357,7 +358,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
       </nav>
       <div className="lg:hidden">
         <Select aria-label="Agent settings" value={tab} onChange={(e) => go(e.target.value as Tab)}>
-          {STEPS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+          {[...STEPS, ...ADVANCED].map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
           <optgroup label="Advanced">{ADVANCED.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</optgroup>
         </Select>
       </div>
@@ -372,7 +373,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
               <InstructionsStep config={config} onChange={(c) => change(() => c)} onAddVariable={addVariable} readOnly={readOnly} />
             )}
             {tab === "firstMessage" && <FirstMessageTab config={config} update={update} lead={testLead} />}
-            {tab === "tools" && <ToolsTab config={config} update={update} />}
+            {tab === "tools" && <ToolsTab config={config} update={update} workspaceTools={workspaceTools} canManageTools={canManageTools} />}
             {tab === "silence" && <SilenceTab config={config} update={update} />}
           </fieldset>
           {tab === "knowledge" && <KnowledgeTab agentId={agentId} c={connections} />}
@@ -383,7 +384,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
         {/* Test your agent: always there on wide screens */}
         <aside aria-label="Test your agent" className="hidden h-fit flex-col rounded-xl border bg-card p-4 xl:sticky xl:top-16 xl:flex">
           <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Test your agent</p>
-          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} serverListening={serverListening} />
+          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} serverListening={serverListening} agentId={agentId} />
         </aside>
       </div>
 
@@ -401,7 +402,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
             <p className="text-sm font-semibold">Test your agent</p>
             <Button type="button" variant="ghost" size="icon" onClick={() => setTalkOpen(false)} aria-label="Close"><X /></Button>
           </div>
-          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} serverListening={serverListening} />
+          <TalkPanel config={config} voice={voice} provider={llmProvider} initialWhen={initialWhen} lead={testLead} serverListening={serverListening} agentId={agentId} />
         </div>
       )}
     </div>
@@ -426,7 +427,7 @@ function StepLink({ label, active, onClick }: { label: string; active: boolean; 
   );
 }
 
-/** Tools and Silence: less used, so they sit behind one small button. */
+/** Silence: less used, so they sit behind one small button. */
 function AdvancedMenu({ active, onPick }: { active?: string; onPick: (id: Tab) => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -452,7 +453,7 @@ function AdvancedMenu({ active, onPick }: { active?: string; onPick: (id: Tab) =
           {ADVANCED.map((x) => (
             <button key={x.id} role="menuitem" type="button" onClick={() => { setOpen(false); onPick(x.id); }} className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-muted">
               <span className="font-medium">{x.label}</span>
-              <span className="block text-xs text-muted-foreground">{x.id === "tools" ? "Booking, saving answers, ending the call" : "What happens when the line goes quiet"}</span>
+              <span className="block text-xs text-muted-foreground">What happens when the line goes quiet</span>
             </button>
           ))}
         </div>

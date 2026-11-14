@@ -13,7 +13,8 @@ import {
   type Voice,
   type VoiceLanguage,
 } from "@spagai/core";
-import { TriangleAlert } from "lucide-react";
+import { ExternalLink, Plus, TriangleAlert, Webhook } from "lucide-react";
+import Link from "next/link";
 import { VoiceSettingsControls } from "@/components/voice/voice-settings";
 import { VoicePicker } from "./voice-picker";
 import { Badge } from "@/components/ui/badge";
@@ -139,17 +140,80 @@ export function FirstMessageTab({ config, update, lead }: { config: AgentConfig;
   );
 }
 
-export function ToolsTab({ config, update }: { config: AgentConfig; update: Update }) {
+export interface WorkspaceTool {
+  name: string;
+  label: string;
+  description: string;
+  host: string;
+  id: string;
+}
+
+export function ToolsTab({ config, update, workspaceTools, canManageTools }: { config: AgentConfig; update: Update; workspaceTools: WorkspaceTool[]; canManageTools: boolean }) {
   const t = useT();
   const toggle = (id: ToolId, on: boolean) =>
     update({ tools: on ? [...new Set([...config.tools, id])] : config.tools.filter((x) => x !== id) });
+  const toggleCustom = (name: string, on: boolean) =>
+    update({ customTools: on ? [...new Set([...config.customTools, name])] : config.customTools.filter((x) => x !== name) });
+  // A tool that was deleted or renamed elsewhere: shown so it can be switched off.
+  const missing = config.customTools.filter((n) => !workspaceTools.some((w) => w.name === n));
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("builder.tabs.tools")}</CardTitle>
-        <CardDescription>{t("builder.tools.intro")}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <div className="space-y-5">
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-1.5">
+              <CardTitle>Your tools</CardTitle>
+              <CardDescription>Your own actions, such as booking in your calendar or adding a lead to your CRM. When the agent uses one, the details it collected are sent to your webhook.</CardDescription>
+            </div>
+            {canManageTools && (
+              <Link href="/tools/new" className="inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-sm hover:bg-muted"><Plus className="size-4" /> New tool</Link>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {workspaceTools.length === 0 && missing.length === 0 && (
+            <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+              No tools yet. {canManageTools ? <><Link href="/tools" className="text-primary underline-offset-4 hover:underline">Create one on the Tools page</Link> (calendar booking, CRM lead, Google Sheet and more).</> : "Ask an owner or admin to create one on the Tools page."}
+            </p>
+          )}
+          {workspaceTools.map((tool) => {
+            const on = config.customTools.includes(tool.name);
+            return (
+              <div key={tool.name} className={cn("flex items-start gap-3 rounded-lg border p-3", on && "border-primary/40")}>
+                <span className="grid size-8 shrink-0 place-items-center rounded-md bg-primary/10 text-primary"><Webhook className="size-4" /></span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">
+                    {tool.label} <code className="ml-1 font-mono text-xs text-muted-foreground">{tool.name}</code>
+                  </p>
+                  <p className="line-clamp-2 text-sm text-muted-foreground">{tool.description}</p>
+                  <p className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                    Sends to {tool.host}
+                    {canManageTools && <Link href={`/tools/${tool.id}`} className="inline-flex items-center gap-0.5 text-primary hover:underline">Edit <ExternalLink className="size-3" /></Link>}
+                  </p>
+                </div>
+                <Switch checked={on} onCheckedChange={(v) => toggleCustom(tool.name, v)} aria-label={tool.label} />
+              </div>
+            );
+          })}
+          {missing.map((name) => (
+            <div key={name} className="flex items-center gap-3 rounded-lg border border-warning/50 p-3 text-sm">
+              <TriangleAlert className="size-4 shrink-0 text-warning" />
+              <span className="flex-1"><code className="font-mono">{name}</code> no longer exists in this workspace.</span>
+              <button type="button" className="text-primary hover:underline" onClick={() => toggleCustom(name, false)}>Remove</button>
+            </div>
+          ))}
+          {config.customTools.length > 0 && (
+            <p className="text-xs text-muted-foreground">Tip: mention each tool in your prompt (e.g. &quot;Once they agree a time, use book_in_calendar&quot;) so the agent knows when to use it.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Built-in tools</CardTitle>
+          <CardDescription>{t("builder.tools.intro")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
         {Object.values(TOOL_DEFINITIONS).map((tool) => {
           const required = REQUIRED_TOOLS.includes(tool.id);
           const on = required || config.tools.includes(tool.id);
@@ -183,8 +247,9 @@ export function ToolsTab({ config, update }: { config: AgentConfig; update: Upda
             </div>
           );
         })}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

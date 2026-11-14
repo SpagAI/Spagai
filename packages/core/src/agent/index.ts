@@ -251,6 +251,8 @@ export const agentConfigSchema = z.object({
   voiceSettings: voiceSettingsSchema.default(DEFAULT_VOICE_SETTINGS),
   /** Outbound agents call people; inbound agents answer calls. Older agents count as outbound. */
   direction: z.enum(["outbound", "inbound"]).default("outbound"),
+  /** Ids of the workspace's own tools (webhooks) this agent may use. */
+  customTools: z.array(z.string().min(1).max(40)).max(20).default([]),
 });
 
 export type AgentConfig = z.infer<typeof agentConfigSchema>;
@@ -310,6 +312,7 @@ export function presetToAgentConfig(preset: AgentPreset): AgentConfig {
     silence: preset.silence ?? DEFAULT_SILENCE,
     voiceSettings: DEFAULT_VOICE_SETTINGS,
     direction: preset.direction,
+    customTools: [],
   };
 }
 

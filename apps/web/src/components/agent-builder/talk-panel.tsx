@@ -37,13 +37,14 @@ export interface TalkPanelProps {
   lead: TestLead;
   /** True when our server can do the listening (sharp on any browser); otherwise the browser listens. */
   serverListening?: boolean;
+  agentId?: string;
 }
 
 /**
  * "Test your agent": one button. The agent speaks first, then the microphone listens by itself,
  * like a phone call. Uses the settings on screen (even unsaved). Typing is there as a fallback.
  */
-export function TalkPanel({ config, voice, provider, initialWhen, lead, serverListening = false }: TalkPanelProps) {
+export function TalkPanel({ config, voice, provider, initialWhen, lead, serverListening = false, agentId }: TalkPanelProps) {
   const speaker = useSpeaker();
   const browserListener = useListener(config.language);
   // Words to help the listener: the agent's own names and the test person's name.
@@ -57,6 +58,8 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead, serverLi
   const [callValues, setCallValues] = useState<Record<string, string>>({});
   const [when, setWhen] = useState(initialWhen);
   const [speakAloud, setSpeakAloud] = useState(Boolean(voice));
+  /** Your own tools call their real webhooks while testing (switch off to simulate them). */
+  const [realTools, setRealTools] = useState(true);
   const [typeMode, setTypeMode] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -136,6 +139,8 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead, serverLi
     setPhase(event.type === "start" ? "connecting" : "thinking");
     const result = await talkToAgent({
       config: configRef.current,
+      agentId,
+      realTools,
       lead,
       callValues: valuesFor(),
       when,
@@ -315,6 +320,9 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead, serverLi
           ))}
           <div className="space-y-1"><Label htmlFor="tp-when">Call time (WAT)</Label><Input id="tp-when" type="datetime-local" value={when} onChange={(e) => e.target.value && setWhen(e.target.value)} /></div>
           <label className="flex items-center gap-2"><input type="checkbox" checked={speakAloud} disabled={!voice} onChange={(e) => setSpeakAloud(e.target.checked)} className="accent-[var(--color-primary)]" /> Speak the agent&apos;s lines aloud</label>
+          {config.customTools.length > 0 && (
+            <label className="flex items-start gap-2"><input type="checkbox" checked={realTools} onChange={(e) => setRealTools(e.target.checked)} className="mt-1 accent-[var(--color-primary)]" /> <span>Use real webhooks for your tools<span className="block text-xs text-muted-foreground">Off: your tools are simulated and nothing is sent.</span></span></label>
+          )}
         </fieldset>
       )}
     </div>

@@ -19,6 +19,7 @@ import {
 import { z } from "zod";
 import { requirePermission } from "@/server/auth/session";
 import { audit, loadAgent } from "@/server/agents";
+import { functionSpec, resultForAi, runCustomTool, toolsForAgent } from "@/server/custom-tools";
 import { getLlm, PHONE_CALL_RULES, todayLine } from "@/server/providers";
 import { RateLimiter } from "@/server/rate-limit";
 import { SpeechToTextError, transcribe } from "@/server/speech-to-text";
@@ -45,7 +46,17 @@ const turnSchema = z.object({
 const inputSchema = turnSchema.extend({ agentId: z.string().min(1).max(100) });
 export type SimulateInput = z.infer<typeof inputSchema>;
 /** "Talk to agent" in the builder: the same turn, with the settings currently on screen (not yet saved). */
-export type TalkInput = z.infer<typeof turnSchema> & { config: unknown };
+export type TalkInput = z.infer<typeof turnSchema> & {
+  config: unknown;
+  agentId?: string;
+  /** Call the workspace's real webhooks for its own tools (otherwise they are simulated). */
+  realTools?: boolean;
+};
+
+interface TurnOptions {
+  agent?: { id: string; name: string };
+  realTools: boolean;
+}
 
 /** Real AI replies cost money: at most 40 turns a minute per workspace. */
 const turnsPerMinute = new RateLimiter(40, 60_000);
@@ -108,16 +119,23 @@ function checkTools(calls: SimToolCall[], now: Date): CheckedToolCall[] {
       }
       case "end_call":
         return { ...call, ok: true, result: "Call ended." };
+      default:
+        return { ...call, ok: false, result: "Unknown tool." };
     }
   });
 }
 
-function toLine(turn: SimTurn, now: Date, afterSeconds?: number): AgentLine {
+function toLine(turn: SimTurn, now: Date, afterSeconds?: number, ran: CheckedToolCall[] = []): AgentLine {
+  const left = [...ran];
   return {
     text: turn.text,
     spoken: sanitiseForSpeech(turn.text),
     issues: lintSpokenLine(turn.text),
-    toolCalls: checkTools(turn.toolCalls, now),
+    // Use what each tool actually answered during the turn; check any others now.
+    toolCalls: turn.toolCalls.map((call) => {
+      const i = left.findIndex((r) => r.tool === call.tool);
+      return i >= 0 ? left.splice(i, 1)[0]! : checkTools([call], now)[0]!;
+    }),
     endsCall: turn.endsCall,
     ...(afterSeconds !== undefined && { afterSeconds }),
   };
@@ -134,7 +152,7 @@ export async function simulate(raw: SimulateInput): Promise<SimulateResult> {
   if (!agent) return { ok: false, errors: ["Agent not found."] };
   // Remember that this agent has been tried in the Lab (shown in its setup steps).
   if (input.history.length === 0) await audit(ctx.organisation.id, ctx.user.id, "agent.tested", { type: "agent", id: agent.id });
-  return runTurn(ctx.organisation.id, agent.config, input);
+  return runTurn(ctx.organisation.id, agent.config, input, { agent: { id: agent.id, name: agent.config.name }, realTools: false });
 }
 
 /** "Talk to agent": one turn with the builder's current (possibly unsaved) settings. Nothing is saved. */
@@ -145,10 +163,14 @@ export async function talkToAgent(raw: TalkInput): Promise<SimulateResult> {
   // Same checks as saving: valid settings, locked safety rules put back.
   const normalised = normaliseAgentConfig(raw.config);
   if (!normalised.ok) return { ok: false, errors: normalised.errors };
-  return runTurn(ctx.organisation.id, normalised.config, parsed.data);
+  const agentId = typeof raw.agentId === "string" ? raw.agentId.slice(0, 100) : undefined;
+  return runTurn(ctx.organisation.id, normalised.config, parsed.data, {
+    agent: agentId ? { id: agentId, name: normalised.config.name } : undefined,
+    realTools: raw.realTools !== false,
+  });
 }
 
-async function runTurn(organisationId: string, config: AgentConfig, input: z.infer<typeof turnSchema>): Promise<SimulateResult> {
+async function runTurn(organisationId: string, config: AgentConfig, input: z.infer<typeof turnSchema>, opts: TurnOptions): Promise<SimulateResult> {
   if (input.event.type === "message" && !turnsPerMinute.check(organisationId).allowed) {
     return { ok: false, errors: ["Too many messages. Please wait a minute."] };
   }
@@ -189,19 +211,34 @@ async function runTurn(organisationId: string, config: AgentConfig, input: z.inf
   }
 
   try {
+    const custom = await toolsForAgent(organisationId, config.customTools);
+    const ran: CheckedToolCall[] = [];
+    const leadName = [input.lead.firstName, input.lead.lastName].filter(Boolean).join(" ");
     const turn = await llm.reply({
       systemPrompt: compiled.prompt,
       history: [...input.history, { role: "caller", text: event.text }],
       values,
       tools: config.tools,
+      customTools: custom.map(functionSpec),
       now,
-      // A real model hears back what each (simulated) tool did, then speaks.
-      runTool: (call) => {
+      // A real model hears back what each tool did, then speaks.
+      runTool: async (call) => {
+        const tool = custom.find((t) => t.name === call.tool);
+        if (tool) {
+          if (!opts.realTools) {
+            ran.push({ ...call, ok: true, result: "Sent (simulated; real webhooks are off)." });
+            return "Success (simulated).";
+          }
+          const r = await runCustomTool(tool, call.args, { agent: opts.agent, callId: `talk_${Date.now()}`, callerPhone: input.callValues.caller_number || input.callValues.phone, leadName, now: new Date() }, "talk");
+          ran.push({ ...call, ok: r.ok, result: `${r.status ? `${r.status}: ` : ""}${r.response.slice(0, 300)}` });
+          return resultForAi(r);
+        }
         const [checked] = checkTools([call], now);
+        if (checked) ran.push(checked);
         return checked ? `${checked.ok ? "Success" : "Failed"}: ${checked.result}` : "Unknown tool.";
       },
     });
-    return { ok: true, provider: llm.name, line: toLine(turn, now) };
+    return { ok: true, provider: llm.name, line: toLine(turn, now, undefined, ran) };
   } catch (e) {
     return { ok: false, errors: [e instanceof Error ? e.message : "The agent could not reply."] };
   }

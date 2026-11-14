@@ -18,6 +18,9 @@ import { useSpeaker } from "@/components/voice/use-speaker";
 import { useT } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 
+/** A built-in tool's friendly name, or a workspace tool's own name. */
+const toolName = (id: string) => (TOOL_DEFINITIONS as Record<string, { name: string } | undefined>)[id]?.name ?? id;
+
 /** Call variables filled from the customer fields, so they are not asked for twice. */
 const FROM_LEAD = new Set(["lead_name", "first_name", "last_name", "title", "address", "suffix", "full_name", "name"]);
 
@@ -415,7 +418,7 @@ function AgentBubble({ line, playing, canPlay, onPlay, onStop }: { line: AgentLi
       {line.toolCalls.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {line.toolCalls.map((c, i) => (
-            <Badge key={i} variant={c.ok ? "secondary" : "destructive"}>{TOOL_DEFINITIONS[c.tool].name}</Badge>
+            <Badge key={i} variant={c.ok ? "secondary" : "destructive"}>{toolName(c.tool)}</Badge>
           ))}
         </div>
       )}
@@ -429,7 +432,7 @@ function ToolRow({ call }: { call: AgentLine["toolCalls"][number] }) {
     <div className={cn("flex gap-2 rounded-md border p-2.5 text-sm", !call.ok && "border-destructive/40")}>
       {call.ok ? <CircleCheck className="mt-0.5 size-4 shrink-0 text-primary" /> : <CircleX className="mt-0.5 size-4 shrink-0 text-destructive" />}
       <div className="min-w-0 space-y-0.5">
-        <p className="font-medium">{TOOL_DEFINITIONS[call.tool].name} <code className="ml-1 font-mono text-xs text-muted-foreground">{call.tool}</code></p>
+        <p className="font-medium">{toolName(call.tool)} <code className="ml-1 font-mono text-xs text-muted-foreground">{call.tool}</code></p>
         {args.length > 0 && (
           <p className="break-words font-mono text-xs text-muted-foreground">{args.map(([k, v]) => `${k}: ${String(v)}`).join(" · ")}</p>
         )}

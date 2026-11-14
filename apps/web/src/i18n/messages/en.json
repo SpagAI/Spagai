@@ -24,6 +24,7 @@
     "comingSoon": "Coming soon",
     "organisation": "Organisation",
     "knowledge": "Knowledge Base",
+    "tools": "Tools",
     "numbers": "Phone Numbers",
     "integrations": "Integrations",
     "apiKeys": "API Keys",
@@ -161,7 +162,7 @@
       "spokenAs": "The voice will say"
     },
     "tools": {
-      "intro": "Actions the agent can take during a call. In this prototype, tools are simulated.",
+      "intro": "Ready-made actions. When you test your agent, these are simulated.",
       "required": "Always on",
       "params": "Parameters"
     },

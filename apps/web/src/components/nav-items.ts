@@ -1,4 +1,4 @@
-import { AudioLines, House, BookOpen, Bot, CreditCard, FlaskConical, KeyRound, LayoutDashboard, ListChecks, Megaphone, Phone, PhoneCall, Plug, Settings } from "lucide-react";
+import { AudioLines, House, BookOpen, Bot, CreditCard, FlaskConical, KeyRound, LayoutDashboard, ListChecks, Megaphone, Phone, PhoneCall, Plug, Settings, Wrench } from "lucide-react";
 
 export interface NavItem {
   href: string;
@@ -14,6 +14,7 @@ export const NAV: NavItem[] = [
   { href: "/agents", key: "agents", icon: Bot },
   { href: "/voices", key: "voices", icon: AudioLines },
   { href: "/knowledge", key: "knowledge", icon: BookOpen },
+  { href: "/tools", key: "tools", icon: Wrench },
   { href: "/numbers", key: "numbers", icon: Phone },
   { href: "/lab", key: "simulator", icon: FlaskConical },
   { href: "/leads", key: "leads", icon: ListChecks },

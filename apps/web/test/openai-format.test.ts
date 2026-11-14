@@ -53,3 +53,11 @@ describe("parseChatReply", () => {
     expect(() => parseChatReply({}, [])).toThrow("no reply");
   });
 });
+
+describe("workspace tools", () => {
+  it("keeps calls to the agent's own tools, with number details", () => {
+    const json = { choices: [{ message: { content: "", tool_calls: [{ function: { name: "create_crm_lead", arguments: JSON.stringify({ full_name: "Ngozi", seats: 3 }) } }, { function: { name: "not_mine", arguments: "{}" } }] } }] };
+    const turn = parseChatReply(json, ["end_call", "create_crm_lead"]);
+    expect(turn.toolCalls).toEqual([{ tool: "create_crm_lead", args: { full_name: "Ngozi", seats: 3 } }]);
+  });
+});

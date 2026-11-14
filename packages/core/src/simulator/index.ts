@@ -20,8 +20,9 @@ export interface SimMessage {
 }
 
 export interface SimToolCall {
-  tool: ToolId;
-  args: Record<string, string | boolean>;
+  /** A built-in tool, or the name of one of the workspace's own (webhook) tools. */
+  tool: ToolId | (string & {});
+  args: Record<string, string | boolean | number>;
 }
 
 export interface SimTurn {

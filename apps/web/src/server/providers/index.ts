@@ -32,7 +32,9 @@ export interface LlmRequest {
    * Answers a tool call (in the Lab: the simulated tools). When given, a real model that calls a
    * tool gets the result back and then speaks, up to 3 rounds, like on a real call.
    */
-  runTool?: (call: SimToolCall) => string;
+  runTool?: (call: SimToolCall) => string | Promise<string>;
+  /** The workspace's own tools this agent may use, in the OpenAI "function" format. */
+  customTools?: { type: "function"; function: { name: string; description: string; parameters: unknown } }[];
 }
 
 export interface LlmProvider {
@@ -51,7 +53,7 @@ const mockLlm: LlmProvider = {
 /** Shown when the AI provider's plan limit is reached (e.g. Groq's free plan: 8,000 tokens a minute). */
 export class LlmLimitError extends Error {}
 
-async function chatCompletion(messages: unknown[], tools: ToolId[], retried = false): Promise<unknown> {
+async function chatCompletion(messages: unknown[], tools: unknown[], retried = false): Promise<unknown> {
   const model = env.OPENAI_COMPATIBLE_MODEL!;
   const res = await fetch(`${env.OPENAI_COMPATIBLE_BASE_URL!.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
@@ -62,7 +64,7 @@ async function chatCompletion(messages: unknown[], tools: ToolId[], retried = fa
     body: JSON.stringify({
       model,
       messages,
-      tools: toOpenAiTools(tools),
+      ...(tools.length && { tools }),
       temperature: 0.4,
       // Reasoning models (gpt-oss) think before answering; thinking counts towards max_tokens,
       // so allow more room and keep the thinking short for a fast voice reply.
@@ -114,24 +116,32 @@ export function todayLine(now: Date): string {
 
 const openAiCompatibleLlm: LlmProvider = {
   name: "openai_compatible",
-  async reply({ systemPrompt, history, tools, runTool, now }) {
+  async reply({ systemPrompt, history, tools, runTool, now, customTools = [] }) {
     const messages: unknown[] = toChatMessages(`${systemPrompt}\n\n${PHONE_CALL_RULES}\n- ${todayLine(now)}`, history);
+    const specs = [...toOpenAiTools(tools), ...customTools];
+    const allowed = [...tools, ...customTools.map((t) => t.function.name)];
     const allCalls: SimToolCall[] = [];
     for (let round = 0; ; round++) {
-      const json = await chatCompletion(messages, tools);
-      const turn = parseChatReply(json, tools);
+      const json = await chatCompletion(messages, specs);
+      const turn = parseChatReply(json, allowed);
       allCalls.push(...turn.toolCalls);
       const raw = rawToolCalls(json);
+      // Every tool the model asks for runs exactly once (a webhook may book or save something),
+      // even when the model also spoke in the same reply.
+      const results: string[] = [];
+      if (runTool) {
+        for (const call of raw) {
+          const parsed = turn.toolCalls.find((c) => c.tool === call.function?.name) ?? { tool: String(call.function?.name ?? ""), args: {} };
+          results.push(allowed.includes(parsed.tool) ? await runTool(parsed) : "This tool is not available to this agent.");
+        }
+      }
       // Done when it spoke, ended the call, used no tool, or after 3 tool rounds.
       if (turn.text || turn.endsCall || !raw.length || !runTool || round >= 2) {
         return { text: turn.text, toolCalls: allCalls, endsCall: allCalls.some((c) => c.tool === "end_call") };
       }
       // Give the model each tool's result, then let it speak.
       messages.push({ role: "assistant", content: null, tool_calls: raw });
-      raw.forEach((call, i) => {
-        const parsed = turn.toolCalls.find((c) => c.tool === call.function?.name) ?? { tool: call.function?.name as ToolId, args: {} };
-        messages.push({ role: "tool", tool_call_id: call.id ?? `call_${round}_${i}`, content: allowedResult(parsed, tools, runTool) });
-      });
+      raw.forEach((call, i) => messages.push({ role: "tool", tool_call_id: call.id ?? `call_${round}_${i}`, content: results[i] ?? "" }));
     }
   },
 };
@@ -140,10 +150,6 @@ const openAiCompatibleLlm: LlmProvider = {
 function rawToolCalls(json: unknown): { id?: string; type?: string; function?: { name?: string; arguments?: string } }[] {
   const calls = (json as { choices?: { message?: { tool_calls?: unknown } }[] })?.choices?.[0]?.message?.tool_calls;
   return Array.isArray(calls) ? calls : [];
-}
-
-function allowedResult(call: SimToolCall, tools: ToolId[], runTool: (call: SimToolCall) => string): string {
-  return tools.includes(call.tool) ? runTool(call) : "This tool is not available to this agent.";
 }
 
 export function getLlm(): LlmProvider {

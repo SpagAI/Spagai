@@ -57,6 +57,7 @@ model Organisation {
   integrations       Integration[]
   apiKeys            ApiKey[]
   workspaceVoices    WorkspaceVoice[]
+  tools              Tool[]
   voiceUsage         VoiceUsage[]
 }
 
@@ -500,4 +501,53 @@ model VoiceUsage {
   organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
 
   @@id([organisationId, day])
+}
+
+/// A workspace's own tool: an action an agent can take during a call by calling a webhook.
+model Tool {
+  id             String       @id @default(cuid())
+  organisationId String
+  /// The name the AI uses (lowercase, underscores), unique in the workspace.
+  name           String
+  label          String
+  /// When the agent should use it, in plain words (the AI reads this).
+  description    String
+  /// Details the AI collects: [{ name, type, required, description, options? }]
+  parameters     Json
+  url            String
+  method         String       @default("POST")
+  /// [{ name, value, secret }]; secret values are encrypted.
+  headers        Json
+  /// Extra facts sent with every call: { agent, call, caller, lead, time }
+  sendContext    Json
+  timeoutMs      Int          @default(10000)
+  waitMessage    String       @default("")
+  /// Encrypted secret for the X-Spag-Signature header.
+  signingSecret  String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  runs           ToolRun[]
+
+  @@unique([organisationId, name])
+}
+
+/// Each time a tool ran (newest 50 kept per tool), to see what was sent and what came back.
+model ToolRun {
+  id             String   @id @default(cuid())
+  toolId         String
+  organisationId String
+  agentId        String?
+  /// "test" (Send a test), "talk" (Test your agent) or "call" (a real call)
+  source         String
+  request        Json
+  status         Int?
+  ok             Boolean
+  response       String
+  durationMs     Int
+  error          String?
+  createdAt      DateTime @default(now())
+  tool           Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@index([toolId, createdAt])
 }
