@@ -27,7 +27,7 @@ export const DEFAULT_GUARDRAILS: Record<GuardrailId, PromptBlock> = {
     guardrail: "opt_out",
     title: "Opt-out",
     content:
-      "If the person asks not to be called again, asks to be removed from the list, or says stop, respect it at once. Apologise for the disturbance, confirm they will not be called again, record the opt-out with the save_lead_data tool, thank them and end the call. Never argue or try to change their mind.",
+      "If the person asks not to be called again, asks to be removed from the list, or says stop, respect it at once. Apologise for the disturbance, confirm they will not be called again, thank them and end the call. Never argue or try to change their mind.",
   },
   ai_disclosure: {
     id: "guardrail_ai_disclosure",

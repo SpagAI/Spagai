@@ -3,13 +3,10 @@
 import {
   LANGUAGE_NAMES,
   lintSpokenLine,
-  REQUIRED_TOOLS,
   renderVariables,
   sanitiseForSpeech,
-  TOOL_DEFINITIONS,
   orderVoices,
   type AgentConfig,
-  type ToolId,
   type Voice,
   type VoiceLanguage,
 } from "@spagai/core";
@@ -17,7 +14,6 @@ import { ExternalLink, Plus, TriangleAlert, Webhook } from "lucide-react";
 import Link from "next/link";
 import { VoiceSettingsControls } from "@/components/voice/voice-settings";
 import { VoicePicker } from "./voice-picker";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -149,9 +145,6 @@ export interface WorkspaceTool {
 }
 
 export function ToolsTab({ config, update, workspaceTools, canManageTools }: { config: AgentConfig; update: Update; workspaceTools: WorkspaceTool[]; canManageTools: boolean }) {
-  const t = useT();
-  const toggle = (id: ToolId, on: boolean) =>
-    update({ tools: on ? [...new Set([...config.tools, id])] : config.tools.filter((x) => x !== id) });
   const toggleCustom = (name: string, on: boolean) =>
     update({ customTools: on ? [...new Set([...config.customTools, name])] : config.customTools.filter((x) => x !== name) });
   // A tool that was deleted or renamed elsewhere: shown so it can be switched off.
@@ -208,47 +201,6 @@ export function ToolsTab({ config, update, workspaceTools, canManageTools }: { c
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Built-in tools</CardTitle>
-          <CardDescription>{t("builder.tools.intro")}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-        {Object.values(TOOL_DEFINITIONS).map((tool) => {
-          const required = REQUIRED_TOOLS.includes(tool.id);
-          const on = required || config.tools.includes(tool.id);
-          return (
-            <div key={tool.id} className={cn("space-y-2 rounded-lg border p-3", on && "border-primary/40")}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-medium">{tool.name} <code className="ml-1 font-mono text-xs text-muted-foreground">{tool.id}</code></p>
-                  <p className="text-sm text-muted-foreground">{tool.description}</p>
-                </div>
-                {required ? (
-                  <Badge variant="secondary">{t("builder.tools.required")}</Badge>
-                ) : (
-                  <Switch checked={on} onCheckedChange={(v) => toggle(tool.id, v)} aria-label={tool.name} />
-                )}
-              </div>
-              {Object.keys(tool.parameters).length > 0 && (
-                <details className="text-xs">
-                  <summary className="cursor-pointer text-muted-foreground">{t("builder.tools.params")}</summary>
-                  <ul className="mt-2 space-y-1">
-                    {Object.entries(tool.parameters).map(([name, p]) => (
-                      <li key={name}>
-                        <code className="font-mono">{name}</code>
-                        {tool.required.includes(name) && <span className="text-destructive">*</span>}{" "}
-                        <span className="text-muted-foreground">{p.description}{p.enum ? ` (${p.enum.join(", ")})` : ""}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-            </div>
-          );
-        })}
-        </CardContent>
-      </Card>
     </div>
   );
 }

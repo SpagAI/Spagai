@@ -270,6 +270,18 @@ export const agentDraftSchema = agentConfigSchema.extend({
 export const REQUIRED_TOOLS: ToolId[] = ["end_call"];
 
 /**
+ * Built-in tools (calendar, booking, saving answers) are switched off for now: agents only use the
+ * workspace's own tools (webhooks). Saved agents keep their choices, so turning this back on restores them.
+ * "end_call" always stays: it is how the agent hangs up, not a tool people manage.
+ */
+export const BUILT_IN_TOOLS_ENABLED = false;
+
+/** The built-in tools the AI is actually given for an agent. */
+export function activeBuiltInTools(tools: ToolId[]): ToolId[] {
+  return BUILT_IN_TOOLS_ENABLED ? [...new Set([...tools, ...REQUIRED_TOOLS])] : [...REQUIRED_TOOLS];
+}
+
+/**
  * Server-side safety net before saving: validates, re-adds any locked guardrail
  * that was removed, forces guardrails on, and makes sure required tools are present.
  * Returns the cleaned config, or the validation errors.

@@ -115,3 +115,12 @@ describe("inbound and outbound agents", () => {
     expect(r.ok && r.config.direction).toBe("outbound");
   });
 });
+
+describe("built-in tools switched off for now", () => {
+  it("gives the AI only end_call, whatever the agent saved", async () => {
+    const { activeBuiltInTools, BUILT_IN_TOOLS_ENABLED } = await import("../src/agent");
+    expect(BUILT_IN_TOOLS_ENABLED).toBe(false);
+    expect(activeBuiltInTools(["check_calendar", "book_appointment", "save_lead_data", "end_call"])).toEqual(["end_call"]);
+    expect(activeBuiltInTools([])).toEqual(["end_call"]);
+  });
+});

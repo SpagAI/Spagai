@@ -19,6 +19,7 @@ import {
 import { z } from "zod";
 import { requirePermission } from "@/server/auth/session";
 import { audit, loadAgent } from "@/server/agents";
+import { activeBuiltInTools } from "@spagai/core";
 import { functionSpec, resultForAi, runCustomTool, toolsForAgent } from "@/server/custom-tools";
 import { getLlm, PHONE_CALL_RULES, todayLine } from "@/server/providers";
 import { RateLimiter } from "@/server/rate-limit";
@@ -218,7 +219,7 @@ async function runTurn(organisationId: string, config: AgentConfig, input: z.inf
       systemPrompt: compiled.prompt,
       history: [...input.history, { role: "caller", text: event.text }],
       values,
-      tools: config.tools,
+      tools: activeBuiltInTools(config.tools),
       customTools: custom.map(functionSpec),
       now,
       // A real model hears back what each tool did, then speaks.
