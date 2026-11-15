@@ -51,7 +51,11 @@ const mockLlm: LlmProvider = {
 };
 
 /** Shown when the AI provider's plan limit is reached (e.g. Groq's free plan: 8,000 tokens a minute). */
-export class LlmLimitError extends Error {}
+export class LlmLimitError extends Error {
+  constructor(message: string, readonly retryAfterSeconds: number) {
+    super(message);
+  }
+}
 
 async function chatCompletion(messages: unknown[], tools: unknown[], retried = false): Promise<unknown> {
   const model = env.OPENAI_COMPATIBLE_MODEL!;
@@ -81,7 +85,9 @@ async function chatCompletion(messages: unknown[], tools: unknown[], retried = f
       await new Promise((resolve) => setTimeout(resolve, wait * 1000 + 250));
       return chatCompletion(messages, tools, true);
     }
-    throw new LlmLimitError("The AI's free plan limit was reached (a few replies a minute). Wait about 30 seconds and try again, or upgrade the AI plan for faster testing.");
+    // How long until enough of the per-minute allowance is back (the provider says; otherwise a minute).
+    const seconds = Number.isFinite(wait) && wait > 0 ? Math.min(90, Math.ceil(wait)) : 60;
+    throw new LlmLimitError("The AI's free plan allows about 8,000 words a minute, and every reply re-reads the whole prompt.", seconds);
   }
   if (!res.ok) {
     const detail = await res.text().catch(() => "");

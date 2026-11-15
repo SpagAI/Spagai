@@ -21,7 +21,7 @@ import { requirePermission } from "@/server/auth/session";
 import { audit, loadAgent } from "@/server/agents";
 import { activeBuiltInTools } from "@spagai/core";
 import { functionSpec, resultForAi, runCustomTool, toolsForAgent } from "@/server/custom-tools";
-import { getLlm, PHONE_CALL_RULES, todayLine, toolsLine } from "@/server/providers";
+import { getLlm, LlmLimitError, PHONE_CALL_RULES, todayLine, toolsLine } from "@/server/providers";
 import { RateLimiter } from "@/server/rate-limit";
 import { SpeechToTextError, transcribe } from "@/server/speech-to-text";
 
@@ -90,7 +90,7 @@ export type SimulateResult =
       /** Only on "start": the full prompt the language model receives. */
       prompt?: string;
     }
-  | { ok: false; errors: string[] };
+  | { ok: false; errors: string[]; /** Free AI plan limit: try the same turn again after this many seconds. */ retryAfter?: number };
 
 function parseWhen(when: string): Date {
   const [d, t] = when.split("T") as [string, string];
@@ -241,6 +241,10 @@ async function runTurn(organisationId: string, config: AgentConfig, input: z.inf
     });
     return { ok: true, provider: llm.name, line: toLine(turn, now, undefined, ran) };
   } catch (e) {
+    if (e instanceof LlmLimitError) {
+      const tokens = Math.round(compiled.prompt.length / 4);
+      return { ok: false, retryAfter: e.retryAfterSeconds, errors: [`${e.message} This agent's prompt is about ${tokens.toLocaleString("en-NG")} words for the AI, so the free plan allows about ${tokens > 6000 ? "one reply" : tokens > 3000 ? "one or two replies" : "a few replies"} a minute.`] };
+    }
     return { ok: false, errors: [e instanceof Error ? e.message : "The agent could not reply."] };
   }
 }

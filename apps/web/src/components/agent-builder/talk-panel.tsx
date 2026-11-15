@@ -68,6 +68,18 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead, serverLi
   const [showSettings, setShowSettings] = useState(false);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [phase, setPhase] = useState<Phase>("idle");
+  /** Free AI plan limit: the reply is sent again by itself when the minute's allowance is back. */
+  const [waiting, setWaitingState] = useState<{ until: number; note: string } | null>(null);
+  const waitingRef = useRef(false);
+  const setWaiting = (w: { until: number; note: string } | null) => { waitingRef.current = Boolean(w); setWaitingState(w); };
+  const [, setTick] = useState(0);
+  const waitTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => {
+    if (!waiting) return;
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [waiting]);
+  useEffect(() => () => clearTimeout(waitTimer.current), []);
   const [draft, setDraft] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
   const [outsideHours, setOutsideHours] = useState<string | null>(null);
@@ -152,6 +164,19 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead, serverLi
       event,
     });
     if (!liveRef.current) return;
+    if (!result.ok && result.retryAfter && event.type !== "start") {
+      // Not an error the person must fix: wait for the allowance, then send the same turn again.
+      setErrors([]);
+      setPhase("thinking");
+      setWaiting({ until: Date.now() + result.retryAfter * 1000, note: result.errors[0] ?? "" });
+      clearTimeout(waitTimer.current);
+      waitTimer.current = setTimeout(() => {
+        setWaiting(null);
+        if (liveRef.current) void turn(event, before);
+      }, result.retryAfter * 1000);
+      return;
+    }
+    setWaiting(null);
     if (!result.ok) {
       setErrors(result.errors);
       if (event.type === "start") {
@@ -175,7 +200,8 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead, serverLi
 
   async function say(raw: string) {
     const text = raw.trim();
-    if (!text || !liveRef.current) return;
+    // One message at a time: wait for the agent's reply (including a free-plan wait) first.
+    if (!text || !liveRef.current || waitTimer.current && waitingRef.current) return;
     speaker.stop();
     const withCaller: Entry[] = [...entriesRef.current, { id: nextId.current++, role: "caller", text: text.slice(0, 1000) }];
     setAll(withCaller);
@@ -195,6 +221,8 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead, serverLi
 
   const end = () => {
     liveRef.current = false;
+    clearTimeout(waitTimer.current);
+    setWaiting(null);
     speaker.stop();
     listener.stopListening();
     setPhase("ended");
@@ -276,6 +304,12 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead, serverLi
           {PHASE_TEXT[phase]}
         </p>
       )}
+      {waiting && (
+        <div className="space-y-1 rounded-lg border border-warning/40 bg-warning/10 p-2 text-xs">
+          <p className="font-medium">Free AI limit: {config.name || "the agent"} will reply in {Math.max(0, Math.ceil((waiting.until - Date.now()) / 1000))} s</p>
+          <p className="text-muted-foreground">{waiting.note} Nothing to do: your message is sent again automatically. A paid AI plan removes this wait.</p>
+        </div>
+      )}
       {outsideHours && <p className="text-center text-xs text-warning">A real call would be blocked now: {outsideHours}</p>}
       {listener.error && <p className="text-xs text-destructive">{listener.error}</p>}
       {speaker.error && <p className="text-xs text-destructive">{speaker.error}</p>}
@@ -313,7 +347,7 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead, serverLi
       {canType && (
         <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void say(draft); }}>
           <Input value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={1000} placeholder="Type what the customer says…" aria-label="Type what the customer says" autoFocus />
-          <Button type="submit" size="icon" disabled={!draft.trim() || phase === "thinking"} aria-label="Send"><Send /></Button>
+          <Button type="submit" size="icon" disabled={!draft.trim() || phase === "thinking" || Boolean(waiting)} aria-label="Send"><Send /></Button>
         </form>
       )}
 
