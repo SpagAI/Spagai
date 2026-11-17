@@ -58,6 +58,7 @@ model Organisation {
   apiKeys            ApiKey[]
   workspaceVoices    WorkspaceVoice[]
   tools              Tool[]
+  providerUsage      ProviderUsage[]
   voiceUsage         VoiceUsage[]
 }
 
@@ -501,6 +502,20 @@ model VoiceUsage {
   organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
 
   @@id([organisationId, day])
+}
+
+/// How much of each paid outside service a workspace used per Lagos day (for the Usage page; nothing is charged).
+model ProviderUsage {
+  organisationId String
+  day            String       // YYYY-MM-DD in Africa/Lagos
+  /// ai_input_tokens, ai_output_tokens, ai_replies, voice_characters, listening_seconds
+  kind           String
+  /// groq, fish_audio, ...
+  provider       String
+  quantity       Int          @default(0)
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@id([organisationId, day, kind, provider])
 }
 
 /// A workspace's own tool: an action an agent can take during a call by calling a webhook.

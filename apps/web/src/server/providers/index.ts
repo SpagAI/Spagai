@@ -12,6 +12,7 @@ import {
 } from "@spagai/core";
 import { env } from "../env";
 import { RateLimiter } from "../rate-limit";
+import { recordUsage } from "../usage";
 import { releaseSpeechCharacters, reserveSpeechCharacters, resolveVoice } from "../voices";
 import { fishAudioConfigured, fishTextToSpeech, SpeechError } from "./fish-audio";
 import { parseChatReply, toChatMessages, toOpenAiTools } from "./openai-format";
@@ -33,6 +34,8 @@ export interface LlmRequest {
    * tool gets the result back and then speaks, up to 3 rounds, like on a real call.
    */
   runTool?: (call: SimToolCall) => string | Promise<string>;
+  /** Told how many tokens each AI call used (for the Usage page). */
+  onUsage?: (usage: { inputTokens: number; outputTokens: number }) => void;
   /** The workspace's own tools this agent may use, in the OpenAI "function" format. */
   customTools?: { type: "function"; function: { name: string; description: string; parameters: unknown } }[];
 }
@@ -138,13 +141,15 @@ export function toolsLine(allowed: string[]): string {
 
 const openAiCompatibleLlm: LlmProvider = {
   name: "openai_compatible",
-  async reply({ systemPrompt, history, tools, runTool, now, customTools = [] }) {
+  async reply({ systemPrompt, history, tools, runTool, now, customTools = [], onUsage }) {
     const specs = [...toOpenAiTools(tools), ...customTools];
     const allowed = [...tools, ...customTools.map((t) => t.function.name)];
     const messages: unknown[] = toChatMessages(`${systemPrompt}\n\n${PHONE_CALL_RULES}\n- ${todayLine(now)}\n- ${toolsLine(allowed)}`, history);
     const allCalls: SimToolCall[] = [];
     for (let round = 0; ; round++) {
       const json = await chatCompletion(messages, specs);
+      const usage = (json as { usage?: { prompt_tokens?: number; completion_tokens?: number } }).usage;
+      if (usage) onUsage?.({ inputTokens: usage.prompt_tokens ?? 0, outputTokens: usage.completion_tokens ?? 0 });
       const turn = parseChatReply(json, allowed);
       allCalls.push(...turn.toolCalls);
       const raw = rawToolCalls(json);
@@ -209,6 +214,7 @@ export async function synthesise(organisationId: string, voiceId: string, rawTex
     }
     try {
       const audio = Buffer.from(await fishTextToSpeech(voice.providerVoiceId, text, settings)).toString("base64");
+      await recordUsage(organisationId, "fish_audio", { voice_characters: text.length });
       return { kind: "audio", text, src: `data:audio/mpeg;base64,${audio}` };
     } catch (error) {
       await releaseSpeechCharacters(organisationId, text.length);

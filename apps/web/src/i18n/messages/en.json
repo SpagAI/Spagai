@@ -28,6 +28,7 @@
     "numbers": "Phone Numbers",
     "integrations": "Integrations",
     "apiKeys": "API Keys",
+    "usage": "Usage",
     "workspace": "Workspace"
   },
   "login": {

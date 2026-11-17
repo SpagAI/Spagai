@@ -70,3 +70,16 @@ export async function fishTextToSpeech(providerVoiceId: string, text: string, se
 
 /** An error whose message is safe to show to the user. */
 export class SpeechError extends Error {}
+
+/** Dollars of API credit left on the Fish Audio account, or null if it cannot be read. */
+export async function fishCreditLeft(): Promise<number | null> {
+  if (!fishAudioConfigured()) return null;
+  try {
+    const res = await fetch(`${BASE}/wallet/self/api-credit`, { headers: headers(), signal: AbortSignal.timeout(5000), cache: "no-store" });
+    if (!res.ok) return null;
+    const credit = Number(((await res.json()) as { credit?: unknown }).credit);
+    return Number.isFinite(credit) ? credit : null;
+  } catch {
+    return null;
+  }
+}

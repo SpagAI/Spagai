@@ -21,6 +21,7 @@ import { requirePermission } from "@/server/auth/session";
 import { audit, loadAgent } from "@/server/agents";
 import { activeBuiltInTools } from "@spagai/core";
 import { functionSpec, resultForAi, runCustomTool, toolsForAgent } from "@/server/custom-tools";
+import { recordUsage } from "@/server/usage";
 import { getLlm, LlmLimitError, PHONE_CALL_RULES, todayLine, toolsLine } from "@/server/providers";
 import { RateLimiter } from "@/server/rate-limit";
 import { SpeechToTextError, transcribe } from "@/server/speech-to-text";
@@ -214,6 +215,7 @@ async function runTurn(organisationId: string, config: AgentConfig, input: z.inf
   try {
     const custom = await toolsForAgent(organisationId, config.customTools);
     const ran: CheckedToolCall[] = [];
+    const used = { input: 0, output: 0, replies: 0 };
     const leadName = [input.lead.firstName, input.lead.lastName].filter(Boolean).join(" ");
     const turn = await llm.reply({
       systemPrompt: compiled.prompt,
@@ -222,6 +224,7 @@ async function runTurn(organisationId: string, config: AgentConfig, input: z.inf
       tools: activeBuiltInTools(config.tools),
       customTools: custom.map(functionSpec),
       now,
+      onUsage: (u) => { used.input += u.inputTokens; used.output += u.outputTokens; used.replies++; },
       // A real model hears back what each tool did, then speaks.
       runTool: async (call) => {
         const tool = custom.find((t) => t.name === call.tool);
@@ -239,6 +242,7 @@ async function runTurn(organisationId: string, config: AgentConfig, input: z.inf
         return checked ? `${checked.ok ? "Success" : "Failed"}: ${checked.result}` : "Unknown tool.";
       },
     });
+    if (used.replies) await recordUsage(organisationId, "groq", { ai_input_tokens: used.input, ai_output_tokens: used.output, ai_replies: 1 });
     return { ok: true, provider: llm.name, line: toLine(turn, now, undefined, ran) };
   } catch (e) {
     if (e instanceof LlmLimitError) {

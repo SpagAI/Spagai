@@ -1,6 +1,8 @@
 import "server-only";
 import { env } from "./env";
+import { billedListeningSeconds } from "@/lib/usage-pricing";
 import { RateLimiter } from "./rate-limit";
+import { recordUsage } from "./usage";
 
 /**
  * Speech to text on our side (not the visitor's browser), so listening is equally sharp on any
@@ -37,7 +39,7 @@ export async function transcribe(organisationId: string, audio: Blob, hintWords:
   const ext = type.includes("mp4") ? "mp4" : type.includes("ogg") ? "ogg" : type.includes("wav") ? "wav" : "webm";
   form.append("file", audio, `speech.${ext}`);
   form.append("model", env.STT_MODEL);
-  form.append("response_format", "json");
+  form.append("response_format", "verbose_json");
   form.append("temperature", "0");
   // Nigerian English and Pidgin are transcribed as English; Yoruba, Hausa and Igbo are left to Whisper to detect.
   if (language === "en-NG" || language === "pcm") form.append("language", "en");
@@ -53,6 +55,7 @@ export async function transcribe(organisationId: string, audio: Blob, hintWords:
     console.error("Speech to text error", res.status, (await res.text().catch(() => "")).slice(0, 300));
     throw new SpeechToTextError("The recording could not be understood. Please try again.");
   }
-  const json = (await res.json()) as { text?: unknown };
+  const json = (await res.json()) as { text?: unknown; duration?: unknown };
+  await recordUsage(organisationId, "groq", { listening_seconds: billedListeningSeconds(typeof json.duration === "number" ? json.duration : 0) });
   return typeof json.text === "string" ? json.text.trim() : "";
 }
