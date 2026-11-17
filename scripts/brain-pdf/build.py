@@ -34,11 +34,12 @@ DESC = {  # one-line contents descriptions; chapters not listed fall back to the
     "Legal, consent and ethics": "Voice actor contracts, the NDPA, NCC, and deepfake safeguards.",
     "Roadmap": "Five phases and four gates from today's prototype to our own voices.",
     "Brainstorm log": "Decisions, open questions, ideas and experiment notes.",
-    "Our products": "Voice agents, the Spag Voices bank, and SquareLance, our paid voice annotation platform.",
+    "Our products": "Voice agents, Spag Voices and SquareLance, how they feed each other, and a money map of 33 ways to earn.",
     "Glossary": "Plain meanings for ASR, TTS, VAD, WER, MOS, fine-tuning and more.",
 }
 STATUS = {"Done": "good", "Confirmed": "good", "In progress": "warn", "Proposed": "warn",
-          "Not started": "quiet", "Changed course": "alt", "Changed": "alt", "Dropped": "bad"}
+          "Not started": "quiet", "Changed course": "alt", "Changed": "alt", "Dropped": "bad",
+          "Now": "good", "Next 1–2 years": "alt", "Long term": "quiet"}
 
 
 def uri(path, mime=None):
