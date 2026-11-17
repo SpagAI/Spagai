@@ -50,7 +50,7 @@ export default async function ToolsPage() {
           {
             id: "tools",
             label: "Tools",
-            icon: <Webhook className="size-5" />,
+            icon: <Webhook />,
             description: "Webhook actions you build (calendar, CRM, sheets…)",
             count: tools.length,
             content: (
@@ -130,7 +130,7 @@ export default async function ToolsPage() {
           {
             id: "mcp",
             label: "MCP servers",
-            icon: <Plug className="size-5" />,
+            icon: <Plug />,
             description: "Connect a whole service, like Make.com, through MCP",
             count: mcpServers.length,
             content: (
