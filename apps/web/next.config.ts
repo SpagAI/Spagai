@@ -20,8 +20,17 @@ function buildCommit(): string {
   }
 }
 
+/** The first line of the commit message, so the ship bell can say what went live. */
+function buildMessage(): string {
+  try {
+    return execSync("git log -1 --pretty=%s", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim().slice(0, 200);
+  } catch {
+    return "";
+  }
+}
+
 const nextConfig: NextConfig = {
-  env: { BUILD_COMMIT: buildCommit(), BUILD_TIME: new Date().toISOString() },
+  env: { BUILD_COMMIT: buildCommit(), BUILD_TIME: new Date().toISOString(), BUILD_MESSAGE: buildMessage() },
   // This app lives in a monorepo: trace files from the repository root, so the deployed site
   // (e.g. on Vercel) includes everything it needs, such as the database engine and packages/core.
   outputFileTracingRoot: path.resolve(__dirname, "../.."),

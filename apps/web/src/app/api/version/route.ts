@@ -6,7 +6,7 @@ export const dynamic = "force-static";
 
 export function GET() {
   return Response.json(
-    { commit: process.env.BUILD_COMMIT ?? "unknown", builtAt: process.env.BUILD_TIME ?? null },
+    { commit: process.env.BUILD_COMMIT ?? "unknown", builtAt: process.env.BUILD_TIME ?? null, message: process.env.BUILD_MESSAGE ?? "" },
     { headers: { "cache-control": "no-store" } },
   );
 }
