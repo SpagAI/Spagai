@@ -1,4 +1,4 @@
-import { ArrowRight, Lock, PhoneOff, Plus, Webhook, Wrench } from "lucide-react";
+import { ArrowRight, Lock, PhoneOff, Plug, Plus, Webhook, Wrench } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DEFAULT_TOOLS, STARTERS } from "@/lib/custom-tools";
@@ -50,6 +50,8 @@ export default async function ToolsPage() {
           {
             id: "tools",
             label: "Tools",
+            icon: <Webhook className="size-5" />,
+            description: "Webhook actions you build (calendar, CRM, sheets…)",
             count: tools.length,
             content: (
               <div className="space-y-8">
@@ -128,6 +130,8 @@ export default async function ToolsPage() {
           {
             id: "mcp",
             label: "MCP servers",
+            icon: <Plug className="size-5" />,
+            description: "Connect a whole service, like Make.com, through MCP",
             count: mcpServers.length,
             content: (
       <section className="space-y-3">

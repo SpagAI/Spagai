@@ -274,6 +274,8 @@ export function ToolsTab({ config, update, workspaceTools, canManageTools, onToo
           {
             id: "tools",
             label: "Tools",
+            icon: <Webhook className="size-5" />,
+            description: "Webhook actions you build (calendar, CRM, sheets…)",
             count: config.customTools.length + DEFAULT_TOOLS.length,
             content: (
               <div className="space-y-5">
@@ -338,6 +340,8 @@ export function ToolsTab({ config, update, workspaceTools, canManageTools, onToo
           {
             id: "mcp",
             label: "MCP servers",
+            icon: <Plug className="size-5" />,
+            description: "Connect a whole service, like Make.com, through MCP",
             count: config.mcpTools.length,
             content: <McpToolsCard config={config} update={update} servers={mcpServers} onServersChange={onMcpServersChange} canManage={canManageTools} />,
           },
