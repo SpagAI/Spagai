@@ -34,7 +34,7 @@ DESC = {  # one-line contents descriptions; chapters not listed fall back to the
     "Legal, consent and ethics": "Voice actor contracts, the NDPA, NCC, and deepfake safeguards.",
     "Roadmap": "Five phases and four gates from today's prototype to our own voices.",
     "Brainstorm log": "Decisions, open questions, ideas and experiment notes.",
-    "Our products": "Voice agents, the Spag Voices bank, and the paid voice annotation platform, and how they feed each other.",
+    "Our products": "Voice agents, the Spag Voices bank, and Squarelance, our paid voice annotation platform.",
     "Glossary": "Plain meanings for ASR, TTS, VAD, WER, MOS, fine-tuning and more.",
 }
 STATUS = {"Done": "good", "Confirmed": "good", "In progress": "warn", "Proposed": "warn",
