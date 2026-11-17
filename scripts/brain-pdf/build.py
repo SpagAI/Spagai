@@ -34,7 +34,7 @@ DESC = {  # one-line contents descriptions; chapters not listed fall back to the
     "Legal, consent and ethics": "Voice actor contracts, the NDPA, NCC, and deepfake safeguards.",
     "Roadmap": "Five phases and four gates from today's prototype to our own voices.",
     "Brainstorm log": "Decisions, open questions, ideas and experiment notes.",
-    "Our products": "Voice agents, Spag Voices and SquareLance, how they feed each other, and a money map of 33 ways to earn.",
+    "Our products": "Voice agents, Spag Voices and SquareLance, how they feed each other, a money map of 35 ways to earn, and local voices for maps.",
     "Glossary": "Plain meanings for ASR, TTS, VAD, WER, MOS, fine-tuning and more.",
 }
 STATUS = {"Done": "good", "Confirmed": "good", "In progress": "warn", "Proposed": "warn",
@@ -190,6 +190,7 @@ main li:has(> .box.on) {{ color: #6b6779; }}
 .pill.good {{ background: #e3f4ea; color: #1e6b41; }} .pill.warn {{ background: #fff1d6; color: #8a5a00; }}
 .pill.quiet {{ background: #efedf4; color: #5b566b; }} .pill.alt {{ background: #ede6fd; color: {BRAND}; }} .pill.bad {{ background: #fde4e4; color: #a12a2a; }}
 figure.widget img {{ border: none; }}
+main p:has(+ .tbl), main p:has(+ ul), main p:has(+ ol) {{ break-after: avoid; }}
 .snap {{ font-size: 9.3pt; color: #5b566b; background: #f6f3fd; border-radius: 8px; padding: 10px 14px; margin: 0 0 14px; }}
 .toc h1 {{ margin: 0 0 4px; }} .toc .lead {{ color: #5b566b; margin: 0 0 10px; }}
 .toc ol {{ list-style: none; padding: 0; margin: 0; }}
