@@ -25,9 +25,9 @@ DESC = {  # one-line contents descriptions; chapters not listed fall back to the
     "Introduction": "The goal, the five things to remember, and where we are today.",
     "How voice AI works": "The full loop from \"Hello?\" to the agent's reply, step by step, and why speed matters.",
     "The stack": "Every layer of a voice agent, the options at each, and what we rent or own.",
-    "The local voices strategy": "What local voices means, why it is hard, the five stages, and our moat.",
+    "The local voices strategy": "What local voices means, the five stages, our moat, and the road from Nigeria across Africa.",
     "Training playbook": "Step by step: recording and training a voice; training speech recognition.",
-    "Datasets bank": "Open Nigerian speech data and whether we may use it commercially.",
+    "Datasets bank": "Open Nigerian, Swahili and other African speech data, and whether we may use it commercially.",
     "Learning path": "What to read, watch and build, in order, for founders, engineers and ML.",
     "Team and hiring": "Who we need, in what order, where to find them and how to test them.",
     "Compute and costs": "GPUs, hosting, training and serving costs, and per-minute margins.",
@@ -157,7 +157,7 @@ h1 {{ font-family: 'Inter Display', Inter; font-size: 54pt; line-height: 1.02; m
 </style></head><body><div class="page"><img class="big" src="{logo_w}" alt="">
 <div class="top"><div class="brand"><img src="{logo_w}" alt="">Spag AI</div><div class="tag">Internal · Confidential</div></div>
 <div class="mid"><div class="kicker">Internal playbook &amp; working roadmap</div><h1>The Spag AI<br>Brain</h1>
-<div class="sub">How voice AI works, and how we build our own locally trained Nigerian voices: strategy, training, data, learning, hiring, costs and the road ahead.</div></div>
+<div class="sub">How voice AI works, and how we build our own locally trained African voices, starting in Nigeria: strategy, training, data, learning, hiring, costs and the road ahead.</div></div>
 <div class="wave">{wave_svg()}</div>
 <div class="bottom"><div><b>Updated {date_words}</b>{rev_words}<br>A snapshot of the living document.</div>
 <div style="text-align:right">For the Spag AI team only.<br>Please do not share outside the company.</div></div></div></body></html>"""
@@ -232,7 +232,7 @@ def build(src, out, widgets=None, rev=None, date=None):
             f'<li><span class="n">{html.escape(c["num"])}</span><span class="t"><a href="#{c["id"]}"><b>{html.escape(c["title"])}</b></a>'
             f'<span>{html.escape(c["desc"])}</span></span><span class="p">{pages.get(c["id"], "")}</span></li>' for c in chapters)
         toc = (f'<section class="toc"><div class="kicker" style="color:{BRAND}">The Spag AI Brain</div><h1>Contents</h1>'
-               '<p class="lead">Our internal playbook and working roadmap for voice AI and locally trained Nigerian voices.</p>'
+               '<p class="lead">Our internal playbook and working roadmap for voice AI and locally trained African voices, starting in Nigeria.</p>'
                f'<ol>{rows}</ol><div class="note"><b>How to read this book.</b> Every chapter opens with two boxes: '
                '<b>In one minute</b> (the key points) and <b>Do this next</b> (actions; ticked ones are done). Read only the boxes for the '
                f'whole plan in ten minutes, then go deeper where you need to. This PDF is a snapshot of the living document, made {date_words}.</div></section>')
