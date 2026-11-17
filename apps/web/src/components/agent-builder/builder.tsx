@@ -1,7 +1,7 @@
 "use client";
 
 import { activeBuiltInTools, compilePrompt, lintPrompt, orderVoices, TOOL_DEFINITIONS, type AgentConfig, type VariableDef, type Voice } from "@spagai/core";
-import { ArrowLeft, ArrowLeftRight, Check, ChevronDown, CircleAlert, CircleCheck, CircleDot, FlaskConical, History, Mic, MoreHorizontal, Redo2, Save, Trash2, TriangleAlert, Undo2, X, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, Check, ChevronDown, CircleAlert, CircleCheck, CircleDot, FlaskConical, History, Mic, MoreHorizontal, Redo2, Save, Trash2, TriangleAlert, Undo2, X, type LucideIcon, Rocket } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { autosaveAgentDraft, deleteAgent, discardAgentDraft, saveAgent } from "@/app/(app)/agents/actions";
@@ -233,6 +233,19 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
     setRestoredNotice(null);
   };
 
+  const live = saved.status === "READY";
+  /** Publish: the agent may take real calls (its phone number, campaigns). Checks it is complete first. */
+  const publish = () => {
+    const name = config.name.trim() || "this agent";
+    const msg = live
+      ? `Publish your changes to ${name}? Real calls will use them straight away.`
+      : `Publish ${name}? It will be able to take real calls on its phone number and in campaigns. You can unpublish it at any time.`;
+    if (window.confirm(msg)) save("READY");
+  };
+  const unpublish = () => {
+    if (window.confirm(`Unpublish ${config.name.trim() || "this agent"}? It goes back to a draft and stops taking real calls until you publish it again.`)) save("DRAFT");
+  };
+
   const save = (status: "DRAFT" | "READY") =>
     startTransition(async () => {
       const result = await saveAgent(agentId, config, status);
@@ -257,7 +270,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
   const saveText = pending
     ? t("builder.saving")
     : dirty
-      ? draftState.status === "saving" ? "Keeping your changes…" : draftState.status === "saved" && !unkept ? "Changes kept · not live until you save" : draftState.status === "error" ? "Changes not kept yet" : "Unsaved changes"
+      ? draftState.status === "saving" ? "Keeping your changes…" : draftState.status === "saved" && !unkept ? (live ? "Changes kept · not live until you publish" : "Changes kept") : draftState.status === "error" ? "Changes not kept yet" : "Unsaved changes"
       : `All changes saved`;
 
   return (
@@ -276,14 +289,14 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
         />
         {/* A status, not a button: a dot and words, no solid fill. */}
         <span
-          title={saved.status === "READY" ? "This agent is live and can make calls. Change it under More." : "This agent is a draft and cannot make calls yet. Change it under More."}
+          title={live ? "Published: this agent can take real calls. Unpublish it under More." : "Draft: this agent cannot take real calls until you publish it. You can still test it."}
           className={cn(
             "inline-flex items-center gap-1.5 text-xs font-medium",
             saved.status === "READY" ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground",
           )}
         >
           <span className={cn("size-2 rounded-full", saved.status === "READY" ? "bg-emerald-500" : "bg-muted-foreground/50")} />
-          {saved.status === "READY" ? "Live: Ready" : t("agents.status.DRAFT")}
+          {live ? (dirty ? "Live · unpublished changes" : "Live") : t("agents.status.DRAFT")}
         </span>
         <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground" title={DIRECTION_LABEL[config.direction]}>
           {config.direction === "inbound" ? "Inbound" : "Outbound"}
@@ -302,9 +315,9 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
           <MoreMenu
             items={[
               ...(!readOnly
-                ? [saved.status === "READY"
-                    ? { label: t("builder.markDraft"), icon: CircleDot, onClick: () => save("DRAFT") }
-                    : { label: t("builder.markReady"), icon: CircleCheck, onClick: () => save("READY") }]
+                ? live
+                  ? [{ label: "Unpublish", icon: CircleDot, onClick: unpublish }]
+                  : [{ label: "Save draft", icon: Save, onClick: () => save("DRAFT") }]
                 : []),
               ...(!readOnly
                 ? [{
@@ -324,11 +337,20 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
               ...(canDelete ? [{ label: t("agents.delete"), icon: Trash2, danger: true, onClick: () => { if (window.confirm(t("agents.deleteConfirm"))) deleteRef.current?.requestSubmit(); } }] : []),
             ]}
           />
-          {!readOnly && (
-            <Button type="button" disabled={pending || !dirty} onClick={() => save(saved.status)}>
-              <Save /> {t("builder.save")}
+          {!readOnly && !live && (
+            <Button type="button" variant="outline" className="hidden sm:inline-flex" disabled={pending || !dirty} onClick={() => save("DRAFT")} title="Keep it as a draft (it cannot take real calls)">
+              <Save /> Save draft
             </Button>
           )}
+          {!readOnly && (live && !dirty ? (
+            <Button type="button" variant="outline" disabled className="text-emerald-700 disabled:opacity-100 dark:text-emerald-400" title="Published and up to date">
+              <CircleCheck /> Published
+            </Button>
+          ) : (
+            <Button type="button" disabled={pending} onClick={publish}>
+              <Rocket /> {live ? "Publish changes" : "Publish"}
+            </Button>
+          ))}
         </div>
         {canDelete && (
           <form ref={deleteRef} action={deleteAgent} className="hidden">

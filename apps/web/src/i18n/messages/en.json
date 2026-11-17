@@ -79,7 +79,7 @@
     "updated": "Updated",
     "status": {
       "DRAFT": "Draft",
-      "READY": "Ready"
+      "READY": "Live"
     },
     "presetStatus": {
       "ready": "Ready",
