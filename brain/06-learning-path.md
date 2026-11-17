@@ -22,10 +22,12 @@ What to read, watch and build, in order. Three tracks; everyone does Track 1.
 ## Track 3. ML: train speech models (3 to 6 months to get good)
 
 ### Foundations
+
 - **fast.ai** *Practical Deep Learning for Coders* (free), or Andrej Karpathy's *Neural Networks: Zero to Hero* (YouTube). Pick one and finish it.
 - **PyTorch** tutorials (pytorch.org/tutorials).
 
 ### Speech specifically
+
 - **Hugging Face Audio Course** (huggingface.co/learn/audio-course). Free. Covers audio data, spectrograms, ASR, TTS, fine-tuning. **Start here.**
 - Jurafsky & Martin, *Speech and Language Processing* (3rd ed. draft, free online): the chapter on ASR and TTS.
 - Hugging Face blog: *Fine-Tune Whisper For Multilingual ASR with Transformers*. Do it on a Yoruba or Pidgin dataset.
@@ -36,6 +38,7 @@ What to read, watch and build, in order. Three tracks; everyone does Track 1.
 ### Papers to read (in this order; read the abstract, figures and conclusion first)
 
 **TTS: how it evolved**
+
 1. Tacotron 2 (2017): text → spectrogram → audio, the classic design.
 2. FastSpeech 2 (2020): faster, non-autoregressive.
 3. HiFi-GAN (2020): the "vocoder" that turns spectrograms into audio.
@@ -46,12 +49,14 @@ What to read, watch and build, in order. Three tracks; everyone does Track 1.
 8. Any LLM-based TTS (e.g. Orpheus, YarnGPT's write-up): how today's expressive voices are made.
 
 **ASR**
+
 1. wav2vec 2.0 (2020): learning from unlabelled audio. Key for low-resource languages.
 2. Whisper (2022): training on huge weakly-labelled data.
 3. MMS (2023) and Omnilingual ASR (2025): ASR for 1,000+ languages.
 4. Moshi (2024): a speech-to-speech model that listens and speaks at once.
 
 **Nigerian and African speech (read all of these)**
+
 - NaijaVoices dataset paper (Interspeech 2025, arXiv 2505.20564)
 - AfriSpeech-200 (2023)
 - BibleTTS (2022)

@@ -27,28 +27,33 @@ Three different things, often mixed up:
 Don't jump to the top. Each stage pays for and feeds the next.
 
 ### Stage 0. Rent and learn (now)
+
 - Agents run on rented voices (Fish Audio) and rented ASR.
 - **Do now:** set up real phone calls; measure where rented ASR and TTS fail on Nigerian callers; start collecting (with consent) real call audio and transcripts, which become training data later.
 - **Exit when:** real paying customers are making real calls, and we have a list of failures ranked by how much they hurt.
 
 ### Stage 1. Our first voices: Nigerian English (about 3 months)
+
 - Hire 2 to 4 voice actors (male and female, different ages, a Lagos voice, a Northern voice, an Eastern voice).
 - Record 2 to 5 hours each in a studio, with signed licences (see `09-legal-consent-ethics.md`).
 - Fine-tune an open, commercially licensed TTS model on each. Serve it ourselves.
 - **Exit when:** in a blind test, Nigerian listeners prefer our voices to the rented ones (or score them as good), and our voice reaches first audio in under about 250 ms on our servers.
 
 ### Stage 2. Our own ears: Nigerian English and Pidgin ASR (about 3 months, overlapping)
+
 - Fine-tune an open ASR model (Whisper, Omnilingual ASR, SBPN or a NeMo model) on open Nigerian datasets plus our own call recordings, with telephone audio.
 - Add Pidgin TTS for our existing voice actors (record them speaking Pidgin).
 - **Exit when:** our ASR has a lower word error rate than the best rented option on our own test set of real Nigerian calls, especially on names, numbers and Pidgin.
 
 ### Stage 3. Yoruba, Hausa, Igbo (6 to 12 months)
+
 - Recruit native-speaker voice actors and a linguist per language.
 - Record with fully tone-marked scripts; build the tone-mark restorer.
 - Fine-tune multilingual ASR on NaijaVoices-style data (licensed), WAXAL (open, CC-BY) and our own.
 - **Exit when:** native-speaker panels rate the voices natural and correct, and real customers run calls in these languages.
 
 ### Stage 4. Our own foundation (year 2 and later)
+
 - With thousands of hours of consented Nigerian conversation, train our own multi-speaker, multilingual base TTS model (and maybe a speech-to-speech model).
 - **Voice marketplace:** Nigerian voice actors upload, license and earn royalties from their voices on Spag AI.
 - Offer our ASR and TTS as an API to other companies, as well as inside our agent platform.

@@ -3,6 +3,7 @@
 Open speech data for Nigerian speech. **Always read the licence on the dataset's own page before use**, and record in our data store which dataset each clip came from.
 
 Licence key:
+
 - **CC0 / CC-BY / CC-BY-SA:** commercial use allowed (CC-BY: credit them; CC-BY-SA: share changes to the *data* under the same licence; check with a lawyer whether that reaches a trained model).
 - **CC-BY-NC / NC-SA:** **no commercial use** without a separate agreement. Fine for research and for building our test sets internally only if the licence allows.
 

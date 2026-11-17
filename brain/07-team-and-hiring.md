@@ -62,6 +62,7 @@ Yes, partly:
 > Here is a ~1 hour single-speaker dataset (public, or a pilot recording). Fine-tune a TTS model of your choice. Send us 20 test sentences including Nigerian names and naira amounts, your training notes, and what you'd do with 10x the data.
 
 Interview questions:
+
 - Walk me through a speech model you trained. What went wrong and how did you fix it?
 - How would you make a TTS voice sound good on an 8 kHz phone line?
 - Yoruba text from our LLM has no tone marks. What do you do?
@@ -73,15 +74,18 @@ Interview questions:
 > Build a phone agent with Pipecat or LiveKit that answers a call and holds a 3-turn conversation. Measure and report the delay of each step. Then make it faster.
 
 Interview questions:
+
 - Where does delay come from in a voice agent, and what would you cut first?
 - How do you handle barge-in? Echo?
 - A call sounds choppy only for some callers. How do you debug it?
 
 ### Voice actors
+
 - Read a 2-minute script (English, then Pidgin, then their other language). Play it down a phone line to 10 Nigerian listeners. Pick the top scores.
 - Second round: a 30-minute pilot session to check consistency and stamina.
 
 ### Linguists and transcribers
+
 - Transcribe or tone-mark a 5-minute test clip. Compare with a gold reference.
 
 ## Culture to build from day one

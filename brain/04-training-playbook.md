@@ -96,6 +96,7 @@ The script decides what the voice can say well.
 ### B1. Build the test set first
 
 Before training anything, build a **test set of real Nigerian phone speech**: 5 to 10 hours, with careful human transcripts, covering:
+
 - Nigerian English from different regions, Pidgin, code-switched speech, then Yoruba/Hausa/Igbo
 - Names, numbers, amounts, dates, account numbers, emails, addresses
 - Noisy places, cheap phones, poor network

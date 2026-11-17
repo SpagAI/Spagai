@@ -42,6 +42,7 @@ Points to check with the lawyer:
 ## 3. Telecoms (NCC)
 
 Already tracked in `docs/COMPLIANCE_TODO.md`: number registration, calling hours, the Do-Not-Disturb register, consumer code. For synthetic voices, ask the lawyer:
+
 - Must the caller be told they are speaking to an AI? (Even if not required, **we should disclose by default**. It builds trust and is becoming the global norm.)
 
 ## 4. Data we didn't record ourselves
