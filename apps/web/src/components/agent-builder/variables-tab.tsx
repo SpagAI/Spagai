@@ -1,12 +1,11 @@
 "use client";
 
 import { findVariables, SYSTEM_VARIABLES, type AgentConfig, type VariableDef } from "@spagai/core";
-import { ArrowLeftRight, Plus, Search, Sparkles, TriangleAlert, X } from "lucide-react";
+import { ArrowLeftRight, Search, Sparkles, TriangleAlert } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { fillSampleValues } from "@/lib/sample-values";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +14,6 @@ type Update = (patch: Partial<AgentConfig>) => void;
 /** Filled from the test person / lead, never typed in. */
 export const FROM_LEAD = new Set(["lead_name", "first_name", "last_name", "title", "gender", "address", "suffix", "full_name", "name"]);
 
-const nameRe = /^[a-z][a-z0-9_]{0,39}$/;
 const pretty = (name: string) => name.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 
 /**
@@ -26,14 +24,15 @@ export function readyForTesting(config: AgentConfig, testValues: Record<string, 
   const declared = new Set([...config.variables.map((v) => v.name), ...SYSTEM_VARIABLES.map((v) => v.name)]);
   const added = [...usedNames(config)].filter((n) => !declared.has(n) && !FROM_LEAD.has(n)).map((n): VariableDef => ({ name: n, label: pretty(n), scope: "call", required: false }));
   const variables = [...config.variables, ...added];
-  const perCall = variables.filter((v) => v.scope === "call" && !FROM_LEAD.has(v.name));
+  const inPrompt = usedNames(config);
+  const perCall = variables.filter((v) => v.scope === "call" && !FROM_LEAD.has(v.name) && inPrompt.has(v.name));
   // Examples count as filled (the test already uses them).
   const current = Object.fromEntries(perCall.map((v) => [v.name, testValues[v.name] ?? v.example ?? v.defaultValue ?? ""]));
   return { variables, added: added.length, testValues: { ...testValues, ...fillSampleValues(perCall, current) } };
 }
 
 /** Placeholders used in the first message or prompt. */
-function usedNames(config: AgentConfig): Set<string> {
+export function usedNames(config: AgentConfig): Set<string> {
   return new Set([config.firstMessage, ...config.blocks.map((b) => b.content)].flatMap((t) => findVariables(t)));
 }
 
@@ -57,9 +56,11 @@ export function VariablesTab({
   const used = useMemo(() => usedNames(config), [config]);
   const declared = new Set([...config.variables.map((v) => v.name), ...SYSTEM_VARIABLES.map((v) => v.name)]);
   const notSetUp = [...used].filter((n) => !declared.has(n) && !FROM_LEAD.has(n));
-  const business = config.variables.filter((v) => v.scope === "agent");
-  const perCall = config.variables.filter((v) => v.scope === "call" && !FROM_LEAD.has(v.name));
-  const auto = [...SYSTEM_VARIABLES, ...config.variables.filter((v) => v.scope === "call" && FROM_LEAD.has(v.name))].filter((v, i, all) => all.findIndex((x) => x.name === v.name) === i);
+  // Only what the first message or prompt actually uses is listed.
+  const business = config.variables.filter((v) => v.scope === "agent" && used.has(v.name));
+  const perCall = config.variables.filter((v) => v.scope === "call" && !FROM_LEAD.has(v.name) && used.has(v.name));
+  const auto = [...SYSTEM_VARIABLES, ...config.variables.filter((v) => v.scope === "call" && FROM_LEAD.has(v.name))]
+    .filter((v, i, all) => all.findIndex((x) => x.name === v.name) === i && used.has(v.name));
 
   const match = (v: VariableDef) => !query || `${v.name} ${v.label}`.toLowerCase().includes(query.toLowerCase());
   const missingBusiness = business.filter((v) => v.required && !(config.variableValues[v.name] ?? "").trim()).length;
@@ -68,7 +69,6 @@ export function VariablesTab({
   const addAll = (names: string[], scope: "agent" | "call") =>
     update({ variables: [...config.variables, ...names.filter((n) => !declared.has(n)).map((n): VariableDef => ({ name: n, label: pretty(n), scope, required: false }))] });
   const setScope = (name: string, scope: "agent" | "call") => update({ variables: config.variables.map((v) => (v.name === name ? { ...v, scope } : v)) });
-  const remove = (name: string) => update({ variables: config.variables.filter((v) => v.name !== name) });
   const useSamples = () => {
     const r = readyForTesting(config, testValues);
     if (r.added) update({ variables: r.variables });
@@ -82,9 +82,9 @@ export function VariablesTab({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1.5">
             <CardTitle>Variables</CardTitle>
-            <CardDescription>Placeholders like <code className="font-mono">{"{{company_name}}"}</code> in your first message and prompt, all in one place.</CardDescription>
+            <CardDescription>The placeholders your first message and prompt use, like <code className="font-mono">{"{{company_name}}"}</code>. To add one, type it in the prompt (or use Insert value there) and it appears here.</CardDescription>
           </div>
-          {config.variables.length + auto.length > 10 && (
+          {business.length + perCall.length + auto.length > 10 && (
             <div className="relative w-full sm:w-56">
               <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a variable" className="h-8 pl-8 text-sm" aria-label="Find a variable" />
@@ -115,7 +115,9 @@ export function VariablesTab({
           </div>
         )}
 
-        <Group title="Business details" hint="The same on every call. Saved with the agent." empty="No business details yet.">
+        {used.size === 0 && <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">Your first message and prompt do not use any placeholders yet.</p>}
+
+        <Group title="Business details" hint="The same on every call. Saved with the agent." empty="None in your prompt.">
           {business.filter(match).map((v) => (
             <VarField
               key={v.name}
@@ -125,7 +127,6 @@ export function VariablesTab({
               used={used.has(v.name)}
               other="Make per-call"
               onOther={() => setScope(v.name, "call")}
-              onRemove={() => remove(v.name)}
             />
           ))}
         </Group>
@@ -133,7 +134,7 @@ export function VariablesTab({
         <Group
           title="Per-call values"
           hint="Different on every call (from your lead list or the incoming call). What you type here is only used when you test."
-          empty="No per-call values."
+          empty="None in your prompt."
           actions={perCall.length > 0 && (
             <>
               <Button size="sm" variant={emptyTest ? "default" : "outline"} onClick={useSamples} disabled={!emptyTest} title="Fill every empty value with a believable example, just for testing">
@@ -152,14 +153,12 @@ export function VariablesTab({
               used={used.has(v.name)}
               other="Make a business detail"
               onOther={() => setScope(v.name, "agent")}
-              onRemove={() => remove(v.name)}
               testOnly
             />
           ))}
         </Group>
 
-        <AddVariable existing={declared} onAdd={(v) => update({ variables: [...config.variables, v] })} />
-
+        {auto.length > 0 && (
         <div className="space-y-2">
           <div>
             <h3 className="text-sm font-medium">Filled in automatically</h3>
@@ -167,12 +166,13 @@ export function VariablesTab({
           </div>
           <div className="flex flex-wrap gap-1.5">
             {auto.filter(match).map((v) => (
-              <code key={v.name} title={v.label} className={cn("rounded-md border px-2 py-0.5 font-mono text-xs", used.has(v.name) ? "border-primary/40 bg-primary/5 text-primary" : "text-muted-foreground")}>
+              <code key={v.name} title={v.label} className="rounded-md border border-primary/40 bg-primary/5 px-2 py-0.5 font-mono text-xs text-primary">
                 {`{{${v.name}}}`}
               </code>
             ))}
           </div>
         </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -201,14 +201,13 @@ function Group({ title, hint, empty, children, actions }: { title: string; hint:
   );
 }
 
-function VarField({ v, value, onChange, used, other, onOther, onRemove, testOnly }: {
+function VarField({ v, value, onChange, other, onOther, testOnly }: {
   v: VariableDef;
   value: string;
   onChange: (value: string) => void;
-  used: boolean;
+  used?: boolean;
   other: string;
   onOther: () => void;
-  onRemove: () => void;
   testOnly?: boolean;
 }) {
   const missing = v.required && !v.allowEmpty && !value.trim();
@@ -220,39 +219,10 @@ function VarField({ v, value, onChange, used, other, onOther, onRemove, testOnly
         </label>
         <span className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
           <button type="button" onClick={onOther} title={other} aria-label={`${other}: ${v.name}`} className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"><ArrowLeftRight className="size-3.5" /></button>
-          {!used && <button type="button" onClick={onRemove} title="Remove" aria-label={`Remove ${v.name}`} className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-destructive"><X className="size-3.5" /></button>}
         </span>
       </div>
       <Input id={`v-${v.name}`} value={value} aria-invalid={missing} placeholder={v.example ? `e.g. ${v.example}` : testOnly ? "Value for testing" : `{{${v.name}}}`} onChange={(e) => onChange(e.target.value)} className="h-8 text-sm" />
-      <p className={cn("truncate font-mono text-[10.5px]", used ? "text-muted-foreground" : "text-warning")}>{`{{${v.name}}}`}{!used && <span className="font-sans"> · not in prompt</span>}</p>
-    </div>
-  );
-}
-
-function AddVariable({ existing, onAdd }: { existing: Set<string>; onAdd: (v: VariableDef) => void }) {
-  const [name, setName] = useState("");
-  const [scope, setScope] = useState<"agent" | "call">("call");
-  const problem = !name ? null : !nameRe.test(name) ? "Use lowercase letters, numbers and underscores." : existing.has(name) ? "That variable already exists." : null;
-  const add = () => {
-    if (!name || problem) return;
-    onAdd({ name, label: pretty(name), scope, required: false });
-    setName("");
-  };
-  return (
-    <div className="space-y-1.5 rounded-lg border border-dashed p-3">
-      <p className="text-sm font-medium">Add a variable</p>
-      <div className="flex flex-wrap gap-2">
-        <div className="relative min-w-40 flex-1">
-          <span className="absolute top-1/2 left-2.5 -translate-y-1/2 font-mono text-xs text-muted-foreground">{"{{"}</span>
-          <Input value={name} onChange={(e) => setName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())} placeholder="loan_amount" className="h-8 pl-7 font-mono text-sm" aria-label="New variable name" />
-        </div>
-        <Select value={scope} onChange={(e) => setScope(e.target.value as "agent" | "call")} className="h-8 w-auto text-sm" aria-label="Kind of variable">
-          <option value="call">Per-call value</option>
-          <option value="agent">Business detail</option>
-        </Select>
-        <Button size="sm" onClick={add} disabled={!name || Boolean(problem)}><Plus /> Add</Button>
-      </div>
-      {problem && <p className="text-xs text-destructive">{problem}</p>}
+      <p className="truncate font-mono text-[10.5px] text-muted-foreground">{`{{${v.name}}}`}</p>
     </div>
   );
 }

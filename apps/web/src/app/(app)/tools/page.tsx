@@ -1,7 +1,7 @@
-import { ArrowRight, Plus, Webhook, Wrench } from "lucide-react";
+import { ArrowRight, Lock, PhoneOff, Plus, Webhook, Wrench } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { STARTERS } from "@/lib/custom-tools";
+import { DEFAULT_TOOLS, STARTERS } from "@/lib/custom-tools";
 import { requireOrg } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { can } from "@/server/permissions";
@@ -39,6 +39,22 @@ export default async function ToolsPage() {
           </Link>
         )}
       </div>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium text-muted-foreground">Default tools <span className="font-normal">· every agent has these; they cannot be changed</span></h2>
+        <ul className="divide-y rounded-xl border bg-muted/20">
+          {DEFAULT_TOOLS.map((t) => (
+            <li key={t.name} className="flex items-center gap-3 px-4 py-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground"><PhoneOff className="size-4" /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">{t.label}</span>
+                <span className="block truncate text-xs text-muted-foreground"><code>{t.name}</code> · {t.description}</span>
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs text-muted-foreground"><Lock className="size-3" /> Always on</span>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <section className="space-y-3">
         <h2 className="text-sm font-medium text-muted-foreground">Your tools</h2>

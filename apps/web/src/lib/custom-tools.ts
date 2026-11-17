@@ -16,6 +16,15 @@ export const PARAM_TYPES = {
 } as const;
 export type ParamType = keyof typeof PARAM_TYPES;
 
+/** Tools every agent always has. They cannot be changed, switched off or deleted. */
+export const DEFAULT_TOOLS = [
+  {
+    name: "end_call",
+    label: "End call",
+    description: "Hangs up when the conversation is over: after the goodbye, or straight away when the person asks to stop.",
+  },
+] as const;
+
 /** Built-in tool names a custom tool may not take. */
 export const RESERVED_NAMES = ["check_calendar", "book_appointment", "reschedule_appointment", "save_lead_data", "end_call"];
 

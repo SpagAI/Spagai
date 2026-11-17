@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useListener } from "@/components/voice/use-listener";
+import { usedNames } from "./variables-tab";
 import { useRecorderListener } from "@/components/voice/use-recorder-listener";
 import { useSpeaker } from "@/components/voice/use-speaker";
 import { cn } from "@/lib/utils";
@@ -59,6 +60,8 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead, serverLi
   const listener = serverListening && recorder.supported ? recorder : browserListener;
   const level = listener === recorder ? recorder.level : 0;
   const callVars = config.variables.filter((v) => v.scope === "call" && !FROM_LEAD.has(v.name));
+  const inPrompt = usedNames(config);
+  const promptCallVars = callVars.filter((v) => inPrompt.has(v.name));
 
   const [when, setWhen] = useState(initialWhen);
   const [speakAloud, setSpeakAloud] = useState(Boolean(voice));
@@ -372,9 +375,9 @@ export function TalkPanel({ config, voice, provider, initialWhen, lead, serverLi
       {showSettings && (
         <fieldset disabled={live} className="space-y-3 rounded-lg border p-3 text-sm">
           <p className="text-xs text-muted-foreground">Settings for this test call.</p>
-          {callVars.length > 0 && (
+          {promptCallVars.length > 0 && (
             <p className="flex items-center justify-between gap-2">
-              <span>{callVars.length} per-call value{callVars.length === 1 ? "" : "s"}</span>
+              <span>{promptCallVars.length} per-call value{promptCallVars.length === 1 ? "" : "s"}</span>
               {onOpenVariables && <button type="button" onClick={onOpenVariables} className="text-primary hover:underline">Edit in Variables</button>}
             </p>
           )}

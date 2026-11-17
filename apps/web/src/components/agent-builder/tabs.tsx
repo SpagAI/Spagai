@@ -10,13 +10,13 @@ import {
   type Voice,
   type VoiceLanguage,
 } from "@spagai/core";
-import { Loader2, Pencil, Plus, TriangleAlert, Webhook } from "lucide-react";
+import { Loader2, Lock, Pencil, PhoneOff, Plus, TriangleAlert, Webhook } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { loadToolForEditing, type ToolSummary } from "@/app/(app)/tools/actions";
 import { ToolForm } from "@/app/(app)/tools/tool-form";
 import { Button } from "@/components/ui/button";
-import { BLANK_TOOL, type ToolInput } from "@/lib/custom-tools";
+import { BLANK_TOOL, DEFAULT_TOOLS, type ToolInput } from "@/lib/custom-tools";
 import { VoiceSettingsControls } from "@/components/voice/voice-settings";
 import { VoicePicker } from "./voice-picker";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -143,6 +143,30 @@ export function FirstMessageTab({ config, update, lead }: { config: AgentConfig;
 
 export type WorkspaceTool = ToolSummary;
 
+/** Tools every agent has; shown so people know they are there, but locked. */
+export function DefaultTools() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Default tools</CardTitle>
+        <CardDescription>Every agent has these. They are always on and cannot be changed.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {DEFAULT_TOOLS.map((tool) => (
+          <div key={tool.name} className="flex items-start gap-3 rounded-lg border bg-muted/30 p-3">
+            <span className="grid size-8 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground"><PhoneOff className="size-4" /></span>
+            <div className="min-w-0 flex-1">
+              <p className="font-medium">{tool.label} <code className="ml-1 font-mono text-xs text-muted-foreground">{tool.name}</code></p>
+              <p className="text-sm text-muted-foreground">{tool.description}</p>
+            </div>
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs text-muted-foreground"><Lock className="size-3" /> Always on</span>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function ToolsTab({ config, update, workspaceTools, canManageTools, onToolSaved }: { config: AgentConfig; update: Update; workspaceTools: WorkspaceTool[]; canManageTools: boolean; onToolSaved: (tool: ToolSummary) => void }) {
   const [editing, setEditing] = useState<{ id: string | null; initial: ToolInput } | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -184,6 +208,7 @@ export function ToolsTab({ config, update, workspaceTools, canManageTools, onToo
 
   return (
     <div ref={topRef} className="scroll-mt-4 space-y-5">
+      <DefaultTools />
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-3">
