@@ -216,7 +216,7 @@ export function AppShell({ children, user, organisation, role, workspaces, walle
           const usedPct = Math.min(100, Math.round((usedUsd / budgetUsd) * 100));
           const left = Math.max(0, budgetUsd - usedUsd);
           return (
-            <Link href="/usage" onClick={() => setOpen(false)} className="mt-3 block rounded-lg border border-sidebar-border bg-sidebar-accent/40 p-2 hover:bg-sidebar-accent" title="What testing used this month at Groq and Fish Audio (AI brain, voice and listening together). Estimate; nothing is charged. Open the Usage page for details.">
+            <Link href="/billing?tab=usage" onClick={() => setOpen(false)} className="mt-3 block rounded-lg border border-sidebar-border bg-sidebar-accent/40 p-2 hover:bg-sidebar-accent" title="What testing used this month at Groq and Fish Audio (AI brain, voice and listening together). Estimate; nothing is charged. Open Billing → Usage for details.">
               <span className="flex items-baseline justify-between gap-2">
                 <span className="whitespace-nowrap text-[11px] font-medium text-sidebar-muted-foreground">Testing usage</span>
                 <span className="whitespace-nowrap text-[11px] font-semibold text-sidebar-foreground tabular-nums">{formatUsd(usedUsd)} <span className="font-normal text-sidebar-muted-foreground">of {formatUsd(budgetUsd)}</span></span>

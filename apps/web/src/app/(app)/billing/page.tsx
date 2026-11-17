@@ -1,5 +1,5 @@
 import { formatNaira, fromLagosParts, minutesCovered, toLagosParts } from "@spagai/core";
-import { Wallet } from "lucide-react";
+import { ChartColumn, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
@@ -16,6 +16,8 @@ import { db } from "@/server/db";
 import { env } from "@/server/env";
 import { can } from "@/server/permissions";
 import { topUp } from "./actions";
+import { UsageView } from "./usage-view";
+import { SubTabs } from "@/components/sub-tabs";
 
 export const metadata: Metadata = { title: "Billing" };
 
@@ -55,8 +57,19 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     <div className="space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">{t("billing.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("billing.intro")}</p>
       </div>
+
+      <SubTabs
+        label="Billing and usage"
+        initial={params.tab === "usage" ? "usage" : "billing"}
+        tabs={[
+          {
+            id: "billing",
+            label: "Billing",
+            icon: <Wallet />,
+            content: (
+              <div className="space-y-6">
+                <p className="text-sm text-muted-foreground">{t("billing.intro")}</p>
 
       {/* The headline figure: everything spent on calls so far. */}
       <section className="flex flex-wrap items-end justify-between gap-6 rounded-2xl border bg-foreground p-6 text-background sm:p-8">
@@ -166,6 +179,12 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           )}
         </CardContent>
       </Card>
+              </div>
+            ),
+          },
+          { id: "usage", label: "Usage", icon: <ChartColumn />, content: <UsageView organisationId={ctx.organisation.id} /> },
+        ]}
+      />
     </div>
   );
 }
