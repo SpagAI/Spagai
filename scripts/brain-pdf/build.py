@@ -34,6 +34,7 @@ DESC = {  # one-line contents descriptions; chapters not listed fall back to the
     "Legal, consent and ethics": "Voice actor contracts, the NDPA, NCC, and deepfake safeguards.",
     "Roadmap": "Five phases and four gates from today's prototype to our own voices.",
     "Brainstorm log": "Decisions, open questions, ideas and experiment notes.",
+    "Our products": "Voice agents, the Spag Voices bank, and the paid voice annotation platform, and how they feed each other.",
     "Glossary": "Plain meanings for ASR, TTS, VAD, WER, MOS, fine-tuning and more.",
 }
 STATUS = {"Done": "good", "Confirmed": "good", "In progress": "warn", "Proposed": "warn",
@@ -157,7 +158,7 @@ h1 {{ font-family: 'Inter Display', Inter; font-size: 54pt; line-height: 1.02; m
 </style></head><body><div class="page"><img class="big" src="{logo_w}" alt="">
 <div class="top"><div class="brand"><img src="{logo_w}" alt="">Spag AI</div><div class="tag">Internal · Confidential</div></div>
 <div class="mid"><div class="kicker">Internal playbook &amp; working roadmap</div><h1>The Spag AI<br>Brain</h1>
-<div class="sub">How voice AI works, and how we build our own locally trained African voices, starting in Nigeria: strategy, training, data, learning, hiring, costs and the road ahead.</div></div>
+<div class="sub">How voice AI works, and how we build our own locally trained African voices, starting in Nigeria: products, strategy, training, data, hiring, costs and the road ahead.</div></div>
 <div class="wave">{wave_svg()}</div>
 <div class="bottom"><div><b>Updated {date_words}</b>{rev_words}<br>A snapshot of the living document.</div>
 <div style="text-align:right">For the Spag AI team only.<br>Please do not share outside the company.</div></div></div></body></html>"""
@@ -191,13 +192,13 @@ figure.widget img {{ border: none; }}
 .snap {{ font-size: 9.3pt; color: #5b566b; background: #f6f3fd; border-radius: 8px; padding: 10px 14px; margin: 0 0 14px; }}
 .toc h1 {{ margin: 0 0 4px; }} .toc .lead {{ color: #5b566b; margin: 0 0 10px; }}
 .toc ol {{ list-style: none; padding: 0; margin: 0; }}
-.toc li {{ display: flex; gap: 14px; align-items: baseline; padding: 4px 0; border-bottom: 1px solid #ece8f6; margin: 0; }}
+.toc li {{ display: flex; gap: 14px; align-items: baseline; padding: 3px 0; border-bottom: 1px solid #ece8f6; margin: 0; }}
 .toc .n {{ flex: 0 0 34px; font-family: 'Inter Display', Inter; font-weight: 800; font-size: 13pt; color: {BRAND}; }}
 .toc .t {{ flex: 1; }} .toc .t b {{ display: block; font-size: 10.5pt; color: #14121c; }}
-.toc .t span {{ font-size: 8.5pt; line-height: 1.3; color: #5b566b; }}
+.toc .t span {{ font-size: 8.2pt; line-height: 1.25; color: #5b566b; }}
 .toc .p {{ flex: 0 0 30px; text-align: right; font-weight: 600; color: #14121c; }}
 .toc a {{ color: inherit; }}
-.toc .note {{ margin-top: 10px; font-size: 9.3pt; color: #5b566b; background: #f6f3fd; border-radius: 8px; padding: 10px 14px; }}
+.toc .note {{ margin-top: 8px; padding: 8px 12px; font-size: 8.8pt; font-size: 9.3pt; color: #5b566b; background: #f6f3fd; border-radius: 8px; padding: 10px 14px; }}
 """
 
 
@@ -232,10 +233,9 @@ def build(src, out, widgets=None, rev=None, date=None):
             f'<li><span class="n">{html.escape(c["num"])}</span><span class="t"><a href="#{c["id"]}"><b>{html.escape(c["title"])}</b></a>'
             f'<span>{html.escape(c["desc"])}</span></span><span class="p">{pages.get(c["id"], "")}</span></li>' for c in chapters)
         toc = (f'<section class="toc"><div class="kicker" style="color:{BRAND}">The Spag AI Brain</div><h1>Contents</h1>'
-               '<p class="lead">Our internal playbook and working roadmap for voice AI and locally trained African voices, starting in Nigeria.</p>'
-               f'<ol>{rows}</ol><div class="note"><b>How to read this book.</b> Every chapter opens with two boxes: '
-               '<b>In one minute</b> (the key points) and <b>Do this next</b> (actions; ticked ones are done). Read only the boxes for the '
-               f'whole plan in ten minutes, then go deeper where you need to. This PDF is a snapshot of the living document, made {date_words}.</div></section>')
+               f'<ol>{rows}</ol><div class="note"><b>How to read this book.</b> Every chapter opens with <b>In one minute</b> (the key points) '
+               'and <b>Do this next</b> (actions; ticked ones are done): read only those boxes for the whole plan in ten minutes. '
+               f'A snapshot of the living document, made {date_words}.</div></section>')
         secs = []
         for c in chapters:
             snap = (f'<p class="snap">Snapshot of {date_words}. Statuses and the log change in the living document; '
