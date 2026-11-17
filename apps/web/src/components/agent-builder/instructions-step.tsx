@@ -22,6 +22,7 @@ export function InstructionsStep({
   onAddVariable,
   readOnly,
   tools = [],
+  mcpTools = [],
   onOpenTools,
 }: {
   config: AgentConfig;
@@ -30,6 +31,8 @@ export function InstructionsStep({
   readOnly: boolean;
   /** The workspace's own tools, to drop into the prompt by name. */
   tools?: { name: string; label: string; description: string }[];
+  /** Allowed tools from connected MCP servers ("server__tool" names). */
+  mcpTools?: { name: string; label: string; description: string }[];
   /** Go to the Tools tab (to create a tool). */
   onOpenTools?: () => void;
 }) {
@@ -78,6 +81,7 @@ export function InstructionsStep({
   /** A tool goes in by name; one of your own tools is switched on for this agent if it was not. */
   const insertTool = (name: string, custom: boolean) =>
     insertText(name, custom && !config.customTools.includes(name) ? { customTools: [...config.customTools, name] } : {});
+  const insertMcpTool = (name: string) => insertText(name, config.mcpTools.includes(name) ? {} : { mcpTools: [...config.mcpTools, name] });
 
   return (
     <div className="space-y-3">
@@ -135,6 +139,20 @@ export function InstructionsStep({
                           </span>
                           <code className="block font-mono text-xs text-muted-foreground">{t.name}</code>
                           <span className="line-clamp-2 block text-xs text-muted-foreground">{t.description}</span>
+                        </button>
+                      );
+                    })}
+                    {mcpTools.length > 0 && <p className="mt-1 border-t px-2 pt-2 pb-1 text-xs text-muted-foreground">From MCP servers:</p>}
+                    {mcpTools.map((t) => {
+                      const on = config.mcpTools.includes(t.name);
+                      return (
+                        <button key={t.name} role="menuitem" type="button" onClick={() => insertMcpTool(t.name)} className="w-full rounded-md px-2 py-1.5 text-left hover:bg-muted">
+                          <span className="flex items-center gap-2 text-sm font-medium">
+                            <span className="truncate">{t.label}</span>
+                            <span className={on ? "ml-auto shrink-0 text-[11px] font-normal text-emerald-600 dark:text-emerald-400" : "ml-auto shrink-0 text-[11px] font-normal text-muted-foreground"}>{on ? "On" : "Will be switched on"}</span>
+                          </span>
+                          <code className="block font-mono text-xs text-muted-foreground">{t.name}</code>
+                          {t.description && <span className="line-clamp-2 block text-xs text-muted-foreground">{t.description}</span>}
                         </button>
                       );
                     })}

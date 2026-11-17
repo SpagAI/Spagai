@@ -2,6 +2,8 @@ import { ArrowRight, Lock, PhoneOff, Plus, Webhook, Wrench } from "lucide-react"
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DEFAULT_TOOLS, STARTERS } from "@/lib/custom-tools";
+import type { McpToolInfo } from "@/lib/mcp";
+import { McpManager } from "./mcp-manager";
 import { requireOrg } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { can } from "@/server/permissions";
@@ -22,6 +24,7 @@ export default async function ToolsPage() {
   const canManage = can(ctx.role, "integration:manage");
   const tools = await db.tool.findMany({ where: { organisationId: org }, orderBy: { createdAt: "desc" }, include: { runs: { orderBy: { createdAt: "desc" }, take: 1 } } });
   const agents = await db.agent.findMany({ where: { organisationId: org }, select: { config: true } });
+  const mcpServers = await db.mcpServer.findMany({ where: { organisationId: org }, orderBy: { createdAt: "asc" } });
   const usedBy = (name: string) => agents.filter((a) => ((a.config as { customTools?: string[] }).customTools ?? []).includes(name)).length;
 
   return (
@@ -91,6 +94,11 @@ export default async function ToolsPage() {
             })}
           </ul>
         )}
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium text-muted-foreground">MCP servers <span className="font-normal">· connect a whole service (e.g. Make.com) and use its actions as tools</span></h2>
+        <McpManager initial={mcpServers.map((m) => ({ id: m.id, name: m.name, label: m.label, host: m.urlHost, tools: (m.tools as unknown as McpToolInfo[]) ?? [], lastSyncedAt: m.lastSyncedAt?.toISOString() ?? null, lastError: m.lastError }))} canManage={canManage} />
       </section>
 
       {canManage ? (

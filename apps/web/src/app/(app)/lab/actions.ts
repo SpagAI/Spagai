@@ -21,6 +21,7 @@ import { requirePermission } from "@/server/auth/session";
 import { audit, loadAgent } from "@/server/agents";
 import { activeBuiltInTools } from "@spagai/core";
 import { functionSpec, resultForAi, runCustomTool, toolsForAgent } from "@/server/custom-tools";
+import { mcpToolsForAgent, runMcpTool } from "@/server/mcp-client";
 import { recordUsage } from "@/server/usage";
 import { getLlm, LlmLimitError, PHONE_CALL_RULES, todayLine, toolsLine } from "@/server/providers";
 import { RateLimiter } from "@/server/rate-limit";
@@ -203,7 +204,7 @@ async function runTurn(organisationId: string, config: AgentConfig, input: z.inf
       // Calling hours only limit agents that call people; inbound agents answer whenever someone calls.
       callingWindow: config.direction === "inbound" ? { allowed: true, reason: null } : { allowed: window.allowed, reason: window.reason },
       // Exactly what a real model receives (the phone call rules are added for real models only).
-      prompt: llm.name === "mock" ? compiled.prompt : `${compiled.prompt}\n\n${PHONE_CALL_RULES}\n- ${todayLine(now)}\n- ${toolsLine([...activeBuiltInTools(config.tools), ...config.customTools])}`,
+      prompt: llm.name === "mock" ? compiled.prompt : `${compiled.prompt}\n\n${PHONE_CALL_RULES}\n- ${todayLine(now)}\n- ${toolsLine([...activeBuiltInTools(config.tools), ...config.customTools, ...config.mcpTools])}`,
     };
   }
 
@@ -214,6 +215,7 @@ async function runTurn(organisationId: string, config: AgentConfig, input: z.inf
 
   try {
     const custom = await toolsForAgent(organisationId, config.customTools);
+    const mcp = await mcpToolsForAgent(organisationId, config.mcpTools);
     const ran: CheckedToolCall[] = [];
     const used = { input: 0, output: 0, replies: 0 };
     const leadName = [input.lead.firstName, input.lead.lastName].filter(Boolean).join(" ");
@@ -222,11 +224,21 @@ async function runTurn(organisationId: string, config: AgentConfig, input: z.inf
       history: [...input.history, { role: "caller", text: event.text }],
       values,
       tools: activeBuiltInTools(config.tools),
-      customTools: custom.map(functionSpec),
+      customTools: [...custom.map(functionSpec), ...mcp.map((m) => m.spec)],
       now,
       onUsage: (u) => { used.input += u.inputTokens; used.output += u.outputTokens; used.replies++; },
       // A real model hears back what each tool did, then speaks.
       runTool: async (call) => {
+        const viaMcp = mcp.find((m) => m.fullName === call.tool);
+        if (viaMcp) {
+          if (!opts.realTools) {
+            ran.push({ ...call, ok: true, result: "Sent (simulated; real tools are off)." });
+            return "Success (simulated).";
+          }
+          const r = await runMcpTool(viaMcp.server, viaMcp.tool.name, call.args, "talk", opts.agent?.id);
+          ran.push({ ...call, ok: r.ok, result: r.response.slice(0, 300) });
+          return r.ok ? `Success. Reply from the system: ${r.response.slice(0, 2000)}` : `Failed. ${r.response.slice(0, 500)} Tell the person you could not complete this right now and a colleague will follow up.`;
+        }
         const tool = custom.find((t) => t.name === call.tool);
         if (tool) {
           if (!opts.realTools) {

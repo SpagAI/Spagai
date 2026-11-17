@@ -20,6 +20,8 @@ import { SAMPLE_LEAD, type TestLead } from "./shared";
 import { DIRECTION_LABEL, switchDirection } from "@/lib/agent-direction";
 import { TalkPanel } from "./talk-panel";
 import { readyForTesting, VariablesTab } from "./variables-tab";
+import type { McpServerSummary } from "@/app/(app)/tools/mcp-actions";
+import { fullToolName } from "@/lib/mcp";
 import { BusinessTab, FirstMessageTab, SilenceTab, ToolsTab, VoiceTab, type WorkspaceTool } from "./tabs";
 
 const STEPS = [
@@ -55,11 +57,13 @@ export interface AgentBuilderProps {
   /** The workspace's own tools (Tools page), to switch on per agent. */
   workspaceTools?: WorkspaceTool[];
   canManageTools?: boolean;
+  /** Connected MCP servers (Tools page), whose allowed tools can be switched on per agent. */
+  mcpServers?: McpServerSummary[];
   /** Unsaved changes kept by autosave last time: the editor opens with them. */
   draft?: { config: AgentConfig; savedAt: string };
 }
 
-export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt, readOnly, canDelete, connections, isNew, workspaceVoices = [], llmProvider = "mock", initialWhen = "2026-10-13T10:30", draft, serverListening = false, workspaceTools = [], canManageTools = false }: AgentBuilderProps) {
+export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt, readOnly, canDelete, connections, isNew, workspaceVoices = [], llmProvider = "mock", initialWhen = "2026-10-13T10:30", draft, serverListening = false, workspaceTools = [], canManageTools = false, mcpServers: initialMcp = [] }: AgentBuilderProps) {
   const t = useT();
   // Undo/redo history; `config` is what is on screen now.
   const [hist, setHist] = useState(() => startHistory(draft?.config ?? initialConfig));
@@ -67,6 +71,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
   const change = useCallback((fn: (c: AgentConfig) => AgentConfig, force = false) => setHist((h) => record(h, fn(h.present), Date.now(), force)), []);
   /** The workspace's tools; a tool made from the Tools tab pop-up is added here straight away. */
   const [tools, setTools] = useState(workspaceTools);
+  const [mcpServers, setMcpServers] = useState(initialMcp);
   const [saved, setSaved] = useState({ config: initialConfig, status: initialStatus, at: updatedAt });
   // Autosave: the last version kept as a draft on the server, and when.
   const [autosaved, setAutosaved] = useState(() => JSON.stringify(draft?.config ?? initialConfig));
@@ -141,7 +146,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
     if (!deferred.voiceId) out.push({ message: "Choose a voice.", severity: "error", step: "voice" });
     // Tools the prompt names but the agent does not have (e.g. built-in tools, switched off for now).
     const text = [deferred.firstMessage, ...deferred.blocks.filter((b) => !b.guardrail && b.enabled !== false).map((b) => b.content)].join(" ");
-    const active = new Set<string>([...activeBuiltInTools(deferred.tools), ...deferred.customTools]);
+    const active = new Set<string>([...activeBuiltInTools(deferred.tools), ...deferred.customTools, ...deferred.mcpTools]);
     const missingTools = Object.keys(TOOL_DEFINITIONS).filter((id) => !active.has(id) && new RegExp(`\\b${id}\\b`).test(text));
     if (missingTools.length) out.push({ message: `Your prompt mentions ${missingTools.join(", ")}, which this agent does not have. Remove ${missingTools.length === 1 ? "it" : "them"} from the prompt, or create a tool with that name.`, severity: "warning", step: "instructions" });
     const lint = lintPrompt({ prompt: compiled.prompt, firstMessage: compiled.firstMessage, direction: deferred.direction });
@@ -436,11 +441,11 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
             {tab === "business" && <BusinessTab config={config} update={update} lead={testLead} onLeadChange={setTestLead} />}
             {tab === "voice" && <VoiceTab config={config} update={update} workspaceVoices={workspaceVoices} lead={testLead} />}
             {tab === "instructions" && (
-              <InstructionsStep config={config} onChange={(c) => change(() => c)} onAddVariable={addVariable} readOnly={readOnly} tools={tools} onOpenTools={canManageTools ? () => go("tools") : undefined} />
+              <InstructionsStep config={config} onChange={(c) => change(() => c)} onAddVariable={addVariable} readOnly={readOnly} tools={tools} mcpTools={mcpServers.flatMap((m) => m.tools.filter((t) => t.allowed).map((t) => ({ name: fullToolName(m.name, t.name), label: `${t.name} (${m.label})`, description: t.description })))} onOpenTools={canManageTools ? () => go("tools") : undefined} />
             )}
             {tab === "firstMessage" && <FirstMessageTab config={config} update={update} lead={testLead} />}
             {tab === "variables" && <VariablesTab config={config} update={update} testValues={testValues} onTestValues={setTestValues} />}
-            {tab === "tools" && <ToolsTab config={config} update={update} workspaceTools={tools} canManageTools={canManageTools} onToolSaved={(tool) => setTools((list) => [...list.filter((x) => x.id !== tool.id), tool].sort((a, b) => a.label.localeCompare(b.label)))} />}
+            {tab === "tools" && <ToolsTab config={config} update={update} workspaceTools={tools} canManageTools={canManageTools} mcpServers={mcpServers} onMcpServersChange={setMcpServers} onToolSaved={(tool) => setTools((list) => [...list.filter((x) => x.id !== tool.id), tool].sort((a, b) => a.label.localeCompare(b.label)))} />}
             {tab === "silence" && <SilenceTab config={config} update={update} />}
           </fieldset>
           {tab === "knowledge" && <KnowledgeTab agentId={agentId} c={connections} />}

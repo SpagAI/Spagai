@@ -10,11 +10,14 @@ import {
   type Voice,
   type VoiceLanguage,
 } from "@spagai/core";
-import { Loader2, Lock, Pencil, PhoneOff, Plus, TriangleAlert, Webhook } from "lucide-react";
+import { Loader2, Lock, Pencil, PhoneOff, Plug, Plus, TriangleAlert, Webhook } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { loadToolForEditing, type ToolSummary } from "@/app/(app)/tools/actions";
 import { ToolForm } from "@/app/(app)/tools/tool-form";
+import type { McpServerSummary } from "@/app/(app)/tools/mcp-actions";
+import { McpConnectForm } from "@/app/(app)/tools/mcp-manager";
+import { fullToolName } from "@/lib/mcp";
 import { Button } from "@/components/ui/button";
 import { BLANK_TOOL, DEFAULT_TOOLS, type ToolInput } from "@/lib/custom-tools";
 import { VoiceSettingsControls } from "@/components/voice/voice-settings";
@@ -167,7 +170,63 @@ export function DefaultTools() {
   );
 }
 
-export function ToolsTab({ config, update, workspaceTools, canManageTools, onToolSaved }: { config: AgentConfig; update: Update; workspaceTools: WorkspaceTool[]; canManageTools: boolean; onToolSaved: (tool: ToolSummary) => void }) {
+/** Allowed tools from connected MCP servers, switched on per agent; servers can be connected here too. */
+function McpToolsCard({ config, update, servers, onServersChange, canManage }: { config: AgentConfig; update: Update; servers: McpServerSummary[]; onServersChange: (s: McpServerSummary[]) => void; canManage: boolean }) {
+  const [connecting, setConnecting] = useState(false);
+  const toggle = (name: string, on: boolean) => update({ mcpTools: on ? [...new Set([...config.mcpTools, name])] : config.mcpTools.filter((x) => x !== name) });
+  const known = new Set(servers.flatMap((m) => m.tools.filter((t) => t.allowed).map((t) => fullToolName(m.name, t.name))));
+  const missing = config.mcpTools.filter((n) => !known.has(n));
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1.5">
+            <CardTitle>MCP tools</CardTitle>
+            <CardDescription>Tools from services you connect through MCP, such as your Make.com scenarios.</CardDescription>
+          </div>
+          {canManage && !connecting && <Button variant="outline" size="sm" onClick={() => setConnecting(true)}><Plug /> Connect an MCP server</Button>}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {connecting && <McpConnectForm onSaved={(s) => { onServersChange([...servers, s]); setConnecting(false); }} onCancel={() => setConnecting(false)} />}
+        {servers.length === 0 && !connecting && <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">No MCP servers connected yet.{canManage ? " Connect one to use its actions as tools." : " Ask an owner or admin to connect one."}</p>}
+        {servers.map((m) => {
+          const allowed = m.tools.filter((t) => t.allowed);
+          return (
+            <div key={m.id} className="space-y-2">
+              <p className="flex items-center gap-2 text-sm font-medium"><Plug className="size-4 text-primary" /> {m.label} <span className="text-xs font-normal text-muted-foreground">{m.host}</span></p>
+              {allowed.length === 0 && <p className="text-xs text-muted-foreground">No tools allowed from this server yet (choose them on the Tools page).</p>}
+              {allowed.map((t) => {
+                const name = fullToolName(m.name, t.name);
+                const on = config.mcpTools.includes(name);
+                return (
+                  <div key={name} className={cn("flex items-start gap-3 rounded-lg border p-3", on && "border-primary/40")}>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium"><code className="text-sm">{t.name}</code></p>
+                      {t.description && <p className="line-clamp-2 text-sm text-muted-foreground">{t.description}</p>}
+                      <p className="mt-0.5 text-xs text-muted-foreground">The AI calls it <code>{name}</code></p>
+                    </div>
+                    <Switch checked={on} onCheckedChange={(v) => toggle(name, v)} aria-label={t.name} />
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+        {missing.map((name) => (
+          <div key={name} className="flex items-center gap-3 rounded-lg border border-warning/50 p-3 text-sm">
+            <TriangleAlert className="size-4 shrink-0 text-warning" />
+            <span className="flex-1"><code className="font-mono">{name}</code> is no longer available.</span>
+            <button type="button" className="text-primary hover:underline" onClick={() => toggle(name, false)}>Remove</button>
+          </div>
+        ))}
+        {servers.length > 0 && canManage && <Link href="/tools" className="inline-block text-xs text-primary hover:underline">Choose allowed tools, refresh or test on the Tools page</Link>}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function ToolsTab({ config, update, workspaceTools, canManageTools, onToolSaved, mcpServers = [], onMcpServersChange = () => {} }: { config: AgentConfig; update: Update; workspaceTools: WorkspaceTool[]; canManageTools: boolean; onToolSaved: (tool: ToolSummary) => void; mcpServers?: McpServerSummary[]; onMcpServersChange?: (s: McpServerSummary[]) => void }) {
   const [editing, setEditing] = useState<{ id: string | null; initial: ToolInput } | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const topRef = useRef<HTMLDivElement>(null);
@@ -263,6 +322,7 @@ export function ToolsTab({ config, update, workspaceTools, canManageTools, onToo
         </CardContent>
       </Card>
 
+      <McpToolsCard config={config} update={update} servers={mcpServers} onServersChange={onMcpServersChange} canManage={canManageTools} />
     </div>
   );
 }

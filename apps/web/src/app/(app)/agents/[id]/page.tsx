@@ -4,6 +4,7 @@ import { speechToTextAvailable } from "@/server/speech-to-text";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AgentBuilder } from "@/components/agent-builder/builder";
+import type { McpToolInfo } from "@/lib/mcp";
 import { formatNumber } from "@/lib/numbers";
 import { requireOrg } from "@/server/auth/session";
 import { loadAgent } from "@/server/agents";
@@ -42,6 +43,7 @@ export default async function AgentBuilderPage({ params, searchParams }: { param
     ? { config: draftParsed.data as typeof agent.config, savedAt: draftRow.updatedAt.toISOString() }
     : undefined;
   const tools = await db.tool.findMany({ where: { organisationId: ctx.organisation.id }, orderBy: { label: "asc" }, select: { id: true, name: true, label: true, description: true, url: true } });
+  const mcpServers = await db.mcpServer.findMany({ where: { organisationId: ctx.organisation.id }, orderBy: { createdAt: "asc" } });
   const show = (n: { id: string; number: string; label: string }) => ({ ...n, number: formatNumber(n.number) });
 
   return (
@@ -59,6 +61,7 @@ export default async function AgentBuilderPage({ params, searchParams }: { param
       serverListening={speechToTextAvailable()}
       workspaceTools={tools.map((t) => ({ id: t.id, name: t.name, label: t.label, description: t.description, host: new URL(t.url).host }))}
       canManageTools={can(ctx.role, "integration:manage")}
+      mcpServers={mcpServers.map((m) => ({ id: m.id, name: m.name, label: m.label, host: m.urlHost, tools: (m.tools as unknown as McpToolInfo[]) ?? [], lastSyncedAt: m.lastSyncedAt?.toISOString() ?? null, lastError: m.lastError }))}
       initialWhen={lagosNow()}
       connections={{
         knowledge,

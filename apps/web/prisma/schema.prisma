@@ -59,6 +59,7 @@ model Organisation {
   workspaceVoices    WorkspaceVoice[]
   tools              Tool[]
   providerUsage      ProviderUsage[]
+  mcpServers         McpServer[]
   voiceUsage         VoiceUsage[]
 }
 
@@ -502,6 +503,51 @@ model VoiceUsage {
   organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
 
   @@id([organisationId, day])
+}
+
+/// A connected MCP server (e.g. Make.com): its tools can be switched on for agents.
+model McpServer {
+  id             String       @id @default(cuid())
+  organisationId String
+  /// Short name used in tool names the AI sees ("make" -> make__book_appointment), unique in the workspace.
+  name           String
+  label          String
+  /// The full address, encrypted (Make puts the access token inside it).
+  urlEncrypted   String
+  /// Shown instead of the address, e.g. "eu2.make.com".
+  urlHost        String
+  /// Optional Authorization header value, encrypted ("" when none).
+  authEncrypted  String       @default("")
+  /// Tools the server offers: [{ name, description, inputSchema, allowed }]
+  tools          Json         @default("[]")
+  lastSyncedAt   DateTime?
+  lastError      String?
+  timeoutMs      Int          @default(15000)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  runs           McpRun[]
+
+  @@unique([organisationId, name])
+}
+
+/// Each time an MCP tool ran (newest 50 kept per server).
+model McpRun {
+  id             String    @id @default(cuid())
+  serverId       String
+  organisationId String
+  toolName       String
+  /// "test", "talk" or "call"
+  source         String
+  request        Json
+  ok             Boolean
+  response       String
+  durationMs     Int
+  error          String?
+  createdAt      DateTime  @default(now())
+  server         McpServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@index([serverId, createdAt])
 }
 
 /// How much of each paid outside service a workspace used per Lagos day (for the Usage page; nothing is charged).

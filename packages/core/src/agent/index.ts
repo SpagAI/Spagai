@@ -253,6 +253,8 @@ export const agentConfigSchema = z.object({
   direction: z.enum(["outbound", "inbound"]).default("outbound"),
   /** Ids of the workspace's own tools (webhooks) this agent may use. */
   customTools: z.array(z.string().min(1).max(40)).max(20).default([]),
+  /** Tools from connected MCP servers this agent may use, as "server__tool" names. */
+  mcpTools: z.array(z.string().min(1).max(64)).max(50).default([]),
 });
 
 export type AgentConfig = z.infer<typeof agentConfigSchema>;
@@ -325,6 +327,7 @@ export function presetToAgentConfig(preset: AgentPreset): AgentConfig {
     voiceSettings: DEFAULT_VOICE_SETTINGS,
     direction: preset.direction,
     customTools: [],
+    mcpTools: [],
   };
 }
 
