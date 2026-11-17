@@ -4,7 +4,7 @@ A platform where businesses in Nigeria and Africa build and run AI voice agents,
 
 **Live demo:** https://spagai-studio.team-spagai.workers.dev (press **Enter the demo workspace**). Runs on Cloudflare Workers with a Neon database and redeploys automatically when the production branch changes. See "Deploy to Cloudflare" below.
 
-> **Thinking about voice AI and our own Nigerian voices?** Read the [Spag AI Brain PDFs](brain/pdf) (one short PDF per chapter): how voice AI works, the plan for locally trained voices, datasets, learning path, hiring and costs.
+> **Thinking about voice AI and our own Nigerian voices?** Read [The Spag AI Brain](brain/The-Spag-AI-Brain.pdf), our internal playbook and working roadmap (one PDF): how voice AI works, the plan for locally trained voices, datasets, learning path, hiring and costs.
 
 > **Status: prototype skeleton.** Everything runs locally with **mock** providers. No paid API keys are needed. Nothing here is legal advice. All regulatory text is a draft that **needs legal review**.
 
