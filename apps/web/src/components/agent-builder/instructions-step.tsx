@@ -1,9 +1,10 @@
 "use client";
 
 import { compilePrompt, estimateTokens, MAX_BLOCK_CHARS, SYSTEM_VARIABLES, type AgentConfig, type VariableDef } from "@spagai/core";
-import { Braces, ChevronDown, Eraser, Lock, Plus, TriangleAlert } from "lucide-react";
+import { Braces, ChevronDown, Eraser, Lock, Plus, TriangleAlert, Wrench } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { DEFAULT_TOOLS } from "@/lib/custom-tools";
 import { promptText, withPromptText } from "@/lib/prompt-text";
 import { sampleValues } from "./shared";
 
@@ -20,17 +21,25 @@ export function InstructionsStep({
   onChange,
   onAddVariable,
   readOnly,
+  tools = [],
+  onOpenTools,
 }: {
   config: AgentConfig;
   onChange: (next: AgentConfig) => void;
   onAddVariable: (v: VariableDef) => void;
   readOnly: boolean;
+  /** The workspace's own tools, to drop into the prompt by name. */
+  tools?: { name: string; label: string; description: string }[];
+  /** Go to the Tools tab (to create a tool). */
+  onOpenTools?: () => void;
 }) {
   const text = promptText(config);
   const ref = useRef<HTMLTextAreaElement>(null);
   const [showRules, setShowRules] = useState(false);
   const [valuesOpen, setValuesOpen] = useState(false);
   const valuesRef = useRef<HTMLDivElement>(null);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const toolsRef = useRef<HTMLDivElement>(null);
   const guardrails = config.blocks.filter((b) => b.guardrail);
 
   // Values the person can drop in, and any {{name}} they typed that is not a value yet.
@@ -43,24 +52,32 @@ export function InstructionsStep({
   const tokens = estimateTokens(text);
 
   useEffect(() => {
-    if (!valuesOpen) return;
-    const close = (e: MouseEvent) => !valuesRef.current?.contains(e.target as Node) && setValuesOpen(false);
+    if (!valuesOpen && !toolsOpen) return;
+    const close = (e: MouseEvent) => {
+      if (!valuesRef.current?.contains(e.target as Node)) setValuesOpen(false);
+      if (!toolsRef.current?.contains(e.target as Node)) setToolsOpen(false);
+    };
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
-  }, [valuesOpen]);
+  }, [valuesOpen, toolsOpen]);
 
-  const insert = (name: string) => {
+  /** Put text where the cursor is (replacing any selection). `extra` changes the agent at the same time. */
+  const insertText = (token: string, extra: Partial<AgentConfig> = {}) => {
     setValuesOpen(false);
+    setToolsOpen(false);
     const el = ref.current;
-    const token = `{{${name}}}`;
     const at = el?.selectionStart ?? text.length;
     const end = el?.selectionEnd ?? at;
-    onChange(withPromptText(config, text.slice(0, at) + token + text.slice(end)));
+    onChange({ ...withPromptText(config, text.slice(0, at) + token + text.slice(end)), ...extra });
     requestAnimationFrame(() => {
       el?.focus();
       el?.setSelectionRange(at + token.length, at + token.length);
     });
   };
+  const insert = (name: string) => insertText(`{{${name}}}`);
+  /** A tool goes in by name; one of your own tools is switched on for this agent if it was not. */
+  const insertTool = (name: string, custom: boolean) =>
+    insertText(name, custom && !config.customTools.includes(name) ? { customTools: [...config.customTools, name] } : {});
 
   return (
     <div className="space-y-3">
@@ -87,6 +104,45 @@ export function InstructionsStep({
                         <span className="block text-xs text-muted-foreground">{v.label}</span>
                       </button>
                     ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {!readOnly && (
+              <div ref={toolsRef} className="relative">
+                <Button type="button" variant="ghost" size="sm" onClick={() => setToolsOpen((o) => !o)} aria-expanded={toolsOpen} aria-haspopup="menu">
+                  <Wrench /> Insert tool <ChevronDown className="size-3.5" />
+                </Button>
+                {toolsOpen && (
+                  <div role="menu" aria-label="Insert tool" className="absolute right-0 z-30 mt-1 max-h-80 w-80 overflow-y-auto rounded-lg border bg-popover p-1 shadow-lg">
+                    <p className="px-2 py-1 text-xs text-muted-foreground">Default (always on):</p>
+                    {DEFAULT_TOOLS.map((t) => (
+                      <button key={t.name} role="menuitem" type="button" onClick={() => insertTool(t.name, false)} className="w-full rounded-md px-2 py-1.5 text-left hover:bg-muted">
+                        <span className="block text-sm font-medium">{t.label}</span>
+                        <code className="block font-mono text-xs text-muted-foreground">{t.name}</code>
+                        <span className="block text-xs text-muted-foreground">{t.description}</span>
+                      </button>
+                    ))}
+                    <p className="mt-1 border-t px-2 pt-2 pb-1 text-xs text-muted-foreground">Your tools:</p>
+                    {tools.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">No tools yet.</p>}
+                    {tools.map((t) => {
+                      const on = config.customTools.includes(t.name);
+                      return (
+                        <button key={t.name} role="menuitem" type="button" onClick={() => insertTool(t.name, true)} className="w-full rounded-md px-2 py-1.5 text-left hover:bg-muted">
+                          <span className="flex items-center gap-2 text-sm font-medium">
+                            <span className="truncate">{t.label}</span>
+                            <span className={on ? "ml-auto shrink-0 text-[11px] font-normal text-emerald-600 dark:text-emerald-400" : "ml-auto shrink-0 text-[11px] font-normal text-muted-foreground"}>{on ? "On" : "Will be switched on"}</span>
+                          </span>
+                          <code className="block font-mono text-xs text-muted-foreground">{t.name}</code>
+                          <span className="line-clamp-2 block text-xs text-muted-foreground">{t.description}</span>
+                        </button>
+                      );
+                    })}
+                    {onOpenTools && (
+                      <button type="button" role="menuitem" onClick={() => { setToolsOpen(false); onOpenTools(); }} className="mt-1 flex w-full items-center gap-1.5 rounded-md border-t px-2 pt-2 pb-1.5 text-left text-sm text-primary hover:bg-muted">
+                        <Plus className="size-3.5" /> Create a new tool
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

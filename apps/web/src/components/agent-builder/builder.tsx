@@ -414,7 +414,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
             {tab === "business" && <BusinessTab config={config} update={update} lead={testLead} onLeadChange={setTestLead} />}
             {tab === "voice" && <VoiceTab config={config} update={update} workspaceVoices={workspaceVoices} lead={testLead} />}
             {tab === "instructions" && (
-              <InstructionsStep config={config} onChange={(c) => change(() => c)} onAddVariable={addVariable} readOnly={readOnly} />
+              <InstructionsStep config={config} onChange={(c) => change(() => c)} onAddVariable={addVariable} readOnly={readOnly} tools={tools} onOpenTools={canManageTools ? () => go("tools") : undefined} />
             )}
             {tab === "firstMessage" && <FirstMessageTab config={config} update={update} lead={testLead} />}
             {tab === "variables" && <VariablesTab config={config} update={update} testValues={testValues} onTestValues={setTestValues} />}
