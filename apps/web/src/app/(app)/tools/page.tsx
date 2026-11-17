@@ -4,6 +4,7 @@ import Link from "next/link";
 import { DEFAULT_TOOLS, STARTERS } from "@/lib/custom-tools";
 import type { McpToolInfo } from "@/lib/mcp";
 import { McpManager } from "./mcp-manager";
+import { SubTabs } from "@/components/sub-tabs";
 import { requireOrg } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { can } from "@/server/permissions";
@@ -33,7 +34,7 @@ export default async function ToolsPage() {
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Tools</h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            Actions your agents can take during a call, such as booking a meeting in your calendar or adding a lead to your CRM. Each tool sends the details the agent collects to a webhook (Zapier, Make, n8n or your own system).
+            Actions your agents can take during a call, such as booking a meeting in your calendar or adding a lead to your CRM. A tool sends the details the agent collects to a webhook (Zapier, Make, n8n or your own system), or comes from a service you connect through MCP.
           </p>
         </div>
         {canManage && (
@@ -43,6 +44,15 @@ export default async function ToolsPage() {
         )}
       </div>
 
+      <SubTabs
+        label="Kinds of tools"
+        tabs={[
+          {
+            id: "tools",
+            label: "Tools",
+            count: tools.length,
+            content: (
+              <div className="space-y-8">
       <section className="space-y-3">
         <h2 className="text-sm font-medium text-muted-foreground">Default tools <span className="font-normal">· every agent has these; they cannot be changed</span></h2>
         <ul className="divide-y rounded-xl border bg-muted/20">
@@ -96,10 +106,6 @@ export default async function ToolsPage() {
         )}
       </section>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground">MCP servers <span className="font-normal">· connect a whole service (e.g. Make.com) and use its actions as tools</span></h2>
-        <McpManager initial={mcpServers.map((m) => ({ id: m.id, name: m.name, label: m.label, host: m.urlHost, tools: (m.tools as unknown as McpToolInfo[]) ?? [], lastSyncedAt: m.lastSyncedAt?.toISOString() ?? null, lastError: m.lastError }))} canManage={canManage} />
-      </section>
 
       {canManage ? (
         <section className="space-y-3">
@@ -116,6 +122,22 @@ export default async function ToolsPage() {
       ) : (
         <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">Only owners and admins can create or change tools. You can switch tools on for an agent in its Tools tab.</p>
       )}
+              </div>
+            ),
+          },
+          {
+            id: "mcp",
+            label: "MCP servers",
+            count: mcpServers.length,
+            content: (
+      <section className="space-y-3">
+        <p className="text-sm text-muted-foreground">Connect a whole service through MCP (e.g. Make.com) and use its actions as tools. Choose which tools agents may use, then switch them on in each agent&apos;s Tools tab.</p>
+        <McpManager initial={mcpServers.map((m) => ({ id: m.id, name: m.name, label: m.label, host: m.urlHost, tools: (m.tools as unknown as McpToolInfo[]) ?? [], lastSyncedAt: m.lastSyncedAt?.toISOString() ?? null, lastError: m.lastError }))} canManage={canManage} />
+      </section>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }

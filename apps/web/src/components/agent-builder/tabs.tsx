@@ -17,6 +17,7 @@ import { loadToolForEditing, type ToolSummary } from "@/app/(app)/tools/actions"
 import { ToolForm } from "@/app/(app)/tools/tool-form";
 import type { McpServerSummary } from "@/app/(app)/tools/mcp-actions";
 import { McpConnectForm } from "@/app/(app)/tools/mcp-manager";
+import { SubTabs } from "@/components/sub-tabs";
 import { fullToolName } from "@/lib/mcp";
 import { Button } from "@/components/ui/button";
 import { BLANK_TOOL, DEFAULT_TOOLS, type ToolInput } from "@/lib/custom-tools";
@@ -266,7 +267,16 @@ export function ToolsTab({ config, update, workspaceTools, canManageTools, onToo
   }
 
   return (
-    <div ref={topRef} className="scroll-mt-4 space-y-5">
+    <div ref={topRef} className="scroll-mt-4">
+      <SubTabs
+        label="Kinds of tools"
+        tabs={[
+          {
+            id: "tools",
+            label: "Tools",
+            count: config.customTools.length + DEFAULT_TOOLS.length,
+            content: (
+              <div className="space-y-5">
       <DefaultTools />
       <Card>
         <CardHeader>
@@ -322,7 +332,17 @@ export function ToolsTab({ config, update, workspaceTools, canManageTools, onToo
         </CardContent>
       </Card>
 
-      <McpToolsCard config={config} update={update} servers={mcpServers} onServersChange={onMcpServersChange} canManage={canManageTools} />
+              </div>
+            ),
+          },
+          {
+            id: "mcp",
+            label: "MCP servers",
+            count: config.mcpTools.length,
+            content: <McpToolsCard config={config} update={update} servers={mcpServers} onServersChange={onMcpServersChange} canManage={canManageTools} />,
+          },
+        ]}
+      />
     </div>
   );
 }
