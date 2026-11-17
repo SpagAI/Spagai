@@ -8,7 +8,7 @@ import { loadNotifications, loadWallet } from "@/server/shell-data";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await requireOrg();
   const [wallet, owners] = await Promise.all([
-    loadWallet(ctx.organisation.id),
+    loadWallet(ctx.organisation.id, can(ctx.role, "billing:view")),
     // The owner of each workspace this person belongs to (for the briefcase initial).
     db.membership.findMany({
       where: { organisationId: { in: ctx.memberships.map((m) => m.organisationId) }, role: "OWNER" },

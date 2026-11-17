@@ -13,6 +13,7 @@ import { WorkspaceSwitcher, type WorkspaceOption } from "@/components/workspace-
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/client";
 import { creditPercentLeft, type ShellNotification, type WalletSummary } from "@/lib/shell-types";
+import { formatUsd } from "@/lib/usage-pricing";
 import { cn } from "@/lib/utils";
 
 /** Side panel width limits (px). Dragging narrower than SNAP_BELOW collapses it to icons only. */
@@ -210,6 +211,23 @@ export function AppShell({ children, user, organisation, role, workspaces, walle
                 .replace("{minutes}", String(minutesCovered(wallet.balanceKobo, wallet.ratePerMinuteKobo)))
             : t("credit.none")}
         </p>
+        {wallet.testing && (() => {
+          const { usedUsd, budgetUsd } = wallet.testing;
+          const usedPct = Math.min(100, Math.round((usedUsd / budgetUsd) * 100));
+          const left = Math.max(0, budgetUsd - usedUsd);
+          return (
+            <Link href="/usage" onClick={() => setOpen(false)} className="mt-3 block rounded-lg border border-sidebar-border bg-sidebar-accent/40 p-2 hover:bg-sidebar-accent" title="What testing used this month at Groq and Fish Audio (AI brain, voice and listening together). Estimate; nothing is charged. Open the Usage page for details.">
+              <span className="flex items-baseline justify-between gap-2">
+                <span className="whitespace-nowrap text-[11px] font-medium text-sidebar-muted-foreground">Testing usage</span>
+                <span className="whitespace-nowrap text-[11px] font-semibold text-sidebar-foreground tabular-nums">{formatUsd(usedUsd)} <span className="font-normal text-sidebar-muted-foreground">of {formatUsd(budgetUsd)}</span></span>
+              </span>
+              <span role="progressbar" aria-label="Testing usage this month" aria-valuemin={0} aria-valuemax={100} aria-valuenow={usedPct} className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-sidebar-border">
+                <span className={cn("block h-full rounded-full", usedPct >= 100 ? "bg-destructive" : usedPct >= 75 ? "bg-warning" : "bg-emerald-500")} style={{ width: `${Math.max(usedPct, usedUsd > 0 ? 2 : 0)}%` }} />
+              </span>
+              <span className="mt-1 block text-[11px] text-sidebar-muted-foreground">{formatUsd(left)} left this month{usedUsd > budgetUsd ? " · over budget" : ""}</span>
+            </Link>
+          );
+        })()}
         {canBilling ? (
           <Button asChild size="sm" className="mt-3 w-full">
             <Link href="/billing" onClick={() => setOpen(false)}>{t("credit.buy")}</Link>

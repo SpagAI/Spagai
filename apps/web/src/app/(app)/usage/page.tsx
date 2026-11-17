@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { formatUsd, NAIRA_PER_USD, summarise, type UsageKind, type UsageTotals } from "@/lib/usage-pricing";
 import { requirePermission } from "@/server/auth/session";
 import { db } from "@/server/db";
+import { env } from "@/server/env";
 import { fishCreditLeft } from "@/server/providers/fish-audio";
 import { lagosDay } from "@/server/usage";
 
@@ -51,7 +52,7 @@ export default async function UsagePage() {
           <CardHeader className="pb-2"><CardDescription>{monthName} so far</CardDescription></CardHeader>
           <CardContent>
             <p className="text-3xl font-semibold tabular-nums">{formatUsd(month.totalUsd)}</p>
-            <p className="text-sm text-muted-foreground">{naira(month.totalUsd)} · estimated</p>
+            <p className="text-sm text-muted-foreground">{naira(month.totalUsd)} · estimated · {formatUsd(Math.max(0, env.TESTING_BUDGET_USD - month.totalUsd))} left of your {formatUsd(env.TESTING_BUDGET_USD)} monthly testing budget</p>
           </CardContent>
         </Card>
         <Card>

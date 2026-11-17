@@ -1,12 +1,23 @@
 import "server-only";
 import { formatNaira } from "@spagai/core";
 import type { ShellNotification, WalletSummary } from "@/lib/shell-types";
+import { summarise, type UsageTotals } from "@/lib/usage-pricing";
 import { db } from "./db";
+import { env } from "./env";
+import { lagosDay } from "./usage";
 import { can, type Role } from "./permissions";
 
 const DAY = 24 * 60 * 60 * 1000;
 
-export async function loadWallet(organisationId: string): Promise<WalletSummary> {
+/** Everything testing used this month at the providers, added together, in dollars. */
+export async function testingUsage(organisationId: string): Promise<{ usedUsd: number; budgetUsd: number }> {
+  const month = `${lagosDay().slice(0, 7)}-01`;
+  const rows = await db.providerUsage.groupBy({ by: ["kind"], where: { organisationId, day: { gte: month } }, _sum: { quantity: true } });
+  const totals = Object.fromEntries(rows.map((r) => [r.kind, r._sum.quantity ?? 0])) as UsageTotals;
+  return { usedUsd: summarise(totals).totalUsd, budgetUsd: env.TESTING_BUDGET_USD };
+}
+
+export async function loadWallet(organisationId: string, withTesting = false): Promise<WalletSummary> {
   const [org, credited] = await Promise.all([
     db.organisation.findUniqueOrThrow({ where: { id: organisationId }, select: { balanceKobo: true, ratePerMinuteKobo: true } }),
     db.walletTransaction.aggregate({
@@ -14,7 +25,8 @@ export async function loadWallet(organisationId: string): Promise<WalletSummary>
       _sum: { amountKobo: true },
     }),
   ]);
-  return { balanceKobo: org.balanceKobo, ratePerMinuteKobo: org.ratePerMinuteKobo, totalCreditedKobo: credited._sum.amountKobo ?? 0 };
+  const testing = withTesting ? await testingUsage(organisationId).catch(() => undefined) : undefined;
+  return { balanceKobo: org.balanceKobo, ratePerMinuteKobo: org.ratePerMinuteKobo, totalCreditedKobo: credited._sum.amountKobo ?? 0, ...(testing && { testing }) };
 }
 
 /**

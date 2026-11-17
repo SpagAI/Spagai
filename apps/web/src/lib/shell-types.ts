@@ -5,6 +5,8 @@ export interface WalletSummary {
   ratePerMinuteKobo: number;
   /** Everything ever added to the wallet (top-ups and credits), in kobo. The bar shows balance out of this. */
   totalCreditedKobo: number;
+  /** This month's testing usage at the providers (owners and admins only), against a monthly budget. */
+  testing?: { usedUsd: number; budgetUsd: number };
 }
 
 export interface ShellNotification {
