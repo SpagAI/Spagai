@@ -37,6 +37,12 @@ const SHORT: Record<string, string> = { calendar: "Calendar booking", crm_lead: 
 function exampleFor(p: ToolParam): string {
   if (p.type === "choice") return p.options?.[0] ?? "";
   if (p.type !== "text") return EXAMPLE[p.type];
+  if (/phone|mobile|whatsapp|tel/.test(p.name)) return "08031234567";
+  if (/email/.test(p.name)) return "ngozi@example.com";
+  if (/first_?name/.test(p.name)) return "Ngozi";
+  if (/last_?name|surname/.test(p.name)) return "Adeyemi";
+  if (/date/.test(p.name)) return EXAMPLE.date;
+  if (/time/.test(p.name)) return EXAMPLE.time;
   if (/name/.test(p.name)) return "Ngozi Adeyemi";
   if (/note|summary|comment|message/.test(p.name)) return "Wants a call back next week";
   if (/id$|ref|number/.test(p.name)) return "AB1234";
