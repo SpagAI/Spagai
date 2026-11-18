@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { AgentBuilder } from "@/components/agent-builder/builder";
 import type { McpToolInfo } from "@/lib/mcp";
 import { formatNumber } from "@/lib/numbers";
+import { getTelephony } from "@/server/telephony";
 import { requireOrg } from "@/server/auth/session";
 import { loadAgent } from "@/server/agents";
 import { db } from "@/server/db";
@@ -30,7 +31,7 @@ export default async function AgentBuilderPage({ params, searchParams }: { param
   const org = { organisationId: ctx.organisation.id };
   const [knowledge, numbers, free, tested, calls, workspaceVoices, draftRow] = await Promise.all([
     db.knowledgeItem.findMany({ where: { ...org, agentId: agent.id }, orderBy: { createdAt: "desc" }, select: { id: true, name: true, kind: true, status: true } }),
-    db.phoneNumber.findMany({ where: { ...org, agentId: agent.id, status: "ACTIVE" }, select: { id: true, number: true, label: true } }),
+    db.phoneNumber.findMany({ where: { ...org, agentId: agent.id, status: "ACTIVE" }, select: { id: true, number: true, label: true, source: true, inboundEnabled: true, outboundEnabled: true } }),
     db.phoneNumber.findMany({ where: { ...org, agentId: null, status: "ACTIVE" }, select: { id: true, number: true, label: true } }),
     db.auditLog.count({ where: { ...org, action: "agent.tested", targetId: agent.id } }),
     db.call.count({ where: { ...org, agentId: agent.id } }),
@@ -44,7 +45,7 @@ export default async function AgentBuilderPage({ params, searchParams }: { param
     : undefined;
   const tools = await db.tool.findMany({ where: { organisationId: ctx.organisation.id }, orderBy: { label: "asc" }, select: { id: true, name: true, label: true, description: true, url: true } });
   const mcpServers = await db.mcpServer.findMany({ where: { organisationId: ctx.organisation.id }, orderBy: { createdAt: "asc" } });
-  const show = (n: { id: string; number: string; label: string }) => ({ ...n, number: formatNumber(n.number) });
+  const show = <T extends { id: string; number: string; label: string }>(n: T) => ({ ...n, number: formatNumber(n.number) });
 
   return (
     <AgentBuilder
@@ -68,6 +69,7 @@ export default async function AgentBuilderPage({ params, searchParams }: { param
         numbers: numbers.map(show),
         freeNumbers: free.map(show),
         canManageNumbers: can(ctx.role, "number:manage"),
+        telephony: getTelephony().status(),
         canEditKnowledge: can(ctx.role, "knowledge:edit"),
         testedInLab: tested + calls > 0,
       }}

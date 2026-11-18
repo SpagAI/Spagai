@@ -11,6 +11,8 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { CountryTag } from "@/components/country-tag";
 import { availableNumbers, formatNumber, NUMBER_COUNTRIES, TYPE_LABELS, type NumberType } from "@/lib/numbers";
+import { DIRECTION_LABEL, providerById, SIP_PROVIDERS, type SipProviderId } from "@/lib/sip-providers";
+import { cn } from "@/lib/utils";
 import { addSipTrunk, buyNumber, type NumberFormState } from "./actions";
 
 type AgentOption = { id: string; name: string };
@@ -110,30 +112,67 @@ export function BuyNumber({ agents, canManage, owned }: { agents: AgentOption[];
 export function SipTrunkForm({ canManage }: { canManage: boolean }) {
   const [state, action, pending] = useActionState<NumberFormState, FormData>(addSipTrunk, { status: "idle" });
   const formRef = useRef<HTMLFormElement>(null);
+  const [providerId, setProviderId] = useState<SipProviderId>("africas_talking");
+  const [authMode, setAuthMode] = useState<"credentials" | "ip">("credentials");
+  const provider = providerById(providerId);
   useEffect(() => { if (state.status === "ok") formRef.current?.reset(); }, [state]);
   return (
-    <form ref={formRef} action={action} className="grid gap-4 sm:grid-cols-2">
-      <div className="space-y-1.5"><Label htmlFor="trunk-name">Trunk name</Label><Input id="trunk-name" name="name" required minLength={2} maxLength={60} placeholder="e.g. MTN Business SIP" /></div>
-      <div className="grid grid-cols-[1fr_5.5rem_5.5rem] gap-2">
-        <div className="space-y-1.5"><Label htmlFor="trunk-host">SIP server</Label><Input id="trunk-host" name="host" required placeholder="sip.carrier.com" /></div>
-        <div className="space-y-1.5"><Label htmlFor="trunk-port">Port</Label><Input id="trunk-port" name="port" type="number" defaultValue={5060} min={1} max={65535} /></div>
+    <form ref={formRef} action={action} className="space-y-4">
+      <input type="hidden" name="provider" value={providerId} />
+      <input type="hidden" name="authMode" value={authMode} />
+      <div className="space-y-1.5">
+        <p className="text-sm font-medium">Your phone line provider</p>
+        <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Phone line provider">
+          {SIP_PROVIDERS.map((p) => (
+            <button key={p.id} type="button" role="radio" aria-checked={providerId === p.id} onClick={() => setProviderId(p.id)} className={cn("rounded-full border px-3 py-1 text-sm transition-colors", providerId === p.id ? "border-primary bg-primary text-primary-foreground" : "hover:border-primary/50 hover:bg-muted")}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <p className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground"><span className="font-medium text-foreground">Where to find these:</span> {provider.whereToFind}</p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5"><Label htmlFor="trunk-name">Name</Label><Input id="trunk-name" name="name" required minLength={2} maxLength={60} placeholder={`e.g. ${provider.label} line`} /></div>
         <div className="space-y-1.5">
-          <Label htmlFor="trunk-transport">Transport</Label>
-          <Select id="trunk-transport" name="transport" defaultValue="udp"><option value="udp">UDP</option><option value="tcp">TCP</option><option value="tls">TLS</option></Select>
+          <Label htmlFor="trunk-direction">Used for</Label>
+          <Select id="trunk-direction" name="direction" defaultValue="both">
+            {Object.entries(DIRECTION_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </Select>
+        </div>
+        <div className="grid grid-cols-[1fr_5.5rem_5.5rem] gap-2 sm:col-span-2">
+          <div className="space-y-1.5"><Label htmlFor="trunk-host">SIP server address</Label><Input id="trunk-host" name="host" required placeholder={provider.hostExample} /></div>
+          <div className="space-y-1.5"><Label htmlFor="trunk-port">Port</Label><Input id="trunk-port" name="port" type="number" defaultValue={provider.defaultTransport === "tls" ? 5061 : 5060} key={`port-${providerId}`} min={1} max={65535} /></div>
+          <div className="space-y-1.5">
+            <Label htmlFor="trunk-transport">Transport</Label>
+            <Select id="trunk-transport" name="transport" defaultValue={provider.defaultTransport} key={`tr-${providerId}`}><option value="udp">UDP</option><option value="tcp">TCP</option><option value="tls">TLS</option></Select>
+          </div>
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <p className="text-sm font-medium">How your provider checks it is us</p>
+          <div className="flex flex-wrap gap-4 text-sm">
+            <label className="flex items-center gap-2"><input type="radio" checked={authMode === "credentials"} onChange={() => setAuthMode("credentials")} className="accent-[var(--color-primary)]" /> Username and password</label>
+            <label className="flex items-center gap-2"><input type="radio" checked={authMode === "ip"} onChange={() => setAuthMode("ip")} className="accent-[var(--color-primary)]" /> My provider trusts your addresses</label>
+          </div>
+        </div>
+        {authMode === "credentials" ? (
+          <>
+            <div className="space-y-1.5"><Label htmlFor="trunk-user">SIP username</Label><Input id="trunk-user" name="username" autoComplete="off" placeholder={`From ${provider.label}`} /></div>
+            <div className="space-y-1.5"><Label htmlFor="trunk-pass">SIP password</Label><Input id="trunk-pass" name="password" type="password" autoComplete="new-password" placeholder="Stored encrypted" /></div>
+          </>
+        ) : (
+          <p className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground sm:col-span-2">Our addresses for your provider&apos;s allow-list appear here once the phone system is connected.</p>
+        )}
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="trunk-numbers">Phone numbers on this line</Label>
+          <Textarea id="trunk-numbers" name="numbers" rows={2} placeholder="+2349012345678, +2349012345679" />
+          <p className="text-xs text-muted-foreground">In international format, separated by commas or new lines. You can then give each number to an agent.</p>
         </div>
       </div>
-      <div className="space-y-1.5"><Label htmlFor="trunk-user">Username</Label><Input id="trunk-user" name="username" autoComplete="off" placeholder="Given by your carrier" /></div>
-      <div className="space-y-1.5"><Label htmlFor="trunk-pass">Password</Label><Input id="trunk-pass" name="password" type="password" autoComplete="new-password" placeholder="Given by your carrier" /></div>
-      <div className="space-y-1.5 sm:col-span-2">
-        <Label htmlFor="trunk-numbers">Numbers on this trunk <span className="font-normal text-muted-foreground">(optional)</span></Label>
-        <Textarea id="trunk-numbers" name="numbers" rows={2} placeholder="+2348001234567, +2348001234568" />
-        <p className="text-xs text-muted-foreground">One or more numbers in international format, separated by commas or new lines.</p>
-      </div>
-      <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
-        <Button type="submit" disabled={pending || !canManage}>{pending ? <><Loader2 className="animate-spin" /> Testing connection…</> : "Connect trunk"}</Button>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit" disabled={pending || !canManage}>{pending ? <><Loader2 className="animate-spin" /> Saving…</> : "Save phone line"}</Button>
         <FormMessage state={state} />
-        <Badge variant="outline" className="ml-auto font-normal">Allow our signalling IPs: 102.89.0.10, 102.89.0.11</Badge>
       </div>
+      {!canManage && <p className="text-xs text-muted-foreground">Only owners and admins can connect phone lines.</p>}
     </form>
   );
 }

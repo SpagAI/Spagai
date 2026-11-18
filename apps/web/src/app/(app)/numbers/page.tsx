@@ -8,6 +8,8 @@ import { formatNumber, TYPE_LABELS, type NumberType } from "@/lib/numbers";
 import { requireOrg } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { can } from "@/server/permissions";
+import { DIRECTION_LABEL, providerById } from "@/lib/sip-providers";
+import { getTelephony } from "@/server/telephony";
 import { assignAgent, releaseNumber, removeSipTrunk } from "./actions";
 import { BuyNumber, SipTrunkForm } from "./forms";
 
@@ -27,6 +29,7 @@ export default async function NumbersPage() {
     db.call.groupBy({ by: ["agentId"], where: { ...org, attemptedAt: { gte: new Date(Date.now() - 30 * 86_400_000) } }, _count: true }),
   ]);
   const monthly = numbers.reduce((s, n) => s + n.monthlyCostKobo, 0);
+  const telephony = getTelephony().status();
   const callsByAgent = new Map(callCounts.map((c) => [c.agentId, c._count]));
 
   return (
@@ -102,6 +105,16 @@ export default async function NumbersPage() {
         </CardContent>
       </Card>
 
+      {!telephony.connected && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
+          <Network className="mt-0.5 size-5 shrink-0 text-amber-600" />
+          <div>
+            <p className="font-medium">Phone system not connected yet</p>
+            <p className="text-muted-foreground">{telephony.message} Phone lines and numbers you add here are kept, and work as soon as it is connected.</p>
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-6 2xl:grid-cols-2">
         <Card>
           <CardHeader>
@@ -114,17 +127,17 @@ export default async function NumbersPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Network className="size-5 text-primary" /> Connect a SIP trunk</CardTitle>
-            <CardDescription>Already have numbers with MTN, Airtel, Glo or another carrier? Connect them here.</CardDescription>
+            <CardDescription>Bring your own phone line from Africa&apos;s Talking, Twilio, Vonage, Telnyx, Plivo or any SIP provider.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             {trunks.length > 0 && (
               <ul className="divide-y rounded-lg border">
                 {trunks.map((t) => (
                   <li key={t.id} className="flex flex-wrap items-center gap-3 p-3 text-sm">
-                    <span className={`size-2 rounded-full ${t.status === "connected" ? "bg-emerald-500" : "bg-amber-500"}`} aria-hidden />
+                    <span className={`size-2 rounded-full ${t.status === "connected" ? "bg-emerald-500" : t.status === "error" ? "bg-destructive" : "bg-amber-500"}`} aria-hidden />
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium">{t.name} <span className="font-normal text-muted-foreground">· {t.status === "connected" ? "Connected" : "Unreachable"}</span></p>
-                      <p className="truncate text-xs text-muted-foreground">{t.host}:{t.port} · {t.transport.toUpperCase()}{t.username ? ` · ${t.username}` : ""}{t.hasPassword ? " · password set" : ""}</p>
+                      <p className="font-medium">{t.name} <span className="font-normal text-muted-foreground">· {providerById(t.provider).label} · {t.status === "connected" ? "Connected" : t.status === "error" ? "Problem" : "Saved, waiting for the phone system"}</span></p>
+                      <p className="truncate text-xs text-muted-foreground">{t.host}:{t.port} · {t.transport.toUpperCase()} · {DIRECTION_LABEL[t.direction] ?? t.direction}{t.authMode === "ip" ? " · trusts our addresses" : `${t.username ? ` · ${t.username}` : ""}${t.hasPassword ? " · password saved (encrypted)" : ""}`}</p>
                     </div>
                     {canManage && (
                       <form action={removeSipTrunk}>

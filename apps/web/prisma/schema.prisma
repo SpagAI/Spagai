@@ -379,6 +379,10 @@ model PhoneNumber {
   type            String            @default("local")
   /// "Spag AI" for bought numbers, or the SIP trunk name
   source          String            @default("Spag AI")
+  /// The agent answers calls to this number.
+  inboundEnabled  Boolean           @default(true)
+  /// The agent calls people from this number.
+  outboundEnabled Boolean           @default(true)
   monthlyCostKobo Int               @default(0)
   label           String            @default("")
   agentId         String?
@@ -395,15 +399,22 @@ model SipTrunk {
   id             String       @id @default(cuid())
   organisationId String
   name           String
+  /// africas_talking, twilio, vonage, telnyx, plivo or other
+  provider       String       @default("other")
+  /// "both", "inbound" or "outbound"
+  direction      String       @default("both")
   host           String
   port           Int          @default(5060)
   /// "udp", "tcp" or "tls"
   transport      String       @default("udp")
   username       String       @default("")
-  /// The SIP password is never stored in this prototype; only whether one was given.
   hasPassword    Boolean      @default(false)
-  /// "connected" or "unreachable" (simulated)
-  status         String       @default("connected")
+  /// The SIP password, encrypted ("" when none).
+  passwordEncrypted String    @default("")
+  /// "credentials" (username and password) or "ip" (the provider trusts our addresses)
+  authMode       String       @default("credentials")
+  /// "saved" (no phone system connected yet), "connected" or "error"
+  status         String       @default("saved")
   createdAt      DateTime     @default(now())
   organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
 
