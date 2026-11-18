@@ -448,7 +448,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
             {tab === "tools" && <ToolsTab config={config} update={update} workspaceTools={tools} canManageTools={canManageTools} mcpServers={mcpServers} onMcpServersChange={setMcpServers} onToolSaved={(tool) => setTools((list) => [...list.filter((x) => x.id !== tool.id), tool].sort((a, b) => a.label.localeCompare(b.label)))} />}
             {tab === "silence" && <SilenceTab config={config} update={update} />}
           </fieldset>
-          {tab === "knowledge" && <KnowledgeTab agentId={agentId} c={connections} />}
+          {tab === "knowledge" && <KnowledgeTab agentId={agentId} agentName={config.name} c={connections} />}
           {tab === "numbers" && <NumbersTab agentId={agentId} c={connections} />}
 
         </div>

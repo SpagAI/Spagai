@@ -117,7 +117,7 @@ async function chatCompletion(messages: unknown[], tools: unknown[], retried = f
  */
 export const PHONE_CALL_RULES = `## Phone call rules (always on, these override anything above)
 - You are speaking on a live phone call. Reply in one to three short, natural spoken sentences. Plain words only: no tables, lists, markdown, symbols or emojis.
-- Facts: you only know what is written in your instructions above. Any price, amount, fee, date, address or policy that is not written there word for word is unknown to you. Never guess or estimate one, even if your instructions say to answer questions about it. Instead say that you do not have that detail with you right now, offer to have someone send it, and continue.
+- Facts: you only know what is written in your instructions and knowledge base above. Any price, amount, fee, date, address or policy that is not written there word for word is unknown to you. Never guess or estimate one, even if your instructions say to answer questions about it. Instead say that you do not have that detail with you right now, offer to have someone send it, and continue.
 - Ask one question at a time and wait for the answer.`;
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];

@@ -30,7 +30,7 @@ export default async function AgentBuilderPage({ params, searchParams }: { param
   if (!agent) notFound();
   const org = { organisationId: ctx.organisation.id };
   const [knowledge, numbers, free, tested, calls, workspaceVoices, draftRow] = await Promise.all([
-    db.knowledgeItem.findMany({ where: { ...org, agentId: agent.id }, orderBy: { createdAt: "desc" }, select: { id: true, name: true, kind: true, status: true } }),
+    db.knowledgeItem.findMany({ where: { ...org, agentId: agent.id }, orderBy: { createdAt: "desc" } }),
     db.phoneNumber.findMany({ where: { ...org, agentId: agent.id, status: "ACTIVE" }, select: { id: true, number: true, label: true, source: true, inboundEnabled: true, outboundEnabled: true } }),
     db.phoneNumber.findMany({ where: { ...org, agentId: null, status: "ACTIVE" }, select: { id: true, number: true, label: true } }),
     db.auditLog.count({ where: { ...org, action: "agent.tested", targetId: agent.id } }),
@@ -65,7 +65,7 @@ export default async function AgentBuilderPage({ params, searchParams }: { param
       mcpServers={mcpServers.map((m) => ({ id: m.id, name: m.name, label: m.label, host: m.urlHost, tools: (m.tools as unknown as McpToolInfo[]) ?? [], lastSyncedAt: m.lastSyncedAt?.toISOString() ?? null, lastError: m.lastError }))}
       initialWhen={lagosNow()}
       connections={{
-        knowledge,
+        knowledge: knowledge.map((i) => ({ id: i.id, kind: i.kind, name: i.name, url: i.url, sizeBytes: i.sizeBytes, pages: i.pages, chunks: i.chunks, contentChars: i.contentChars, status: i.status, error: i.error, createdAt: i.createdAt.toISOString() })),
         numbers: numbers.map(show),
         freeNumbers: free.map(show),
         canManageNumbers: can(ctx.role, "number:manage"),

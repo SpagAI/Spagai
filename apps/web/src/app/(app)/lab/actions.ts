@@ -21,6 +21,7 @@ import { requirePermission } from "@/server/auth/session";
 import { audit, loadAgent } from "@/server/agents";
 import { activeBuiltInTools } from "@spagai/core";
 import { functionSpec, resultForAi, runCustomTool, toolsForAgent } from "@/server/custom-tools";
+import { knowledgeForReply } from "@/server/knowledge";
 import { mcpToolsForAgent, runMcpTool } from "@/server/mcp-client";
 import { recordUsage } from "@/server/usage";
 import { getLlm, LlmLimitError, PHONE_CALL_RULES, todayLine, toolsLine } from "@/server/providers";
@@ -219,8 +220,11 @@ async function runTurn(organisationId: string, config: AgentConfig, input: z.inf
     const ran: CheckedToolCall[] = [];
     const used = { input: 0, output: 0, replies: 0 };
     const leadName = [input.lead.firstName, input.lead.lastName].filter(Boolean).join(" ");
+    // The knowledge base: the pieces that match what was just said (or all of a small one).
+    const lastAgent = [...input.history].reverse().find((h) => h.role === "agent")?.text ?? "";
+    const knowledge = opts.agent?.id ? await knowledgeForReply(opts.agent.id, `${event.text} ${lastAgent}`).catch(() => "") : "";
     const turn = await llm.reply({
-      systemPrompt: compiled.prompt,
+      systemPrompt: knowledge ? `${compiled.prompt}\n\n${knowledge}` : compiled.prompt,
       history: [...input.history, { role: "caller", text: event.text }],
       values,
       tools: activeBuiltInTools(config.tools),

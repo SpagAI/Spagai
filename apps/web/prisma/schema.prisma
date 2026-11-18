@@ -424,6 +424,7 @@ model SipTrunk {
 enum KnowledgeKind {
   FILE
   WEBSITE
+  TEXT
 }
 
 enum KnowledgeStatus {
@@ -447,12 +448,31 @@ model KnowledgeItem {
   /// Searchable pieces the content was split into
   chunks         Int             @default(0)
   status         KnowledgeStatus @default(READY)
+  /// Characters of text actually stored (0 for items added before the knowledge base read content).
+  contentChars   Int             @default(0)
+  /// Why reading failed, in plain words.
+  error          String?
   createdById    String?
   createdAt      DateTime        @default(now())
   organisation   Organisation    @relation(fields: [organisationId], references: [id], onDelete: Cascade)
   agent          Agent           @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  pieces         KnowledgeChunk[]
 
   @@index([organisationId, createdAt])
+}
+
+/// A searchable piece of a knowledge item (about a paragraph), found by full-text search during calls.
+model KnowledgeChunk {
+  id             String        @id @default(cuid())
+  itemId         String
+  organisationId String
+  agentId        String
+  position       Int
+  text           String
+  item           KnowledgeItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@index([itemId, position])
 }
 
 model Integration {

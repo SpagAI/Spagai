@@ -1,6 +1,8 @@
 "use client";
 
-import { BookOpen, FileText, Globe, Loader2, Network, Phone, PhoneCall, Plus } from "lucide-react";
+import { BookOpen, Loader2, Network, Phone, PhoneCall, Plus } from "lucide-react";
+import type { KnowledgeRow } from "@/app/(app)/knowledge/actions";
+import { KnowledgeManager } from "@/app/(app)/knowledge/knowledge-manager";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { assignAgent, placeTestCall, setNumberDirections, type TestCallResult } from "@/app/(app)/numbers/actions";
@@ -12,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export interface AgentConnections {
-  knowledge: { id: string; name: string; kind: "FILE" | "WEBSITE"; status: string }[];
+  knowledge: KnowledgeRow[];
   numbers: { id: string; number: string; label: string; source?: string; inboundEnabled?: boolean; outboundEnabled?: boolean }[];
   /** Numbers not used by any agent yet, which can be given to this one */
   freeNumbers: { id: string; number: string; label: string }[];
@@ -23,30 +25,15 @@ export interface AgentConnections {
   testedInLab: boolean;
 }
 
-export function KnowledgeTab({ agentId, c }: { agentId: string; c: AgentConnections }) {
+/** The agent's whole knowledge base, managed in place (same screen as the Knowledge Base page). */
+export function KnowledgeTab({ agentId, agentName, c }: { agentId: string; agentName: string; c: AgentConnections }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><BookOpen className="size-5 text-primary" /> Knowledge base</CardTitle>
-        <CardDescription>Documents and websites this agent uses to answer questions about your business.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {c.knowledge.length === 0 ? (
-          <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">Nothing yet. Add a price list, FAQ or your website.</p>
-        ) : (
-          <ul className="divide-y rounded-lg border">
-            {c.knowledge.map((k) => (
-              <li key={k.id} className="flex items-center gap-2.5 px-3 py-2 text-sm">
-                {k.kind === "FILE" ? <FileText className="size-4 text-muted-foreground" /> : <Globe className="size-4 text-muted-foreground" />}
-                <span className="min-w-0 flex-1 truncate">{k.name}</span>
-                <span className="text-xs text-muted-foreground">{k.status === "READY" ? "Ready" : k.status === "PROCESSING" ? "Reading…" : "Failed"}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-        {c.canEditKnowledge && (
-          <Button asChild variant="outline" size="sm"><Link href={`/knowledge?agent=${agentId}`}><Plus /> Add files or a website</Link></Button>
-        )}
+      <CardContent>
+        <KnowledgeManager agentId={agentId} agentName={agentName} initial={c.knowledge} canEdit={c.canEditKnowledge} />
       </CardContent>
     </Card>
   );
