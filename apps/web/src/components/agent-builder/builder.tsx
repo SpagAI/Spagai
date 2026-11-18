@@ -83,7 +83,7 @@ export function AgentBuilder({ agentId, initialConfig, initialStatus, updatedAt,
   const [versionNotice, setVersionNotice] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("business");
   /** Tabs that need the full width: the test panel moves to a small button there. */
-  const roomy = tab === "tools" || tab === "numbers";
+  const roomy = tab === "tools" || tab === "numbers" || tab === "knowledge";
   const [errors, setErrors] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
 

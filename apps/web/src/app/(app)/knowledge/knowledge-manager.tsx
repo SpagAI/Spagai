@@ -157,7 +157,7 @@ export function KnowledgeManager({ agentId, agentName, initial, canEdit }: { age
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <p className="max-w-2xl text-sm text-muted-foreground">
-          What {agentName || "this agent"} knows about your business: prices, services, opening hours, FAQs. During a call it looks up the parts that match what the caller asks{total <= KNOWLEDGE_LIMITS.wholeChars ? " (a small knowledge base like this one is read in full)" : ""}.
+          What {agentName || "this agent"} knows about your business: prices, services, opening hours, FAQs. During a call it looks up the parts that match what the caller asks{total > 0 && total <= KNOWLEDGE_LIMITS.wholeChars ? " (a small knowledge base like this one is read in full)" : ""}.
         </p>
         <div className="flex gap-5 text-sm">
           <div><p className="text-xs text-muted-foreground">Items</p><p className="text-lg font-semibold tabular-nums">{items.length}</p></div>
