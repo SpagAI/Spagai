@@ -28,14 +28,10 @@ export interface AgentConnections {
 /** The agent's whole knowledge base, managed in place (same screen as the Knowledge Base page). */
 export function KnowledgeTab({ agentId, agentName, c }: { agentId: string; agentName: string; c: AgentConnections }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2"><BookOpen className="size-5 text-primary" /> Knowledge base</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <KnowledgeManager agentId={agentId} agentName={agentName} initial={c.knowledge} canEdit={c.canEditKnowledge} />
-      </CardContent>
-    </Card>
+    <div className="space-y-4 pt-1">
+      <h2 className="flex items-center gap-2 text-lg font-semibold"><BookOpen className="size-5 text-primary" /> Knowledge base</h2>
+      <KnowledgeManager agentId={agentId} agentName={agentName} initial={c.knowledge} canEdit={c.canEditKnowledge} />
+    </div>
   );
 }
 

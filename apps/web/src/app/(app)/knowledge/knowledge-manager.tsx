@@ -61,7 +61,7 @@ function AddFiles({ agentId, onDone }: { agentId: string; onDone: (r: KnowledgeR
   };
   return (
     <div
-      className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed p-6 text-center"
+      className="flex flex-col items-center gap-2 rounded-xl bg-muted/40 p-6 text-center"
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => { e.preventDefault(); pick(e.dataTransfer.files); }}
     >
@@ -166,7 +166,8 @@ export function KnowledgeManager({ agentId, agentName, initial, canEdit }: { age
       </div>
 
       {canEdit ? (
-        <div className="rounded-xl border p-4">
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold">Add knowledge</h3>
           <SubTabs
             label="Add knowledge"
             tabs={[
@@ -175,7 +176,7 @@ export function KnowledgeManager({ agentId, agentName, initial, canEdit }: { age
               { id: "website", label: "Website", icon: <Globe />, content: <AddWebsite agentId={agentId} onDone={done} /> },
             ]}
           />
-        </div>
+        </section>
       ) : (
         <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">Only owners, admins and editors can change the knowledge base.</p>
       )}
@@ -184,13 +185,16 @@ export function KnowledgeManager({ agentId, agentName, initial, canEdit }: { age
         <p role="status" className={cn("rounded-lg border px-3 py-2 text-sm", note.ok ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400" : "border-destructive/40 bg-destructive/5 text-destructive")}>{note.text}</p>
       )}
 
-      {items.length === 0 ? (
-        <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Nothing yet. Add your price list, FAQs or your website, so the agent answers from your own information.</p>
-      ) : (
-        <ul className="divide-y rounded-xl border">
-          {items.map((i) => <ItemRow key={i.id} item={i} canEdit={canEdit} onChange={done} />)}
-        </ul>
-      )}
+      <section className="space-y-3 border-t pt-5">
+        <h3 className="text-sm font-semibold">In the knowledge base <span className="font-normal text-muted-foreground">({items.length})</span></h3>
+        {items.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nothing yet. Add your price list, FAQs or your website, so the agent answers from your own information.</p>
+        ) : (
+          <ul className="divide-y rounded-xl border">
+            {items.map((i) => <ItemRow key={i.id} item={i} canEdit={canEdit} onChange={done} />)}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
