@@ -72,7 +72,7 @@ export function McpConnectForm({ server, onSaved, onCancel }: { server?: McpServ
   );
 }
 
-function ToolTest({ serverId, tool }: { serverId: string; tool: McpToolInfo }) {
+export function ToolTest({ serverId, tool }: { serverId: string; tool: McpToolInfo }) {
   const props = Object.keys((tool.inputSchema.properties as Record<string, unknown>) ?? {});
   const [values, setValues] = useState<Record<string, string>>({});
   const [result, setResult] = useState<Awaited<ReturnType<typeof testMcpTool>> | null>(null);

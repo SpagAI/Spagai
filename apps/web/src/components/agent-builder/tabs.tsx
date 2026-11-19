@@ -10,13 +10,14 @@ import {
   type Voice,
   type VoiceLanguage,
 } from "@spagai/core";
-import { Loader2, Lock, Pencil, PhoneOff, Plug, Plus, TriangleAlert, Webhook } from "lucide-react";
+import { Loader2, Lock, Pencil, PhoneOff, Plug, Plus, RefreshCw, TriangleAlert, Webhook } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { loadToolForEditing, type ToolSummary } from "@/app/(app)/tools/actions";
 import { ToolForm } from "@/app/(app)/tools/tool-form";
 import type { McpServerSummary } from "@/app/(app)/tools/mcp-actions";
-import { McpConnectForm } from "@/app/(app)/tools/mcp-manager";
+import { McpConnectForm, ToolTest } from "@/app/(app)/tools/mcp-manager";
+import { refreshMcpServer, setMcpToolAllowed } from "@/app/(app)/tools/mcp-actions";
 import { SubTabs } from "@/components/sub-tabs";
 import { fullToolName } from "@/lib/mcp";
 import { Button } from "@/components/ui/button";
@@ -172,48 +173,110 @@ export function DefaultTools() {
 }
 
 /** Allowed tools from connected MCP servers, switched on per agent; servers can be connected here too. */
+/** The details a tool asks for (from its input schema), as plain rows. */
+function ToolInputs({ schema }: { schema: Record<string, unknown> }) {
+  const props = (schema.properties ?? {}) as Record<string, { type?: string; description?: string; enum?: unknown[] }>;
+  const required = new Set((schema.required as string[] | undefined) ?? []);
+  const names = Object.keys(props);
+  if (!names.length) return <p className="text-xs text-muted-foreground">It needs no details.</p>;
+  return (
+    <ul className="space-y-1 text-xs">
+      {names.map((n) => (
+        <li key={n}>
+          <code className="font-mono">{n}</code>
+          <span className="text-muted-foreground"> · {props[n]?.type ?? "text"}{required.has(n) ? " · required" : " · optional"}{props[n]?.enum ? ` · one of ${props[n]!.enum!.join(", ")}` : ""}</span>
+          {props[n]?.description && <span className="block pl-3 text-muted-foreground">{props[n]!.description}</span>}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Every tool from connected MCP servers: what it does, what it needs, whether this agent may use it, and a test. */
 function McpToolsCard({ config, update, servers, onServersChange, canManage }: { config: AgentConfig; update: Update; servers: McpServerSummary[]; onServersChange: (s: McpServerSummary[]) => void; canManage: boolean }) {
   const [connecting, setConnecting] = useState(false);
+  const [open, setOpen] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
   const toggle = (name: string, on: boolean) => update({ mcpTools: on ? [...new Set([...config.mcpTools, name])] : config.mcpTools.filter((x) => x !== name) });
+  const replace = (s: McpServerSummary) => onServersChange(servers.map((x) => (x.id === s.id ? s : x)));
   const known = new Set(servers.flatMap((m) => m.tools.filter((t) => t.allowed).map((t) => fullToolName(m.name, t.name))));
   const missing = config.mcpTools.filter((n) => !known.has(n));
+  const available = known.size;
+  const onCount = config.mcpTools.filter((n) => known.has(n)).length;
+  const agent = config.name || "this agent";
   return (
     <Card>
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1.5">
             <CardTitle>MCP tools</CardTitle>
-            <CardDescription>Tools from services you connect through MCP, such as your Make.com scenarios.</CardDescription>
+            <CardDescription>
+              Tools from services you connect through MCP, such as your Make.com scenarios.
+              {available > 0 && <> <span className="font-medium text-foreground">{available} available · {onCount} on for {agent}.</span></>}
+            </CardDescription>
           </div>
           {canManage && !connecting && <Button variant="outline" size="sm" onClick={() => setConnecting(true)}><Plug /> Connect an MCP server</Button>}
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {connecting && <McpConnectForm onSaved={(s) => { onServersChange([...servers, s]); setConnecting(false); }} onCancel={() => setConnecting(false)} />}
         {servers.length === 0 && !connecting && <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">No MCP servers connected yet.{canManage ? " Connect one to use its actions as tools." : " Ask an owner or admin to connect one."}</p>}
-        {servers.map((m) => {
-          const allowed = m.tools.filter((t) => t.allowed);
-          return (
-            <div key={m.id} className="space-y-2">
-              <p className="flex items-center gap-2 text-sm font-medium"><Plug className="size-4 text-primary" /> {m.label} <span className="text-xs font-normal text-muted-foreground">{m.host}</span></p>
-              {allowed.length === 0 && <p className="text-xs text-muted-foreground">No tools allowed from this server yet (choose them on the Tools page).</p>}
-              {allowed.map((t) => {
-                const name = fullToolName(m.name, t.name);
-                const on = config.mcpTools.includes(name);
-                return (
-                  <div key={name} className={cn("flex items-start gap-3 rounded-lg border p-3", on && "border-primary/40")}>
+        {servers.map((m) => (
+          <div key={m.id} className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <Plug className="size-4 text-primary" />
+              <span className="font-medium">{m.label}</span>
+              <span className="text-xs text-muted-foreground">{m.host} · {m.tools.length} tool{m.tools.length === 1 ? "" : "s"}</span>
+              {canManage && (
+                <Button variant="ghost" size="sm" className="ml-auto h-7" disabled={busy === m.id} onClick={async () => { setBusy(m.id); const r = await refreshMcpServer(m.id); setBusy(null); if (r.ok) replace(r.server); }}>
+                  {busy === m.id ? <Loader2 className="animate-spin" /> : <RefreshCw />} Refresh tools
+                </Button>
+              )}
+            </div>
+            {m.lastError && <p className="text-xs text-destructive">{m.lastError}</p>}
+            {m.tools.length === 0 && <p className="text-xs text-muted-foreground">This server offers no tools yet. In Make, add a scenario to the toolbox, then press Refresh tools.</p>}
+            {m.tools.map((t) => {
+              const name = fullToolName(m.name, t.name);
+              const on = t.allowed && config.mcpTools.includes(name);
+              const key = `${m.id}:${t.name}`;
+              return (
+                <div key={key} className={cn("rounded-lg border", on && "border-primary/40")}>
+                  <div className="flex items-start gap-3 p-3">
                     <div className="min-w-0 flex-1">
                       <p className="font-medium"><code className="text-sm">{t.name}</code></p>
-                      {t.description && <p className="line-clamp-2 text-sm text-muted-foreground">{t.description}</p>}
-                      <p className="mt-0.5 text-xs text-muted-foreground">The AI calls it <code>{name}</code></p>
+                      {t.description ? <p className="line-clamp-2 text-sm text-muted-foreground">{t.description}</p> : <p className="text-sm text-muted-foreground">No description from the server. Add one in Make so the agent knows when to use it.</p>}
+                      <button type="button" className="mt-1 text-xs text-primary hover:underline" onClick={() => setOpen(open === key ? null : key)}>{open === key ? "Hide details" : "Details and test"}</button>
                     </div>
-                    <Switch checked={on} onCheckedChange={(v) => toggle(name, v)} aria-label={t.name} />
+                    {t.allowed ? (
+                      <label className="flex shrink-0 flex-col items-end gap-1 text-xs">
+                        <Switch checked={on} onCheckedChange={(v) => toggle(name, v)} aria-label={`${t.name} for ${agent}`} />
+                        <span className={on ? "font-medium text-primary" : "text-muted-foreground"}>{on ? `On: ${agent} can use it` : `Off: ${agent} can't use it`}</span>
+                      </label>
+                    ) : (
+                      <div className="flex shrink-0 flex-col items-end gap-1 text-xs text-muted-foreground">
+                        <span>Not allowed for your agents</span>
+                        {canManage && <Button size="sm" variant="outline" className="h-7" onClick={async () => { const r = await setMcpToolAllowed(m.id, t.name, true); if (r.ok) replace(r.server); }}>Allow</Button>}
+                      </div>
+                    )}
                   </div>
-                );
-              })}
-            </div>
-          );
-        })}
+                  {open === key && (
+                    <div className="space-y-3 border-t px-3 py-3">
+                      {t.description && <div><p className="text-xs font-medium">What it does</p><p className="text-sm text-muted-foreground">{t.description}</p></div>}
+                      <div><p className="mb-1 text-xs font-medium">Details it needs</p><ToolInputs schema={t.inputSchema} /></div>
+                      <p className="text-xs text-muted-foreground">The AI calls it <code>{name}</code>. Use <span className="font-medium">Insert tool</span> in the Prompt tab to tell the agent when to use it.</p>
+                      {canManage && t.allowed && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button size="sm" variant="ghost" className="h-7 text-muted-foreground" onClick={async () => { const r = await setMcpToolAllowed(m.id, t.name, false); if (r.ok) { replace(r.server); toggle(name, false); } }}>Stop allowing for all agents</Button>
+                        </div>
+                      )}
+                      {canManage && t.allowed && <ToolTest serverId={m.id} tool={t} />}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
         {missing.map((name) => (
           <div key={name} className="flex items-center gap-3 rounded-lg border border-warning/50 p-3 text-sm">
             <TriangleAlert className="size-4 shrink-0 text-warning" />
@@ -221,7 +284,6 @@ function McpToolsCard({ config, update, servers, onServersChange, canManage }: {
             <button type="button" className="text-primary hover:underline" onClick={() => toggle(name, false)}>Remove</button>
           </div>
         ))}
-        {servers.length > 0 && canManage && <Link href="/tools" className="inline-block text-xs text-primary hover:underline">Choose allowed tools, refresh or test on the Tools page</Link>}
       </CardContent>
     </Card>
   );
@@ -276,7 +338,7 @@ export function ToolsTab({ config, update, workspaceTools, canManageTools, onToo
             label: "Tools",
             icon: <Webhook />,
             description: "Webhook actions you build (calendar, CRM, sheets…)",
-            count: config.customTools.length + DEFAULT_TOOLS.length,
+            count: workspaceTools.length + DEFAULT_TOOLS.length,
             content: (
               <div className="space-y-5">
       <DefaultTools />
@@ -342,7 +404,7 @@ export function ToolsTab({ config, update, workspaceTools, canManageTools, onToo
             label: "MCP servers",
             icon: <Plug />,
             description: "Connect a whole service, like Make.com, through MCP",
-            count: config.mcpTools.length,
+            count: mcpServers.reduce((n, m) => n + m.tools.filter((t) => t.allowed).length, 0),
             content: <McpToolsCard config={config} update={update} servers={mcpServers} onServersChange={onMcpServersChange} canManage={canManageTools} />,
           },
         ]}
