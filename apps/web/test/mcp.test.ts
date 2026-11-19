@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fullToolName, hostOf, mergeTools, parseToolList, readRpcReply, safeSchema, serverOf, toolResultText } from "@/lib/mcp";
+import { authHeaderValue, fullToolName, hostOf, mergeTools, parseToolList, readRpcReply, safeSchema, serverOf, toolResultText } from "@/lib/mcp";
 
 describe("MCP helpers", () => {
   it("names tools for the AI and finds their server", () => {
@@ -35,5 +35,12 @@ describe("MCP helpers", () => {
   it("makes any schema safe and hides the secret address", () => {
     expect(safeSchema(null)).toEqual({ type: "object", properties: {} });
     expect(hostOf("https://eu2.make.com/mcp/u/SECRET/stateless")).toBe("eu2.make.com");
+  });
+
+  it("sends an access key as a Bearer token unless a scheme is given", () => {
+    expect(authHeaderValue("abc123")).toBe("Bearer abc123");
+    expect(authHeaderValue(" Bearer abc123 ")).toBe("Bearer abc123");
+    expect(authHeaderValue("Basic dXNlcjpwYXNz")).toBe("Basic dXNlcjpwYXNz");
+    expect(authHeaderValue("")).toBe("");
   });
 });

@@ -97,6 +97,16 @@ export function mergeTools(previous: McpToolInfo[], fresh: Omit<McpToolInfo, "al
   return fresh.map((t) => ({ ...t, allowed: previous.find((p) => p.name === t.name)?.allowed ?? true }));
 }
 
+/**
+ * The Authorization header value for an access key. Make.com toolbox keys (and most API keys) are
+ * sent as "Bearer <key>"; people often paste just the key, so "Bearer " is added when no scheme is given.
+ */
+export function authHeaderValue(raw: string): string {
+  const key = raw.trim();
+  if (!key) return "";
+  return /^(bearer|basic|token|apikey|api-key)\s+\S/i.test(key) ? key : `Bearer ${key}`;
+}
+
 /** Shown instead of the secret address. */
 export function hostOf(url: string): string {
   try {

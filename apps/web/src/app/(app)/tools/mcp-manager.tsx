@@ -54,14 +54,14 @@ export function McpConnectForm({ server, onSaved, onCancel }: { server?: McpServ
       </div>
       <label className="block space-y-1 text-sm">
         <span className="font-medium">Server address</span>
-        <Input type="password" autoComplete="off" value={url} className="font-mono" placeholder={server ? `Saved (${server.host}); leave empty to keep` : "https://eu2.make.com/mcp/u/…/stateless"} onChange={(e) => setUrl(e.target.value.trim())} />
+        <Input type="password" autoComplete="off" value={url} className="font-mono" placeholder={server ? `Saved (${server.host}); leave empty to keep` : "https://eu2.make.com/mcp/server/…"} onChange={(e) => setUrl(e.target.value.trim())} />
         <span className="block text-xs text-muted-foreground">
-          Make.com: create an MCP token in Make (your profile, API / MCP access), then use <code>https://&lt;your zone&gt;.make.com/mcp/u/&lt;token&gt;/stateless</code>. The address contains your token, so it is stored encrypted and never shown again.
+          Make.com toolbox: copy the toolbox address (like <code>https://eu2.make.com/mcp/server/…</code>) here, and the toolbox key in Access key below. The address is stored encrypted and never shown again (some addresses contain a token).
         </span>
       </label>
       <label className="block space-y-1 text-sm">
-        <span className="flex items-center gap-1 font-medium"><KeyRound className="size-3.5" /> Access key (optional)</span>
-        <Input type="password" autoComplete="off" value={auth} className="font-mono" placeholder="Bearer … (only if the server asks for an Authorization header)" onChange={(e) => setAuth(e.target.value)} />
+        <span className="flex items-center gap-1 font-medium"><KeyRound className="size-3.5" /> Access key</span>
+        <Input type="password" autoComplete="off" value={auth} className="font-mono" placeholder="The toolbox key (we add “Bearer ” for you)" onChange={(e) => setAuth(e.target.value)} />
       </label>
       {errors.length > 0 && <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">{errors.join(" ")}</div>}
       <div className="flex justify-end gap-2">

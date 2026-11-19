@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { webhookUrlProblem } from "@/lib/custom-tools";
-import { fullToolName, hostOf, mcpServerInputSchema, mergeTools, type McpToolInfo } from "@/lib/mcp";
+import { authHeaderValue, fullToolName, hostOf, mcpServerInputSchema, mergeTools, type McpToolInfo } from "@/lib/mcp";
 import { audit } from "@/server/agents";
 import { requirePermission } from "@/server/auth/session";
 import { decryptSecret, encryptSecret } from "@/server/custom-tools";
@@ -48,7 +48,7 @@ export async function saveMcpServer(id: string | null, input: unknown): Promise<
   if (!existing && (await db.mcpServer.count({ where: { organisationId: org } })) >= MAX_SERVERS) return { ok: false, errors: [`You can connect up to ${MAX_SERVERS} servers.`] };
 
   const url = m.url || decryptSecret(existing!.urlEncrypted);
-  const auth = m.clearAuth ? "" : m.auth || (existing?.authEncrypted ? decryptSecret(existing.authEncrypted) : "");
+  const auth = m.clearAuth ? "" : authHeaderValue(m.auth) || (existing?.authEncrypted ? decryptSecret(existing.authEncrypted) : "");
 
   // Connect first, so a wrong address is reported before anything is saved.
   let fresh;
@@ -75,7 +75,7 @@ export async function refreshMcpServer(id: string): Promise<SaveMcpResult> {
   const server = await db.mcpServer.findFirst({ where: { id: z.string().min(1).parse(id), organisationId: ctx.organisation.id } });
   if (!server) return { ok: false, errors: ["That server no longer exists."] };
   try {
-    const fresh = await listMcpTools(decryptSecret(server.urlEncrypted), server.authEncrypted ? decryptSecret(server.authEncrypted) : "", server.timeoutMs);
+    const fresh = await listMcpTools(decryptSecret(server.urlEncrypted), server.authEncrypted ? authHeaderValue(decryptSecret(server.authEncrypted)) : "", server.timeoutMs);
     const saved = await db.mcpServer.update({ where: { id: server.id }, data: { tools: mergeTools(serverTools(server), fresh) as unknown as object, lastSyncedAt: new Date(), lastError: null } });
     revalidatePath("/tools");
     return { ok: true, server: summary(saved) };

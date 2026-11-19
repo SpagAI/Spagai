@@ -1,7 +1,7 @@
 import "server-only";
 import type { McpServer } from "@prisma/client";
 import { webhookUrlProblem } from "@/lib/custom-tools";
-import { fullToolName, parseToolList, readRpcReply, safeSchema, toolResultText, type McpToolInfo } from "@/lib/mcp";
+import { authHeaderValue, fullToolName, parseToolList, readRpcReply, safeSchema, toolResultText, type McpToolInfo } from "@/lib/mcp";
 import { decryptSecret } from "./custom-tools";
 import { db } from "./db";
 import { RateLimiter } from "./rate-limit";
@@ -21,7 +21,8 @@ export class McpError extends Error {}
 interface Conn { url: string; auth: string; timeoutMs: number; session?: string }
 
 function secretsOf(server: Pick<McpServer, "urlEncrypted" | "authEncrypted" | "timeoutMs">): Conn {
-  return { url: decryptSecret(server.urlEncrypted), auth: server.authEncrypted ? decryptSecret(server.authEncrypted) : "", timeoutMs: server.timeoutMs };
+  // Keys saved before "Bearer " was added automatically are fixed here too.
+  return { url: decryptSecret(server.urlEncrypted), auth: server.authEncrypted ? authHeaderValue(decryptSecret(server.authEncrypted)) : "", timeoutMs: server.timeoutMs };
 }
 
 async function readLimited(res: Response): Promise<string> {
@@ -72,7 +73,13 @@ async function send(conn: Conn, method: string, params: unknown, notify = false)
     return null;
   }
   if (res.status >= 300 && res.status < 400) throw new McpError("The MCP server tried to redirect. Use its final address.");
-  if (res.status === 401 || res.status === 403) throw new McpError("The MCP server refused the connection (not authorised). Check the address or access key.");
+  if (res.status === 401 || res.status === 403) {
+    throw new McpError(
+      conn.auth
+        ? "The MCP server refused the access key. For a Make.com toolbox, use the toolbox's own key (not a Make MCP token), and check the address is the toolbox address from the same Make zone (e.g. eu2)."
+        : "The MCP server needs an access key. For a Make.com toolbox, paste the toolbox key in Access key.",
+    );
+  }
   const body = await readLimited(res);
   if (!res.ok) throw new McpError(`The MCP server answered with an error (${res.status}). ${body.slice(0, 200)}`.trim());
   const reply = readRpcReply(body, res.headers.get("content-type") ?? "", id);
