@@ -3,203 +3,201 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="Check, fix and test prompts for AI assistants, WhatsApp bots, voice agents and chatbots.">
+<meta name="description" content="Highlight what your prompt says. See what it forgets. A prompt checker for AI assistants, WhatsApp bots, voice agents and chatbots.">
 <title>PromptDoc</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: an app screen. Step 1 picks the prompt type, step 2 pairs the editor with a live report, then tabs for Improve / Test / Guide. */
+/* Layout: a white page with one idea. Every prompt section has its own highlighter colour; the score is a palette of those colours, and the Highlight view marks up the prompt itself. */
 :root{
   color-scheme:light;
-  --bg:#F5F6FA; --surface:#FFFFFF; --sunk:#EEF0F6; --ink:#12141C; --muted:#5C6275; --line:#DFE2EC;
-  --accent:#2B47D9; --accent-ink:#FFFFFF; --accent-soft:#E5E9FC;
-  --good:#17874C; --warn:#AD6A00; --bad:#C93838;
-  --f-display:"Sora", "Segoe UI", system-ui, sans-serif;
-  --f-body:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
-  --r:12px;
+  --bg:#FFFFFF; --soft:#F6F6F4; --ink:#141416; --muted:#74747C; --faint:#A9A9B0; --line:#ECECEE;
+  --btn:#141416; --btn-ink:#FFFFFF;
+  --good:#1E8A4F; --warn:#B76E00; --bad:#D23F36;
+  --hl-a:72%; --bar-a:100%;
+  --f-display:"Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --f-body:"Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"Geist Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0D0F15; --surface:#151821; --sunk:#10131A; --ink:#E8EAF1; --muted:#99A0B3; --line:#262A37;
-  --accent:#8097FF; --accent-ink:#0B1030; --accent-soft:#1D2446;
-  --good:#4CC17D; --warn:#E3A645; --bad:#F06A64; color-scheme:dark}}
+  --bg:#111113; --soft:#19191C; --ink:#EDEDEF; --muted:#9A9AA3; --faint:#5E5E66; --line:#26262A;
+  --btn:#EDEDEF; --btn-ink:#111113;
+  --good:#52C487; --warn:#E6A94A; --bad:#F2736B;
+  --hl-a:34%; --bar-a:80%; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#0D0F15; --surface:#151821; --sunk:#10131A; --ink:#E8EAF1; --muted:#99A0B3; --line:#262A37;
-  --accent:#8097FF; --accent-ink:#0B1030; --accent-soft:#1D2446;
-  --good:#4CC17D; --warn:#E3A645; --bad:#F06A64; color-scheme:dark}
+  --bg:#111113; --soft:#19191C; --ink:#EDEDEF; --muted:#9A9AA3; --faint:#5E5E66; --line:#26262A;
+  --btn:#EDEDEF; --btn-ink:#111113;
+  --good:#52C487; --warn:#E6A94A; --bad:#F2736B;
+  --hl-a:34%; --bar-a:80%; color-scheme:dark}
 
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
-.wrap{max-width:1200px;margin:0 auto;padding-block:20px 56px;
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-body);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1140px;margin:0 auto;padding-block:22px 64px;
   padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));
-  display:flex;flex-direction:column;gap:22px}
-h1,h2,h3{font-family:var(--f-display);margin:0;line-height:1.15;text-wrap:balance}
+  display:flex;flex-direction:column;gap:30px}
+h1,h2,h3{margin:0;font-weight:400;text-wrap:balance}
 p{margin:0}
-button{font-family:inherit}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.label{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:3px;border-radius:6px}
+.hl{background:color-mix(in srgb, var(--hl) var(--hl-a), transparent);border-radius:4px;padding:1px 3px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
 
-/* Top bar */
-.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding-bottom:18px;border-bottom:1px solid var(--line)}
-.logo{display:flex;align-items:center;gap:10px}
-.logo svg{width:34px;height:34px;flex:none}
-.logo b{font-family:var(--f-display);font-weight:800;font-size:24px;letter-spacing:-.02em}
-.logo b span{color:var(--accent)}
-.tagline{color:var(--muted);font-size:14px}
+/* Top */
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.mark{font:600 19px var(--f-body);letter-spacing:-.02em}
+.mark span{--hl:#FFE066;font-family:var(--f-display);font-weight:400;font-style:italic;font-size:23px;letter-spacing:0;padding:0 4px;margin-left:1px}
+.top small{color:var(--muted);font-size:13px}
 
-/* Step headings */
-.step{display:flex;align-items:baseline;gap:10px}
-.step .num{font-family:var(--f-mono);font-size:13px;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:1px 7px}
-.step h2{font-size:19px;font-weight:700}
+/* Hero: the sentence that picks the type */
+.hero{display:flex;flex-direction:column;gap:18px;padding-top:8px}
+.hero h1{font-family:var(--f-display);font-size:clamp(38px,6vw,64px);line-height:1.02;letter-spacing:-.01em}
+.hero h1 em{font-style:italic}
+.picker{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:15px;color:var(--muted)}
+.opt{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:7px 14px;cursor:pointer;color:var(--ink);font-weight:500;transition:border-color .15s, background .15s}
+.opt:hover{border-color:var(--ink)}
+.opt[aria-checked="true"]{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
 
-/* Type picker */
-.types{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-@media (max-width:900px){.types{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.type{display:flex;gap:12px;align-items:flex-start;text-align:left;cursor:pointer;background:var(--surface);color:var(--ink);border:1.5px solid var(--line);border-radius:var(--r);padding:14px}
-.type:hover{border-color:var(--accent)}
-.type[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft)}
-.type .ico{width:38px;height:38px;flex:none;border-radius:10px;display:grid;place-items:center;background:var(--sunk);color:var(--accent)}
-.type[aria-checked="true"] .ico{background:var(--accent);color:var(--accent-ink)}
-.type .ico svg{width:20px;height:20px}
-.type strong{display:block;font-size:15px}
-.type small{display:block;color:var(--muted);font-size:12.5px;line-height:1.4;margin-top:2px}
-@media (max-width:440px){.type{flex-direction:column;gap:8px}}
+/* Workspace */
+.work{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:40px;align-items:start}
+@media (max-width:900px){.work{grid-template-columns:minmax(0,1fr);gap:28px}}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.seg{display:inline-flex;background:var(--soft);border-radius:999px;padding:3px}
+.seg button{border:0;background:none;padding:5px 13px;border-radius:999px;cursor:pointer;font-size:13.5px;font-weight:500;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--bg);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.link{border:0;background:none;padding:5px 8px;cursor:pointer;font-size:13.5px;color:var(--muted);border-radius:6px}
+.link:hover{color:var(--ink);background:var(--soft)}
+.spacer{flex:1}
+.paper{border:1px solid var(--line);border-radius:16px;background:var(--bg);min-height:500px;display:flex;flex-direction:column;overflow:hidden}
+textarea{width:100%;flex:1;min-height:500px;resize:vertical;border:0;outline:none;background:transparent;color:var(--ink);font:13.5px/1.75 var(--f-mono);padding:20px 22px}
+textarea:focus-visible{outline:none}
+.paper:focus-within{border-color:var(--faint)}
+.map{padding:20px 22px;font:13.5px/1.9 var(--f-mono);white-space:pre-wrap;overflow-wrap:anywhere;max-height:680px;overflow:auto;cursor:text}
+.map .ln{min-height:1.9em}
+.map .h{font-weight:500}
+.map .none{color:var(--muted)}
+.meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--faint);font-family:var(--f-mono)}
 
-/* Workbench */
-.bench{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;align-items:start}
-@media (max-width:900px){.bench{grid-template-columns:minmax(0,1fr)}}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
-.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.pill{font-size:13px;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer}
-.pill:hover{border-color:var(--accent);color:var(--accent)}
-textarea, input[type="text"]{width:100%;font:14px/1.6 var(--f-mono);color:var(--ink);background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:14px}
-textarea{resize:vertical;min-height:460px}
-.meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
-.btn{font-weight:600;font-size:14px;border-radius:10px;padding:11px 18px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);display:inline-flex;align-items:center;gap:8px}
-.btn:hover{filter:brightness(1.08)}
+/* Score */
+.score{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.score b{font-family:var(--f-display);font-weight:400;font-size:112px;line-height:.82;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.score .of{display:flex;flex-direction:column;gap:4px;padding-bottom:6px}
+.score .of span{font-family:var(--f-display);font-style:italic;font-size:26px;line-height:1;color:var(--c)}
+.score .of small{color:var(--muted);font-size:13px}
+.lvl-good{--c:var(--good)} .lvl-warn{--c:var(--warn)} .lvl-bad{--c:var(--bad)}
+.palette{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px 10px}
+.sw{display:flex;flex-direction:column;gap:6px;min-width:0;border:0;background:none;padding:0;text-align:left;cursor:default}
+.sw .pill{height:30px;border-radius:8px;background:var(--soft);position:relative;overflow:hidden}
+.sw .pill i{position:absolute;inset:0 auto 0 0;width:0;background:color-mix(in srgb, var(--hl) var(--bar-a), transparent);transition:width .5s cubic-bezier(.2,.7,.2,1)}
+.sw .nm{font-size:12px;line-height:1.25;color:var(--ink);overflow-wrap:anywhere}
+.sw .nm em{font-style:normal;color:var(--faint);font-family:var(--f-mono);font-size:11px;margin-left:3px}
+@media (max-width:420px){.palette{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.src{font-size:12px;color:var(--faint);font-family:var(--f-mono)}
+.label{font-size:12px;font-weight:500;color:var(--muted);letter-spacing:.02em}
+.fixes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.fixes li{display:grid;grid-template-columns:12px minmax(0,1fr);gap:0 12px;padding:10px 0;border-top:1px solid var(--line)}
+.fixes li:first-child{border-top:0;padding-top:2px}
+.fixes .dot{width:12px;height:12px;border-radius:4px;background:color-mix(in srgb, var(--hl) var(--bar-a), transparent);margin-top:4px}
+.fixes b{font-weight:500}
+.fixes p{color:var(--muted);font-size:13.5px}
+.flags{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.flags li{font-size:13.5px;color:var(--ink);padding-left:16px;position:relative}
+.flags li::before{content:"";position:absolute;left:0;top:.6em;width:6px;height:6px;border-radius:50%;background:var(--warn)}
+.flags li.ok::before{background:var(--good)}
+.btn{border:1px solid var(--btn);background:var(--btn);color:var(--btn-ink);border-radius:999px;padding:11px 20px;font-weight:500;font-size:14.5px;cursor:pointer;display:inline-flex;gap:8px;align-items:center}
+.btn:hover{opacity:.88}
 .btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
-.btn.ghost:hover{border-color:var(--accent)}
-.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.btn.ghost:hover{border-color:var(--ink);opacity:1}
+.btn:disabled{opacity:.35;cursor:not-allowed}
 .note{font-size:13px;color:var(--muted)}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 
-/* Report */
-.summary{display:flex;gap:18px;align-items:center}
-.ring{width:118px;height:118px;flex:none;position:relative}
-.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
-.ring circle{fill:none;stroke-width:10}
-.ring .track{stroke:var(--sunk)}
-.ring .val{stroke:var(--c);stroke-linecap:round;transition:stroke-dashoffset .5s ease, stroke .3s}
-.ring .mid{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
-.ring .mid b{font-family:var(--f-display);font-size:34px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
-.ring .mid small{display:block;font-size:12px;color:var(--muted);margin-top:2px}
-.grade{display:inline-block;font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px;color:var(--c);background:color-mix(in srgb, var(--c) 13%, transparent)}
-.summary h3{font-size:18px;margin-top:6px}
-.summary p{color:var(--muted);font-size:13.5px;margin-top:4px}
-.src{font-size:12px;color:var(--muted);font-family:var(--f-mono)}
-.lvl-good{--c:var(--good)} .lvl-warn{--c:var(--warn)} .lvl-bad{--c:var(--bad)}
-
-.checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
-.check{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:2px 10px;padding:9px 0;border-top:1px solid var(--line)}
-.check:first-child{border-top:0}
-.dot{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--c);color:var(--surface);margin-top:1px}
-.dot svg{width:12px;height:12px}
-.check .nm{font-weight:600}
-.check .sc{font-family:var(--f-mono);font-size:13px;font-variant-numeric:tabular-nums;color:var(--muted)}
-.check .tip{grid-column:2 / 4;font-size:13px;color:var(--muted)}
-.check .tip b{color:var(--c);font-weight:600}
-.mini{grid-column:2 / 4;height:5px;border-radius:3px;background:var(--sunk);overflow:hidden;margin:3px 0 2px}
-.mini span{display:block;height:100%;background:var(--c);width:0;transition:width .45s ease}
-.flags{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
-.flags li{font-size:13.5px;padding:8px 12px;border-radius:8px;background:color-mix(in srgb, var(--warn) 11%, transparent);border:1px solid color-mix(in srgb, var(--warn) 30%, transparent)}
-.flags li.ok{background:color-mix(in srgb, var(--good) 11%, transparent);border-color:color-mix(in srgb, var(--good) 30%, transparent)}
-
-/* Tabs */
-.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
-.tab{background:none;border:0;border-bottom:2px solid transparent;padding:10px 14px;font-weight:600;font-size:14.5px;color:var(--muted);cursor:pointer;white-space:nowrap;margin-bottom:-1px}
-.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+/* Lower: Improve / Test / Guide */
+.lower{display:flex;flex-direction:column;gap:18px;border-top:1px solid var(--line);padding-top:26px}
+.tabs{display:flex;gap:22px;overflow-x:auto}
+.tab{border:0;background:none;padding:0 0 6px;cursor:pointer;font-family:var(--f-display);font-size:30px;line-height:1.1;color:var(--faint);white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);font-style:italic}
 .tab:hover{color:var(--ink)}
-.pane{padding-top:16px;display:flex;flex-direction:column;gap:12px}
-.chip{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:5px;background:var(--accent-soft);color:var(--accent)}
-.duo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.pane{display:flex;flex-direction:column;gap:14px}
+.tag{font-family:var(--f-mono);font-size:11px;padding:3px 8px;border-radius:999px;background:var(--soft);color:var(--muted)}
+#rx{min-height:320px;border:1px solid var(--line);border-radius:16px;flex:none}
+input[type="text"]{width:100%;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);font:14px var(--f-body);padding:12px 14px}
+input[type="text"]:focus-visible{outline:none;border-color:var(--ink)}
+.duo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 @media (max-width:760px){.duo{grid-template-columns:minmax(0,1fr)}}
-.out{border:1px solid var(--line);border-radius:10px;background:var(--sunk);padding:14px;display:flex;flex-direction:column;gap:8px;min-height:190px;min-width:0}
-.out header{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.out header b{font-family:var(--f-display);font-size:15px}
-.out pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.6 var(--f-body);max-height:440px;overflow:auto}
+.out{border-radius:16px;background:var(--soft);padding:18px;display:flex;flex-direction:column;gap:10px;min-height:200px;min-width:0}
+.out header{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.out header b{font-family:var(--f-display);font-weight:400;font-size:24px}
+.out header b em{font-style:italic}
+.out pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:14.5px/1.6 var(--f-body);max-height:440px;overflow:auto}
 .out .empty{color:var(--muted);font-size:13.5px}
-.bubble{align-self:flex-start;max-width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px 12px 12px 4px;padding:10px 12px}
-
-.guide{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
-@media (max-width:1050px){.guide{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:540px){.guide{grid-template-columns:minmax(0,1fr)}}
-.g{border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
-.g .n{font-family:var(--f-mono);font-size:12px;color:var(--accent);font-weight:600}
-.g h3{font-size:16px}
-.g p{font-size:13px;color:var(--muted)}
-.ex{font:12.5px/1.5 var(--f-mono);padding:8px 10px;border-radius:8px;background:var(--sunk);overflow-wrap:anywhere}
-.ex i{font-style:normal;display:block;font-family:var(--f-body);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px}
-.ex.weak i{color:var(--bad)} .ex.strong i{color:var(--good)}
-footer{font-size:12.5px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--line)}
+.bubble{background:var(--bg);border-radius:14px 14px 14px 4px;padding:12px 14px;align-self:flex-start;max-width:100%}
+.guide{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:26px 28px}
+.g{display:flex;flex-direction:column;gap:8px;min-width:0}
+.g .n{font-family:var(--f-mono);font-size:11.5px;color:var(--faint)}
+.g h3{font-family:var(--f-display);font-size:26px;line-height:1.1}
+.g p{font-size:13.5px;color:var(--muted)}
+.ex{font:12.5px/1.55 var(--f-mono);overflow-wrap:anywhere}
+.ex i{font:500 11px var(--f-body);font-style:normal;display:block;margin-bottom:1px}
+.ex.weak{color:var(--muted)} .ex.weak i{color:var(--bad)}
+.ex.strong i{color:var(--good)}
+footer{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--faint);border-top:1px solid var(--line);padding-top:16px}
+@media (prefers-reduced-motion:reduce){.sw .pill i{transition:none}}
+@media (max-width:600px){.paper,textarea{min-height:320px}}
 </style>
 
 </head>
 <body>
 <div class="wrap">
-  <div class="top">
-    <div class="logo">
-      <svg viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="9" fill="var(--accent)"/><path d="M11 9h8l5 5v11a1 1 0 0 1-1 1H11a1 1 0 0 1-1-1V10a1 1 0 0 1 1-1z" fill="none" stroke="var(--accent-ink)" stroke-width="1.8" stroke-linejoin="round"/><path d="M13.5 19l2.3 2.3 4.7-4.8" fill="none" stroke="var(--accent-ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <b>Prompt<span>Doc</span></b>
-    </div>
-    <span class="tagline">Check, fix and test prompts for AI assistants, WhatsApp bots, voice agents and chatbots.</span>
-  </div>
+  <header class="top">
+    <div class="mark">prompt<span class="hl">doc</span></div>
+    <small>Highlight what your prompt says. See what it forgets.</small>
+  </header>
 
-  <section style="display:flex;flex-direction:column;gap:12px" aria-labelledby="s1">
-    <div class="step"><span class="num">1</span><h2 id="s1">What is this prompt for?</h2></div>
-    <div class="types" role="radiogroup" aria-labelledby="s1" id="types"></div>
+  <section class="hero" aria-labelledby="h1">
+    <h1 id="h1">Is your prompt <em>ready?</em></h1>
+    <div class="picker" role="radiogroup" aria-label="Prompt type" id="types"><span>Check my</span></div>
   </section>
 
-  <section style="display:flex;flex-direction:column;gap:12px" aria-labelledby="s2">
-    <div class="step"><span class="num">2</span><h2 id="s2">Paste your prompt and read the report</h2></div>
-    <div class="bench">
-      <div class="card">
-        <div class="toolbar">
-          <span class="label" style="margin-right:auto">Your prompt</span>
-          <button class="pill" id="load-weak">Weak example</button>
-          <button class="pill" id="load-starter">Starter template</button>
-          <button class="pill" id="clear">Clear</button>
+  <section class="work">
+    <div class="col">
+      <div class="bar">
+        <div class="seg" role="group" aria-label="View">
+          <button id="v-write" aria-pressed="true">Write</button>
+          <button id="v-map" aria-pressed="false">Highlight</button>
         </div>
-        <label for="prompt" class="label" hidden>Your prompt</label>
-        <textarea id="prompt" spellcheck="false" aria-label="Your prompt"></textarea>
-        <div class="meta"><span id="count">0 words</span><span>The report updates as you type</span></div>
-        <div class="row">
-          <button class="btn" id="ask"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1l1.7 4.3L14 7l-4.3 1.7L8 13l-1.7-4.3L2 7l4.3-1.7z" fill="currentColor"/></svg>Check with AI</button>
-          <span class="note" id="ask-note" aria-live="polite"></span>
-        </div>
+        <span class="spacer"></span>
+        <button class="link" id="load-weak">Weak example</button>
+        <button class="link" id="load-starter">Starter template</button>
+        <button class="link" id="clear">Clear</button>
       </div>
+      <div class="paper">
+        <textarea id="prompt" spellcheck="false" aria-label="Your prompt" placeholder="Paste a prompt here…"></textarea>
+        <div class="map" id="map" hidden tabindex="0" aria-label="Your prompt, highlighted by section"></div>
+      </div>
+      <div class="meta"><span id="count">0 words</span><span id="map-hint">Switch to Highlight to see each section in colour</span></div>
+    </div>
 
-      <div class="card" aria-live="polite">
-        <div class="summary" id="summary-box">
-          <div class="ring" id="ring">
-            <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="track" cx="60" cy="60" r="52"/><circle class="val" id="ring-val" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="326.7"/></svg>
-            <div class="mid"><div><b id="score">0</b><small>out of 100</small></div></div>
-          </div>
-          <div style="min-width:0">
-            <span class="grade" id="grade">Needs work</span>
-            <h3 id="verdict">Report</h3>
-            <p id="src" class="src">Quick check · runs in your browser</p>
-          </div>
-        </div>
-        <ul class="checks" id="checks"></ul>
-        <div class="label">Flags</div>
-        <ul class="flags" id="flags"></ul>
+    <div class="col" aria-live="polite">
+      <div class="score lvl-bad" id="score-box">
+        <b id="score">0</b>
+        <div class="of"><span id="grade">Weak</span><small id="verdict">out of 100</small></div>
       </div>
+      <div class="palette" id="palette"></div>
+      <p class="src" id="src"></p>
+      <div class="row">
+        <button class="btn" id="ask"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1l1.7 4.3L14 7l-4.3 1.7L8 13l-1.7-4.3L2 7l4.3-1.7z" fill="currentColor"/></svg>Check with AI</button>
+        <span class="note" id="ask-note" aria-live="polite"></span>
+      </div>
+      <div class="label">Fix next</div>
+      <ul class="fixes" id="fixes"></ul>
+      <div class="label">Flags</div>
+      <ul class="flags" id="flags"></ul>
     </div>
   </section>
 
-  <section class="card" aria-label="Improve, test and learn">
+  <section class="lower" aria-label="Improve, test and learn">
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" id="t-improve" aria-controls="p-improve" aria-selected="true">Improve</button>
       <button class="tab" role="tab" id="t-test" aria-controls="p-test" aria-selected="false">Test it</button>
@@ -208,18 +206,18 @@ footer{font-size:12.5px;color:var(--muted);display:flex;justify-content:space-be
 
     <div class="pane" role="tabpanel" id="p-improve" aria-labelledby="t-improve">
       <div class="row" style="justify-content:space-between">
-        <div class="row"><b id="rx-title" style="font-family:var(--f-display)">Improved prompt</b><span class="chip" id="rx-tag">Template</span></div>
+        <div class="row"><span class="tag" id="rx-tag">Template</span><span class="note" id="rx-note"></span></div>
         <div class="row">
           <button class="btn ghost" id="copy">Copy</button>
           <button class="btn ghost" id="use">Check this version</button>
         </div>
       </div>
-      <p class="note" id="rx-note">Fill in the [brackets]. For a full rewrite, press Check with AI.</p>
-      <textarea id="rx" spellcheck="false" aria-label="Improved prompt" style="min-height:300px"></textarea>
+      <textarea id="rx" spellcheck="false" aria-label="Improved prompt"></textarea>
+      <div class="row"><span class="note">Score after the fix:</span><span class="tag" id="after-score">–</span><span class="note">Before:</span><span class="tag" id="before-score">–</span></div>
     </div>
 
     <div class="pane" role="tabpanel" id="p-test" aria-labelledby="t-test" hidden>
-      <p class="note" id="test-intro">Run your original prompt and the improved one side by side.</p>
+      <p class="note" id="test-intro"></p>
       <div id="test-msg-wrap" style="display:flex;flex-direction:column;gap:6px">
         <label for="test-msg" class="label" id="test-msg-label">Test message</label>
         <input type="text" id="test-msg">
@@ -230,13 +228,13 @@ footer{font-size:12.5px;color:var(--muted);display:flex;justify-content:space-be
         <span class="note" id="run-note" aria-live="polite"></span>
       </div>
       <div class="duo">
-        <div class="out"><header><b>Original</b><span class="chip" id="before-score">–</span></header><pre id="out-before"><span class="empty">The original prompt's reply appears here.</span></pre></div>
-        <div class="out"><header><b>Improved</b><span class="chip" id="after-score">–</span></header><pre id="out-after"><span class="empty">The improved prompt's reply appears here.</span></pre></div>
+        <div class="out"><header><b>Original</b></header><pre id="out-before"><span class="empty">The original prompt's reply appears here.</span></pre></div>
+        <div class="out"><header><b><em>Improved</em></b></header><pre id="out-after"><span class="empty">The improved prompt's reply appears here.</span></pre></div>
       </div>
     </div>
 
     <div class="pane" role="tabpanel" id="p-guide" aria-labelledby="t-guide" hidden>
-      <p class="note" id="guide-intro"></p>
+      <p class="note" id="guide-intro" style="max-width:70ch"></p>
       <div class="guide" id="guide"></div>
     </div>
   </section>
@@ -268,18 +266,6 @@ const vars = t => {
     + (tools >= 2 ? 2 : 0) + (/\b(call|use|trigger|run)\s+`?[a-z]+_[a-z_]+/i.test(t) ? 2 : 0);
 };
 const nevers = t => Math.min(3, (t.match(/\b(NEVER|ALWAYS|ONLY)\b/g) || []).length / 3);
-
-const ICONS = {
-  general: '<svg viewBox="0 0 20 20"><path d="M10 2l1.9 5.1L17 9l-5.1 1.9L10 16l-1.9-5.1L3 9l5.1-1.9z" fill="currentColor"/></svg>',
-  whatsapp: '<svg viewBox="0 0 20 20"><path d="M10 2.5a7.5 7.5 0 0 0-6.5 11.2L2.5 17.5l3.9-1A7.5 7.5 0 1 0 10 2.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7 8.2c.3 1.9 2 3.8 4.6 4.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
-  voice: '<svg viewBox="0 0 20 20"><rect x="7" y="2.5" width="6" height="10" rx="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M4.5 9.5a5.5 5.5 0 0 0 11 0M10 15v2.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
-  chatbot: '<svg viewBox="0 0 20 20"><rect x="2.5" y="3.5" width="15" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M7 17.5l3-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="7.5" cy="9" r="1.1" fill="currentColor"/><circle cx="12.5" cy="9" r="1.1" fill="currentColor"/></svg>'
-};
-const DOT = {
-  good: '<svg viewBox="0 0 12 12"><path d="M2.5 6.2l2.3 2.3 4.7-4.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  warn: '<svg viewBox="0 0 12 12"><path d="M6 2.5v4.2M6 9.2v.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-  bad:  '<svg viewBox="0 0 12 12"><path d="M3.3 3.3l5.4 5.4M8.7 3.3l-5.4 5.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
-};
 
 /* ================= Prompt types ================= */
 const TYPES = {
@@ -716,37 +702,142 @@ function gradeFor(n){
   return ["Weak", "bad", "The AI will have to guess most things."];
 }
 
+/* ================= Highlighter colours and section detection ================= */
+const HL = ["#FFE066","#FFB3D1","#9EDCFF","#CDB9FF","#A6EB9E","#FFC28F","#8EEADA","#E2F28A","#B8CBFF","#FF9F99"];
+const SHORT = {identity:"Identity", role:"Role", personality:"Personality", context:"Context", knowledge:"Knowledge", tools:"Tools",
+  rules:"Rules", speech:"Speech", format:"Format", flow:"Flow", edge:"Edge cases", objections:"Objections", faq:"FAQs",
+  guard:"Guardrails", task:"Task", output:"Output"};
+const SECT = {
+  identity:{head:/\b(role|identity|who you are)\b/i, kw:/\b(you are|you're|your name is|on behalf of|act as)\b/i},
+  role:{head:/\brole\b/i, kw:ROLE},
+  personality:{head:/\b(personality|tone)\b/i, kw:/\b(warm|friendly|curious|fillers?|apolog\w*|cheerful|patient|robotic|pushy|confident)\b/i},
+  context:{head:/\b(context|industry|background|website|audience)\b/i, kw:/\b(pain points?|industry|audience|because|the goal|goal is|we (host|run|sell|are|have)|our (company|business|audience|event|community))\b/i},
+  knowledge:{head:/\b(knowledge|products|prices|menu|scope|about)\b/i, kw:/(₦|\bprices?\b|\bhours\b|\bdelivery\b|\bhelp articles?\b|\bfaqs?\b|\bopen\b|\bpayment\b)/i},
+  tools:{head:/\b(tools|variables?|variable strings)\b/i, kw:/\{\{|\b[a-z]+_[a-z_]+\b/},
+  rules:{head:/\b(conversation rules|message rules|response rules|question|rules)\b/i, kw:/\b(one question|at a time|sentences|per message|under \d+ words|\d+ words)\b/i},
+  speech:{head:/\b(speech|pronunciation|date|time|email)\b/i, kw:/\b(12-hour|24-hour|spell|letter by letter|dot com|in words|pronounc\w*)\b/i},
+  format:{head:/\b(formatting|format)\b/i, kw:/\b(bold|emojis?|tables?|headings?|markdown|numbered steps)\b/i},
+  flow:{head:/\b(call flow|conversation flow|flow|phase|steps|booking|reschedule|cancel|goal|opening|close)\b/i, kw:/\b(phase \d|step \d)\b|^\s*\d+[.)]\s/i},
+  edge:{head:/\b(silence|edge|wrong|monologue|delay|tool execution)\b/i, kw:/\b(silence|wrong number|still there|voicemail|voice notes?|off.?topic|angry|unclear|lost you)\b/i},
+  objections:{head:/\b(objections?|reactions)\b/i, kw:/^\s*["“].+["”]\s*(→|->)/},
+  faq:{head:/\b(faqs?|objections?|common questions)\b/i, kw:/^\s*["“].+["”]\s*(→|->)/},
+  guard:{head:/\b(guardrails?)\b/i, kw:/^\s*[-*•]?\s*(NEVER|ALWAYS|ONLY)\b/},
+  task:{head:/\b(task|goal)\b/i, kw:VERB},
+  output:{head:/\b(output|format)\b/i, kw:/\b(format|bullets?|versions?|\d+\s*(words|options|ideas|lines))\b/i},
+};
+const HEAD_ORDER = ["edge","objections","faq","speech","format","tools","identity","role","personality","flow","rules","knowledge","context","guard","task","output"];
+
+function colourOf(id){ const i = T().checks.findIndex(c => c.id === id); return i < 0 ? null : HL[i % HL.length]; }
+function idsInType(){ return HEAD_ORDER.filter(id => T().checks.some(c => c.id === id)); }
+function sectionForHeading(text){ return idsInType().find(id => SECT[id].head.test(text)) || null; }
+function sectionForText(text){
+  const ids = T().checks.map(c => c.id);
+  return ids.find(id => SECT[id] && SECT[id].kw.test(text)) || null;
+}
+
+/* Split the prompt into lines, each tagged with the section it belongs to. */
+function mapPrompt(text){
+  const out = [];
+  let cur = null;
+  for (const raw of text.split("\n")){
+    const md = raw.match(/^\s*(#{1,6})\s+(.*)$/);
+    const label = !md && raw.match(/^\s*\**([A-Z][A-Za-z &/]{1,30})\**\s*:\s*(.*)$/);
+    if (md){
+      const id = sectionForHeading(md[2]);
+      if (id) cur = id; else if (md[1].length === 1) cur = null;
+      out.push({text: raw, id: id || cur, head: true});
+      continue;
+    }
+    if (label){
+      const id = sectionForHeading(label[1]);
+      if (id) cur = id;
+      out.push({text: raw, id: id || cur, head: false});
+      continue;
+    }
+    if (!raw.trim()){ out.push({text: "", id: null}); continue; }
+    if (cur){ out.push({text: raw, id: cur}); continue; }
+    const parts = raw.split(/(?<=[.!?])\s+/);
+    out.push({text: raw, parts: parts.map(p => ({text: p, id: sectionForText(p)}))});
+  }
+  return out;
+}
+
+function renderMap(){
+  const box = $("#map"); box.replaceChildren();
+  const text = promptEl.value;
+  if (!text.trim()){ const d = document.createElement("div"); d.className = "none"; d.textContent = "Paste a prompt, then come back to see it highlighted."; box.append(d); return; }
+  for (const ln of mapPrompt(text)){
+    const div = document.createElement("div"); div.className = "ln";
+    const piece = (t, id, head) => {
+      const s = document.createElement("span");
+      s.textContent = t;
+      const c = id && colourOf(id);
+      if (c){ s.className = "hl" + (head ? " h" : ""); s.style.setProperty("--hl", c); s.title = SHORT[id] || id; }
+      else if (head) s.className = "h";
+      return s;
+    };
+    if (ln.parts) ln.parts.forEach((p, i) => { div.append(piece(p.text, p.id, false)); if (i < ln.parts.length - 1) div.append(" "); });
+    else div.append(piece(ln.text, ln.id, ln.head));
+    box.append(div);
+  }
+}
+
+let view = "write";
+function setView(v){
+  view = v;
+  $("#v-write").setAttribute("aria-pressed", String(v === "write"));
+  $("#v-map").setAttribute("aria-pressed", String(v === "map"));
+  promptEl.hidden = v !== "write";
+  $("#map").hidden = v !== "map";
+  $("#map-hint").textContent = v === "map" ? "Click the text to edit" : "Switch to Highlight to see each section in colour";
+  if (v === "map") renderMap(); else promptEl.focus();
+}
+$("#v-write").addEventListener("click", () => setView("write"));
+$("#v-map").addEventListener("click", () => setView("map"));
+$("#map").addEventListener("click", () => setView("write"));
+
 /* ================= Rendering ================= */
 function renderReport(res){
   const n = total(res);
-  const [g, l, verdict] = gradeFor(n);
+  const [g, l] = gradeFor(n);
   $("#score").textContent = n;
-  $("#ring").className = "ring lvl-" + l;
-  $("#ring-val").style.strokeDashoffset = String(326.7 * (1 - n / 100));
-  const gr = $("#grade"); gr.textContent = g; gr.className = "grade lvl-" + l;
-  $("#verdict").textContent = `${T().label} prompt · ${verdict}`;
-  $("#src").textContent = res.source === "ai" ? "Checked with AI · read for meaning" : `Quick check · ${T().checks.length} checks · runs in your browser`;
+  $("#score-box").className = "score lvl-" + l;
+  $("#grade").textContent = g;
+  $("#verdict").textContent = `out of 100 · ${T().label.toLowerCase()} prompt`;
+  $("#src").textContent = res.source === "ai" ? "Checked with AI, read for meaning." : `Quick check of ${T().checks.length} sections, run in your browser.`;
 
-  const ul = $("#checks"); ul.replaceChildren();
-  for (const c of T().checks){
+  const pal = $("#palette"); pal.replaceChildren();
+  T().checks.forEach((c, i) => {
     const r = res.vitals[c.id] || {score:0, finding:"", fix:""};
-    const sc = c10(Number(r.score) || 0), L = lvl(sc);
-    const li = document.createElement("li"); li.className = "check lvl-" + L;
-    const dot = document.createElement("span"); dot.className = "dot"; dot.innerHTML = DOT[L]; dot.setAttribute("aria-hidden","true");
-    const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = c.name;
-    const s = document.createElement("span"); s.className = "sc"; s.textContent = `${sc}/10`;
-    const mini = document.createElement("div"); mini.className = "mini"; const fill = document.createElement("span"); mini.append(fill);
-    const tip = document.createElement("p"); tip.className = "tip";
-    const b = document.createElement("b"); b.textContent = r.finding || "";
-    tip.append(b, document.createTextNode(r.fix ? " " + r.fix : ""));
-    li.append(dot, nm, s, mini, tip);
-    ul.append(li);
+    const sc = c10(Number(r.score) || 0);
+    const d = document.createElement("div"); d.className = "sw"; d.style.setProperty("--hl", HL[i % HL.length]);
+    d.title = `${c.name}: ${sc}/10. ${r.finding || ""} ${r.fix || ""}`.trim();
+    const pill = document.createElement("span"); pill.className = "pill"; const fill = document.createElement("i"); pill.append(fill);
+    const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = SHORT[c.id] || c.name;
+    const em = document.createElement("em"); em.textContent = sc; nm.append(em);
+    d.append(pill, nm); pal.append(d);
     requestAnimationFrame(() => { fill.style.width = (sc * 10) + "%"; });
+  });
+
+  const fx = $("#fixes"); fx.replaceChildren();
+  const todo = T().checks.map((c, i) => ({c, i, r: res.vitals[c.id] || {score:0}}))
+    .filter(x => c10(Number(x.r.score) || 0) < 8)
+    .sort((a, b) => (a.r.score || 0) - (b.r.score || 0)).slice(0, 5);
+  if (!todo.length){ const li = document.createElement("li"); li.innerHTML = '<span class="dot" style="--hl:#A6EB9E"></span><div><b>Every section is in place.</b></div>'; fx.append(li); }
+  for (const {c, i, r} of todo){
+    const li = document.createElement("li");
+    const dot = document.createElement("span"); dot.className = "dot"; dot.style.setProperty("--hl", HL[i % HL.length]);
+    const body = document.createElement("div");
+    const b = document.createElement("b"); b.textContent = c.name;
+    const p = document.createElement("p"); p.textContent = r.fix || c.tip;
+    body.append(b, p); li.append(dot, body); fx.append(li);
   }
+
   const fl = $("#flags"); fl.replaceChildren();
-  const list = (res.flags || []).filter(Boolean).slice(0, 6);
-  if (!list.length){ const li = document.createElement("li"); li.className = "ok"; li.textContent = "No flags. Nice work."; fl.append(li); }
+  const list = (res.flags || []).filter(Boolean).slice(0, 5);
+  if (!list.length){ const li = document.createElement("li"); li.className = "ok"; li.textContent = "Nothing flagged."; fl.append(li); }
   else for (const f of list){ const li = document.createElement("li"); li.textContent = String(f); fl.append(li); }
+  if (view === "map") renderMap();
 }
 
 /* Template: if the prompt is already sectioned, append the missing sections; otherwise wrap it in the full structure. */
@@ -780,22 +871,19 @@ function refresh(){
   if (!rxFromAI){
     rxEl.value = templateFor(text, current);
     $("#rx-tag").textContent = "Template";
-    $("#rx-note").textContent = "Missing sections are added in the right order. Fill in the [brackets], or press Check with AI for a full rewrite.";
+    $("#rx-note").textContent = "Missing sections added in order. Fill in the [brackets], or use Check with AI for a full rewrite.";
   }
   scoresLine();
 }
 
 function renderTypes(){
-  const box = $("#types"); box.replaceChildren();
+  const box = $("#types");
+  box.querySelectorAll(".opt").forEach(b => b.remove());
   for (const [id, t] of Object.entries(TYPES)){
     const b = document.createElement("button");
-    b.className = "type"; b.setAttribute("role","radio"); b.setAttribute("aria-checked", String(id === typeId)); b.dataset.id = id;
+    b.className = "opt"; b.setAttribute("role","radio"); b.setAttribute("aria-checked", String(id === typeId)); b.dataset.id = id;
     b.tabIndex = id === typeId ? 0 : -1;
-    const ico = document.createElement("span"); ico.className = "ico"; ico.innerHTML = ICONS[id]; ico.setAttribute("aria-hidden","true");
-    const txt = document.createElement("span");
-    const s = document.createElement("strong"); s.textContent = t.label;
-    const sm = document.createElement("small"); sm.textContent = t.blurb;
-    txt.append(s, sm); b.append(ico, txt);
+    b.textContent = t.label; b.title = t.blurb;
     b.addEventListener("click", () => selectType(id, true));
     b.addEventListener("keydown", e => {
       const ids = Object.keys(TYPES); let i = ids.indexOf(typeId);
@@ -811,14 +899,14 @@ function renderTypes(){
 function renderGuide(){
   const t = T();
   $("#guide-intro").textContent = typeId === "general"
-    ? "The five checks for an everyday prompt. Work through them in order."
-    : `The ${t.checks.length} sections of a production-ready ${t.label.toLowerCase()} prompt, in order. Give each section a heading, write every edge case down, and use numbers instead of adjectives ("2 to 4 sentences", "after 7 seconds").`;
+    ? "The five parts of an everyday prompt, in order."
+    : `The ${t.checks.length} sections of a production-ready ${t.label.toLowerCase()} prompt, in order. Give each one a heading, write every edge case down, and use numbers instead of adjectives: "2 to 4 sentences", "after 7 seconds".`;
   const g = $("#guide"); g.replaceChildren();
   t.checks.forEach((c, i) => {
     const el = document.createElement("article"); el.className = "g";
-    el.innerHTML = '<span class="n"></span><h3></h3><p></p><div class="ex weak"><i>Weak</i><span></span></div><div class="ex strong"><i>Strong</i><span></span></div>';
+    el.innerHTML = '<span class="n"></span><h3><span class="hl"></span></h3><p></p><div class="ex weak"><i>Weak</i><span></span></div><div class="ex strong"><i>Strong</i><span></span></div>';
     el.querySelector(".n").textContent = String(i + 1).padStart(2, "0");
-    el.querySelector("h3").textContent = c.name;
+    const h = el.querySelector("h3 .hl"); h.textContent = c.name; h.style.setProperty("--hl", HL[i % HL.length]);
     el.querySelector("p").textContent = `${c.q} ${c.tip}`;
     el.querySelector(".weak span").textContent = c.weak;
     el.querySelector(".strong span").textContent = c.strong;
@@ -831,7 +919,7 @@ function renderTest(){
   $("#test-msg-wrap").hidden = !t;
   if (t){ $("#test-msg-label").textContent = t.label; $("#test-msg").value = t.value; }
   $("#test-intro").textContent = t
-    ? "Both prompts get the same message. See how each one replies."
+    ? "Both prompts get the same message. Compare the replies."
     : "Run your original prompt and the improved one side by side. Same AI, same moment.";
   $("#out-before").innerHTML = '<span class="empty">The original prompt\'s reply appears here.</span>';
   $("#out-after").innerHTML = '<span class="empty">The improved prompt\'s reply appears here.</span>';
