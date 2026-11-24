@@ -42,8 +42,14 @@ export default async function VoicesPage() {
           </p>
         )}
       </div>
-      <VoiceLibrary usedBy={usedBy} workspaceVoices={workspaceVoices} canEdit={canEdit} fishConnected={fishConnected} yarngptConnected={yarngptConnected} />
-      <VoiceBank configured={fishConnected} canEdit={canEdit} addedIds={orderVoices(workspaceVoices).filter((v) => v.provider === "fish_audio").map((v) => v.providerVoiceId)} />
+      <VoiceLibrary
+        usedBy={usedBy}
+        workspaceVoices={workspaceVoices}
+        canEdit={canEdit}
+        fishConnected={fishConnected}
+        yarngptConnected={yarngptConnected}
+        fishBank={<VoiceBank configured={fishConnected} canEdit={canEdit} addedIds={orderVoices(workspaceVoices).filter((v) => v.provider === "fish_audio").map((v) => v.providerVoiceId)} />}
+      />
     </div>
   );
 }

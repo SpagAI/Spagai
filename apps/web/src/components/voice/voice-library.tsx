@@ -3,7 +3,7 @@
 import { LANGUAGE_NAMES, orderVoices, VOICE_CATEGORIES, VOICE_PROVIDERS, type Voice } from "@spagai/core";
 import { Info, Pause, Play, Search, Trash2, X } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { removeBankVoice } from "@/app/(app)/voices/actions";
 import { Alert } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
@@ -54,9 +54,11 @@ export interface VoiceLibraryProps {
   fishConnected: boolean;
   /** True when real YarnGPT speech is switched on. */
   yarngptConnected?: boolean;
+  /** The Fish Audio voice bank (search and add voices). Shown only on the Fish Audio tab: it adds Fish Audio voices only. */
+  fishBank?: ReactNode;
 }
 
-export function VoiceLibrary({ usedBy, workspaceVoices, canEdit, fishConnected, yarngptConnected = false }: VoiceLibraryProps) {
+export function VoiceLibrary({ usedBy, workspaceVoices, canEdit, fishConnected, yarngptConnected = false, fishBank }: VoiceLibraryProps) {
   const realNames = [fishConnected && "Fish Audio", yarngptConnected && "YarnGPT"].filter(Boolean).join(" and ");
   const speaker = useSpeaker();
   const allVoices = useMemo(() => orderVoices(workspaceVoices), [workspaceVoices]);
@@ -255,6 +257,8 @@ export function VoiceLibrary({ usedBy, workspaceVoices, canEdit, fishConnected, 
           ? `${realNames} voices are real voices. The other voices in this demo use your browser's built-in speech, so they show timing and wording, not the final voice quality.`
           : "Previews in this demo use your browser's built-in speech, so they show timing and wording, not the final voice quality."}
       </p>
+
+      {provider === "fish_audio" && fishBank}
     </div>
   );
 }
