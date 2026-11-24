@@ -6,7 +6,9 @@ A platform where businesses in Nigeria and Africa build and run AI voice agents,
 
 > **Status: prototype skeleton.** Everything runs locally with **mock** providers. No paid API keys are needed. Nothing here is legal advice. All regulatory text is a draft that **needs legal review**.
 
-## What works today (Milestones 1 to 5)
+## What works today
+
+Decision numbers (D…) point to [docs/DECISIONS.md](docs/DECISIONS.md), which says how and why each part was built. Plans not built yet are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 | Area | Where | Status |
 |---|---|---|
@@ -26,7 +28,22 @@ A platform where businesses in Nigeria and Africa build and run AI voice agents,
 | Calls log with transcripts and block reasons; dashboard totals | `apps/web/src/app/(app)/calls`, `dashboard` | Done |
 | Billing: prepaid naira wallet, per-minute call charges, pretend checkout, Paystack ready (verify + signed webhook) | `apps/web/src/app/(app)/billing`, `apps/web/src/server/wallet.ts`, `packages/core/src/billing` | Done + tests |
 | Voice worker starter (Python, FastAPI) and its secure link to the web app | `services/voice-worker`, `apps/web/src/app/api/voice` | Starter (not yet run: see its README) |
-| Real phone calls, Nigerian numbers, real voices | — | Needs accounts: see `docs/DEVELOPER_HANDOFF.md` |
+| Platform pages: workspaces, phone numbers, integrations, API keys (hashed and encrypted, reveal is audited) | `apps/web/src/app/(app)/numbers`, `integrations`, `api-keys` | Demo data (D88 to D92) |
+| Look and feel: Day and Night themes, purple only for buttons, instant page loads with the Spag logo animation | `apps/web/src/lib/theme.ts` | Done (D94 to D96) |
+| Home: chat with Zara to build an agent (Plan mode or Build mode) | `apps/web/src/app/(app)/home`, `apps/web/src/lib/zara.ts` | Done, rule-based demo (D101) |
+| Public demo site on Cloudflare Workers with a Neon database; one-click demo workspace | `apps/web/scripts/cloudflare-build.mjs`, `apps/web/wrangler.jsonc` | Live (D102 to D110) |
+| Real voices from Fish Audio: voice bank, samples, add voices to a workspace, daily cost guard | `apps/web/src/server/voices.ts`, `apps/web/src/lib/voice-bank.ts` | Live (D111 to D117, D135, D137) |
+| Agent Builder, redesigned: tabs, one prompt box (up to 50,000 characters), voice settings, autosave, undo, version history, inbound and outbound agents | `apps/web/src/components/agent-builder`, `apps/web/src/app/(app)/agents` | Done (D119 to D134, D139) |
+| Test your agent: talk to it hands-free with a real AI brain (Groq) and server-side listening (Whisper); knows today's date | `apps/web/src/server/speech-to-text.ts`, `apps/web/src/server/providers` | Live (D123 to D125, D131, D136, D138, D150, D151) |
+| Variables tab and sample values for a quick first test | `apps/web/src/lib/sample-values.ts` | Done (D148, D149, D152) |
+| Tools: the workspace's own actions sent to a webhook; create and edit them from the agent; End call by default; "Insert tool" in the prompt | `apps/web/src/app/(app)/tools`, `apps/web/src/server/custom-tools.ts` | Done (D140 to D147, D153, D155); built-in tools off for now (D141) |
+| MCP servers (e.g. Make.com) as a second source of tools: connect, allow tools, test them, keys sent as Bearer tokens | `apps/web/src/server/mcp-client.ts`, `apps/web/src/lib/mcp.ts` | Done (D158 to D162, D169, D170) |
+| Publish button in the Agent Builder | `apps/web/src/components/agent-builder` | Done (D156) |
+| Usage: what testing uses at Groq and Fish Audio and roughly what it costs (nothing is charged); part of Billing | `apps/web/src/server/usage.ts`, `apps/web/src/lib/usage-pricing.ts` | Done (D157, D161, D164) |
+| Knowledge base: write text, upload files (PDF, Word, text, CSV) or read a website; searched and used in every reply | `apps/web/src/app/(app)/knowledge`, `apps/web/src/server/knowledge.ts` | Done (D166 to D168) |
+| SIP trunk: connect a phone line from any provider (Africa's Talking, Twilio, Vonage, Telnyx, Plivo, others) | `apps/web/src/server/telephony.ts`, `apps/web/src/lib/sip-providers.ts` | Shell; the live audio part is not chosen yet (D165) |
+| Ship bell: a chime on your computer when an update goes live, and `/api/version` to see which update is live | `apps/web/src/app/ship-bell`, `apps/web/src/app/api/version` | Live (D132, D154) |
+| Real phone calls and Nigerian numbers | — | Needs accounts and a phone system: see `docs/DEVELOPER_HANDOFF.md` and `docs/ROADMAP.md` |
 
 ## How to run it
 
@@ -34,7 +51,7 @@ A platform where businesses in Nigeria and Africa build and run AI voice agents,
 
 Codespaces runs the whole project on a GitHub computer, and you use it in your browser.
 
-1. Click **[Open Spag AI Studio in Codespaces](https://codespaces.new/SpagAI/Spagai/tree/claude/hello-l9zr41?quickstart=1)** (sign in to GitHub if asked).
+1. Click **[Open Spag AI Studio in Codespaces](https://codespaces.new/SpagAI/Spagai/tree/main?quickstart=1)** (sign in to GitHub if asked).
 2. Click **Create new codespace**. The first start takes about 3 to 5 minutes. It sets everything up: database, packages, tables and demo data.
 3. When the terminal at the bottom says **Ready**, a browser tab opens with the app. If it does not, open the **Ports** tab and click the globe icon next to **Spag AI Studio (3000)**.
 4. Sign in with `demo@spagai.local`, click **Email me a sign-in link**, then **Open my sign-in link**, then **Sign in**.
@@ -192,6 +209,8 @@ docker-compose.yml    Local database and fake email inbox
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): how the pieces fit together
 - [docs/DECISIONS.md](docs/DECISIONS.md): every choice made, and why
+- [docs/ROADMAP.md](docs/ROADMAP.md): what is planned but not built yet
+- [CLAUDE.md](CLAUDE.md): working rules every Claude session reads first (keep the docs updated, push often, shipping means `main`)
 - [docs/COMPLIANCE_TODO.md](docs/COMPLIANCE_TODO.md): items for a lawyer (draft, needs legal review)
 - [docs/DEVELOPER_HANDOFF.md](docs/DEVELOPER_HANDOFF.md): what a senior developer must build for production
 - [docs/zara-prompt.md](docs/zara-prompt.md): paste the real Zara prompt here
