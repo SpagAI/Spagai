@@ -53,5 +53,7 @@ describe("Zara's voice choice", () => {
     const pidgin = refinePlan(en, "use a Pidgin voice").plan;
     expect(pidgin.voiceId).toMatch(/^yarngpt:/);
     expect(pidgin.voiceGender).toBe("male");
+    expect(pidgin.firstMessage).toMatch(/dey talk/);
+    expect(draftPlan("Call customers about loans in Pidgin", { company }).firstMessage).toMatch(/dey talk/);
   });
 });

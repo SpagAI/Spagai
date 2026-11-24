@@ -23,7 +23,7 @@ export function blankAgentDraft(input: {
     language: input.language ?? "en-NG",
     voiceId: input.voiceId ?? null,
     addressMode: "B",
-    firstMessage: defaultFirstMessage(input.direction),
+    firstMessage: defaultFirstMessage(input.direction, input.language),
     blocks: [{ id: PROMPT_BLOCK_ID, section: "beginning", part: "main", title: "Your instructions", content: starterPrompt(input.direction, input.purpose) }],
     variables: fieldsFor(input.direction, input.name),
     variableValues: { company_name: input.company, agent_name: input.name, ...directionValues(input.direction, input.details ?? {}) },

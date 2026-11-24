@@ -5,6 +5,7 @@
  * inbound or outbound, the voice and language, and fills in a ready-made template.
  */
 import { isRealVoice, orderVoices, VOICE_CATALOGUE } from "@spagai/core";
+import { defaultFirstMessage, defaultFirstMessageIn } from "./agent-direction";
 
 export type ZaraMode = "plan" | "build";
 type Direction = "inbound" | "outbound";
@@ -132,10 +133,9 @@ function pickVoice(language: string, gender: Gender) {
   return { voiceId: v.id, voiceName: v.name, voiceGender: v.gender };
 }
 
-function firstMessageFor(direction: Direction) {
-  return direction === "outbound"
-    ? "Hello, this is {{agent_name}}, an AI assistant calling from {{company_name}}. Is this a good time to talk?"
-    : "Hello, thank you for calling {{company_name}}. My name is {{agent_name}}, an AI assistant. How can I help you today?";
+/** The standard opening line, in Pidgin for Pidgin agents (D174). */
+function firstMessageFor(direction: Direction, language = "en-NG") {
+  return defaultFirstMessage(direction, language);
 }
 
 /** Words that are never a business or agent name. */
@@ -197,7 +197,7 @@ export function draftPlan(text: string, defaults: { company: string }): AgentPla
     purpose: u.purpose || cap(text.trim().replace(/^(i want|i need|please|can you|build|create|make)( me)?( an?)?( agent)?( that| to| which)?\s*/i, "")).slice(0, 300),
     language,
     ...voice,
-    firstMessage: firstMessageFor(direction),
+    firstMessage: firstMessageFor(direction, language),
     abilities: u.abilities,
     toFill: u.toFill,
   };
@@ -219,13 +219,14 @@ export function refinePlan(plan: AgentPlan, text: string): { plan: AgentPlan; ch
   const direction = findDirection(text);
   if (direction && direction !== next.direction) {
     next.direction = direction;
-    next.firstMessage = firstMessageFor(direction);
+    next.firstMessage = firstMessageFor(direction, next.language);
     changes.push(direction === "inbound" ? "made it answer incoming calls" : "made it call people (outbound)");
   }
   const language = findLanguage(text);
   const gender = findGender(text);
   if ((language && language !== next.language) || (gender && gender !== next.voiceGender)) {
     next.language = language ?? next.language;
+    next.firstMessage = defaultFirstMessageIn(next.firstMessage, next.language) ?? next.firstMessage;
     Object.assign(next, pickVoice(next.language, gender ?? next.voiceGender));
     changes.push(`chose ${next.voiceName}, a ${next.voiceGender} ${LANGUAGE_NAMES[next.language] ?? ""} voice`.replace("  ", " "));
   }

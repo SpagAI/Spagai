@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { BLANK_TOOL, DEFAULT_TOOLS, type ToolInput } from "@/lib/custom-tools";
 import { VoiceSettingsControls } from "@/components/voice/voice-settings";
 import { VoicePicker } from "./voice-picker";
+import { FirstMessageLanguageNote, useFirstMessageLanguage } from "./use-first-message-language";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -459,6 +460,14 @@ export function VoiceTab({ config, update, workspaceVoices = [], lead }: { confi
   // Real voices (Fish Audio, built-in and added from the voice bank, then YarnGPT) come first.
   const voices = orderVoices(workspaceVoices).filter((v) => v.language === language);
   const speaker = useSpeaker();
+  // A new language also puts the first message in that language (D174).
+  const firstMessageLanguage = useFirstMessageLanguage();
+  const latestFirstMessage = useRef(config.firstMessage);
+  latestFirstMessage.current = config.firstMessage;
+  const changeLanguage = (next: string) => {
+    update({ language: next, voiceId: null });
+    void firstMessageLanguage.rewrite(config.firstMessage, next, (firstMessage) => update({ firstMessage }), () => latestFirstMessage.current);
+  };
   return (
     <Card>
       <CardHeader>
@@ -468,12 +477,13 @@ export function VoiceTab({ config, update, workspaceVoices = [], lead }: { confi
       <CardContent className="space-y-4">
         <div className="max-w-xs space-y-1.5">
           <Label htmlFor="language">{t("builder.voice.language")}</Label>
-          <Select id="language" value={language} onChange={(e) => update({ language: e.target.value, voiceId: null })}>
+          <Select id="language" value={language} onChange={(e) => changeLanguage(e.target.value)}>
             {Object.entries(LANGUAGE_NAMES).map(([code, name]) => (
               <option key={code} value={code}>{name}</option>
             ))}
           </Select>
         </div>
+        <FirstMessageLanguageNote status={firstMessageLanguage.status} />
         <VoiceSettingsControls
           value={config.voiceSettings}
           onChange={(voiceSettings) => update({ voiceSettings })}

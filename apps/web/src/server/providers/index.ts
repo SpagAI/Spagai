@@ -113,6 +113,20 @@ async function chatCompletion(messages: unknown[], tools: unknown[], retried = f
 }
 
 /**
+ * A one-off text job for the AI brain (e.g. rewrite a first message in Pidgin): an instruction and a
+ * text in, the AI's answer out. Throws when no real AI is connected, LlmLimitError on the free limit.
+ */
+export async function aiTextJob(instruction: string, text: string): Promise<{ text: string; inputTokens: number; outputTokens: number }> {
+  if (env.LLM_PROVIDER !== "openai_compatible") throw new Error("No AI brain is connected.");
+  const json = (await chatCompletion([{ role: "system", content: instruction }, { role: "user", content: text }], [])) as {
+    choices?: { message?: { content?: unknown } }[];
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
+  };
+  const content = json.choices?.[0]?.message?.content;
+  return { text: typeof content === "string" ? content : "", inputTokens: json.usage?.prompt_tokens ?? 0, outputTokens: json.usage?.completion_tokens ?? 0 };
+}
+
+/**
  * Added after every agent's own prompt for real AI models (see docs/DECISIONS.md D125).
  * A phone call is heard, not read, and a made-up price or date can mislead a customer.
  */

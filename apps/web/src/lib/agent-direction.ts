@@ -43,10 +43,31 @@ export function fieldsFor(direction: Direction, name: string, required = true): 
   return [...baseFields(name), ...DIRECTION_FIELDS[direction].map((v) => (required ? v : { ...v, required: false }))];
 }
 
-export function defaultFirstMessage(direction: Direction): string {
+export function defaultFirstMessage(direction: Direction, language = "en-NG"): string {
+  // Ready-written Pidgin openings, so switching an agent to Pidgin is instant (D174).
+  if (language === "pcm") {
+    return direction === "outbound"
+      ? "Hello, na {{agent_name}} dey talk, AI assistant from {{company_name}}. You get small time make we talk?"
+      : "Hello, thank you say you call {{company_name}}. My name na {{agent_name}}, AI assistant. Wetin I fit do for you today?";
+  }
   return direction === "outbound"
     ? "Hello, this is {{agent_name}}, an AI assistant calling from {{company_name}}. Is this a good time to talk?"
     : "Hello, thank you for calling {{company_name}}. My name is {{agent_name}}, an AI assistant. How can I help you today?";
+}
+
+/** Languages with a ready-written opening line (the others are rewritten by the AI). */
+export const DEFAULT_FIRST_MESSAGE_LANGUAGES = ["en-NG", "pcm"] as const;
+
+/**
+ * If `text` is one of our standard opening lines (any direction, any language that has one), the same
+ * line in `language`, ready-written. Null when it is the person's own wording, or `language` has none.
+ */
+export function defaultFirstMessageIn(text: string, language: string): string | null {
+  if (!(DEFAULT_FIRST_MESSAGE_LANGUAGES as readonly string[]).includes(language)) return null;
+  for (const direction of ["outbound", "inbound"] as const) {
+    if (DEFAULT_FIRST_MESSAGE_LANGUAGES.some((l) => defaultFirstMessage(direction, l) === text.trim())) return defaultFirstMessage(direction, language);
+  }
+  return null;
 }
 
 /** A starting prompt written for this kind of agent. `purpose` is what the person said it should do. */
@@ -120,6 +141,6 @@ export function switchDirection(config: AgentConfig, to: Direction): AgentConfig
     direction: to,
     variables: [...kept, ...added],
     variableValues: values,
-    firstMessage: config.firstMessage.trim() === defaultFirstMessage(from) ? defaultFirstMessage(to) : config.firstMessage,
+    firstMessage: config.firstMessage.trim() === defaultFirstMessage(from, config.language) ? defaultFirstMessage(to, config.language) : config.firstMessage,
   };
 }

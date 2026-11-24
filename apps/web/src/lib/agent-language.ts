@@ -13,3 +13,37 @@ export function languageLine(language: string | null | undefined): string | null
   const name = names[language ?? ""];
   return name ? `Language: reply in ${name} every turn, unless the caller clearly prefers English or Pidgin. Write numbers in words a voice can read, not symbols.` : null;
 }
+
+/** Every {{placeholder}} in a text, sorted, with repeats (so a rewrite must keep each one, exactly). */
+export function placeholdersOf(text: string): string[] {
+  return [...text.matchAll(/\{\{\s*([\w.]+)\s*\}\}/g)].map((m) => m[1]!).sort();
+}
+
+const REWRITE_LANGUAGE: Record<string, string> = {
+  "en-NG": "clear, friendly Nigerian English",
+  pcm: "natural Nigerian Pidgin, the way people in Lagos talk on the phone (for example \"na\", \"dey\", \"wetin\", \"make we\", \"abeg\")",
+  yo: "Yoruba",
+  ha: "Hausa",
+  ig: "Igbo",
+};
+
+export function canRewriteInto(language: string): boolean {
+  return language in REWRITE_LANGUAGE;
+}
+
+/** The instruction for the AI that rewrites an agent's first message in another language. */
+export function firstMessageRewriteInstruction(language: string): string {
+  return [
+    `Rewrite the opening line that a phone agent says at the start of a call, in ${REWRITE_LANGUAGE[language] ?? "English"}.`,
+    "Keep the meaning, the tone and roughly the length. If it says the agent is an AI assistant, keep that.",
+    "Keep every placeholder in double curly braces exactly as written, untranslated, for example {{agent_name}} and {{company_name}}.",
+    "Reply with the rewritten line only: no quotes, no notes, no explanation.",
+  ].join(" ");
+}
+
+/** Clean the AI's rewrite and check it kept every placeholder; null if it is not usable. */
+export function acceptRewrite(original: string, rewrite: string): string | null {
+  const text = rewrite.trim().replace(/^["“'](.*)["”']$/s, "$1").trim();
+  if (!text || text.length > 1000) return null;
+  return JSON.stringify(placeholdersOf(text)) === JSON.stringify(placeholdersOf(original)) ? text : null;
+}

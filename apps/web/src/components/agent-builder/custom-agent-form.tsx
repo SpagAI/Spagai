@@ -2,7 +2,7 @@
 
 import { DEFAULT_VOICE_SETTINGS, LANGUAGE_NAMES, MAX_BLOCK_CHARS, renderVariables, VOICE_PROVIDERS, type Voice, type VoiceLanguage, type VoiceSettings, voiceSettingsSchema, isRealVoice, REAL_VOICE_PROVIDERS } from "@spagai/core";
 import { History, Loader2, Settings2 } from "lucide-react";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { createCustomAgent } from "@/app/(app)/agents/actions";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { PlayVoiceButton } from "@/components/voice/play-voice-button";
+import { FirstMessageLanguageNote, useFirstMessageLanguage } from "./use-first-message-language";
 import { VoiceSettingsControls } from "@/components/voice/voice-settings";
 import { defaultFirstMessage } from "@/lib/custom-agent";
 import { DirectionFields } from "./direction-fields";
@@ -105,13 +106,18 @@ export function CustomAgentForm({ voices, company, storageKey }: { voices: Voice
   const voice = forLanguage.find((v) => v.id === voiceId);
   const spoken = renderVariables(firstMessage, { agent_name: name || "your agent", company_name: business || company, lead_name: "Chinedu" }).replace(/\{\{\s*\w+\s*\}\}/g, "");
 
+  // A new language also puts the first message in that language (D174).
+  const firstMessageLanguage = useFirstMessageLanguage();
+  const latestFirstMessage = useRef(firstMessage);
+  latestFirstMessage.current = firstMessage;
   const changeLanguage = (next: VoiceLanguage) => {
     setLanguage(next);
     setVoiceId(voices.find((v) => v.language === next)?.id ?? "");
+    void firstMessageLanguage.rewrite(firstMessage, next, setFirstMessage, () => latestFirstMessage.current);
   };
   const changeDirection = (next: "outbound" | "inbound") => {
     setDirection(next);
-    if (!firstEdited) setFirstMessage(defaultFirstMessage(next));
+    if (!firstEdited) setFirstMessage(defaultFirstMessage(next, language));
   };
 
   const submit = () => {
@@ -188,6 +194,7 @@ export function CustomAgentForm({ voices, company, storageKey }: { voices: Voice
         <Label htmlFor="c-first">First message</Label>
         <Textarea id="c-first" rows={2} maxLength={1000} value={firstMessage} onChange={(e) => { setFirstMessage(e.target.value); setFirstEdited(true); }} />
         <p className="text-xs text-muted-foreground">What the agent says as soon as the call starts. You can use {"{{agent_name}}"}, {"{{company_name}}"} and {"{{lead_name}}"}.</p>
+        <FirstMessageLanguageNote status={firstMessageLanguage.status} />
       </div>
 
       <div className="space-y-1.5">

@@ -32,6 +32,7 @@ See `docs/COMPLIANCE_TODO.md`: recording notice and retention, calling rules, AI
 
 ## Done recently
 
+- First message follows the agent's language (D174)
 - Pidgin agents: 16 YarnGPT voices and a "reply only in Pidgin" rule (D172)
 - Knowledge base made real: stored, searched and used in every reply (D166 to D168)
 - SIP trunk shell: connect a phone line from any provider (D165)

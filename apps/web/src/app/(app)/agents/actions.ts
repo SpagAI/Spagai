@@ -10,6 +10,11 @@ import { audit, loadAgent } from "@/server/agents";
 import { db } from "@/server/db";
 import { resolveVoice } from "@/server/voices";
 import { customAgentDraft, customAgentSchema } from "@/lib/custom-agent";
+import { defaultFirstMessageIn } from "@/lib/agent-direction";
+import { acceptRewrite, canRewriteInto, firstMessageRewriteInstruction } from "@/lib/agent-language";
+import { aiTextJob, LlmLimitError } from "@/server/providers";
+import { RateLimiter } from "@/server/rate-limit";
+import { recordUsage } from "@/server/usage";
 
 /**
  * The voice picked on the "Create an agent" page, if it is a real, usable voice for this
@@ -198,4 +203,35 @@ export async function listAgentVersions(agentId: string): Promise<{ versions: Ag
     });
   }
   return { versions, configs };
+}
+
+export type RewriteFirstMessageResult = { ok: true; text: string; usedAi: boolean } | { ok: false; message: string };
+
+/** At most 20 first-message rewrites a minute per workspace. */
+const rewritesPerMinute = new RateLimiter(20, 60_000);
+
+/**
+ * The agent's first message in another language, for when its Language changes (D174). Our standard
+ * opening lines have ready-written versions (instant, free); the person's own wording is rewritten
+ * by the AI brain, keeping every {{placeholder}}.
+ */
+export async function rewriteFirstMessage(input: unknown): Promise<RewriteFirstMessageResult> {
+  const ctx = await requirePermission("agent:edit");
+  const parsed = z.object({ text: z.string().trim().min(1).max(1000), language: z.string().max(10) }).safeParse(input);
+  if (!parsed.success || !canRewriteInto(parsed.data.language)) return { ok: false, message: "Nothing to rewrite." };
+  const { text, language } = parsed.data;
+
+  const ready = defaultFirstMessageIn(text, language);
+  if (ready) return { ok: true, text: ready, usedAi: false };
+
+  if (!rewritesPerMinute.check(ctx.organisation.id).allowed) return { ok: false, message: "Too many rewrites. Please wait a minute." };
+  try {
+    const result = await aiTextJob(firstMessageRewriteInstruction(language), text);
+    await recordUsage(ctx.organisation.id, "groq", { ai_input_tokens: result.inputTokens, ai_output_tokens: result.outputTokens, ai_replies: 1 });
+    const rewrite = acceptRewrite(text, result.text);
+    return rewrite ? { ok: true, text: rewrite, usedAi: true } : { ok: false, message: "The AI's version left out a {{placeholder}}, so it was not used." };
+  } catch (e) {
+    if (e instanceof LlmLimitError) return { ok: false, message: `The AI's free limit is reached. Try again in about ${e.retryAfterSeconds} seconds.` };
+    return { ok: false, message: e instanceof Error && e.message === "No AI brain is connected." ? "No AI brain is connected, so it could not be rewritten." : "The AI could not rewrite it just now." };
+  }
 }
