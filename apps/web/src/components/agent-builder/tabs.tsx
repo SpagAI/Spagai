@@ -456,7 +456,7 @@ export function VoiceTab({ config, update, workspaceVoices = [], lead }: { confi
   const language = (Object.keys(LANGUAGE_NAMES) as VoiceLanguage[]).includes(config.language as VoiceLanguage)
     ? (config.language as VoiceLanguage)
     : "en-NG";
-  // Real Fish Audio voices (built-in and added from the voice bank) come first.
+  // Real voices (Fish Audio, built-in and added from the voice bank, then YarnGPT) come first.
   const voices = orderVoices(workspaceVoices).filter((v) => v.language === language);
   const speaker = useSpeaker();
   return (
@@ -480,9 +480,12 @@ export function VoiceTab({ config, update, workspaceVoices = [], lead }: { confi
           voiceId={voices.some((v) => v.id === config.voiceId) ? config.voiceId : null}
           sampleText={renderVariables(config.firstMessage, sampleValues(config, lead))}
           realVoice={voices.find((v) => v.id === config.voiceId)?.provider === "fish_audio"}
+          ignoresSettings={voices.find((v) => v.id === config.voiceId)?.provider === "yarngpt"}
         />
         {speaker.error && <p className="text-sm text-destructive">{speaker.error}</p>}
+        {/* Keyed by language: a new language reopens the picker on the first provider with voices for it (Pidgin: YarnGPT). */}
         <VoicePicker
+          key={language}
           voices={voices}
           selectedId={config.voiceId}
           playingId={speaker.playingKey}

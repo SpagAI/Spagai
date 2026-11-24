@@ -75,7 +75,7 @@ export default async function AgentsPage() {
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
                     <span className="inline-flex items-center gap-1">
                       <Mic className="size-3.5" /> {voice?.name ?? "No voice yet"}
-                      {voice?.provider === "fish_audio" && <span className="rounded border px-1 text-[10px]">{VOICE_PROVIDERS.fish_audio}</span>}
+                      {(voice?.provider === "fish_audio" || voice?.provider === "yarngpt") && <span className="rounded border px-1 text-[10px]">{VOICE_PROVIDERS[voice.provider]}</span>}
                     </span>
                     <span className="inline-flex items-center gap-1"><Phone className="size-3.5" /> {a._count.phoneNumbers ? `${a._count.phoneNumbers} number${a._count.phoneNumbers === 1 ? "" : "s"}` : "No number"}</span>
                     <span className="inline-flex items-center gap-1"><BookOpen className="size-3.5" /> {a._count.knowledgeItems} knowledge item{a._count.knowledgeItems === 1 ? "" : "s"}</span>

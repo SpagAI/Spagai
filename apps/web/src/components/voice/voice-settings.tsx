@@ -53,10 +53,12 @@ export interface VoiceSettingsControlsProps {
   sampleText: string;
   /** True for real (Fish Audio) voices: every setting applies. */
   realVoice: boolean;
+  /** True for YarnGPT voices: YarnGPT has no voice settings, so none of these change it. */
+  ignoresSettings?: boolean;
 }
 
 /** Speed, loudness, expressiveness and number reading for an agent's voice. */
-export function VoiceSettingsControls({ value, onChange, voiceId, sampleText, realVoice }: VoiceSettingsControlsProps) {
+export function VoiceSettingsControls({ value, onChange, voiceId, sampleText, realVoice, ignoresSettings = false }: VoiceSettingsControlsProps) {
   const set = (patch: Partial<VoiceSettings>) => onChange({ ...value, ...patch });
   const isDefault = JSON.stringify(value) === JSON.stringify(DEFAULT_VOICE_SETTINGS);
   return (
@@ -65,7 +67,7 @@ export function VoiceSettingsControls({ value, onChange, voiceId, sampleText, re
         <div>
           <p className="text-sm font-semibold">Voice settings</p>
           <p className="text-xs text-muted-foreground">
-            {realVoice ? "All settings change the real voice." : "Demo voices use speed and loudness only."}
+            {ignoresSettings ? "YarnGPT voices do not have these settings yet: they always speak at their natural speed and loudness." : realVoice ? "All settings change the real voice." : "Demo voices use speed and loudness only."}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -90,7 +92,7 @@ export function VoiceSettingsControls({ value, onChange, voiceId, sampleText, re
       <div className="flex items-start justify-between gap-3 border-t pt-3">
         <div>
           <Label htmlFor="vs-numbers">Read numbers and dates naturally</Label>
-          <p className="text-xs text-muted-foreground">Says “14/11/2026” as “the 14th of November”.{realVoice ? "" : " Real voices only."}</p>
+          <p className="text-xs text-muted-foreground">Says “14/11/2026” as “the 14th of November”.{realVoice || ignoresSettings ? "" : " Real voices only."}</p>
         </div>
         <Switch id="vs-numbers" checked={value.naturalNumbers} onCheckedChange={(naturalNumbers) => set({ naturalNumbers })} />
       </div>

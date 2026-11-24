@@ -585,9 +585,9 @@ model McpRun {
 model ProviderUsage {
   organisationId String
   day            String       // YYYY-MM-DD in Africa/Lagos
-  /// ai_input_tokens, ai_output_tokens, ai_replies, voice_characters, listening_seconds
+  /// ai_input_tokens, ai_output_tokens, ai_replies, voice_characters, yarngpt_characters, listening_seconds
   kind           String
-  /// groq, fish_audio, ...
+  /// groq, fish_audio, yarngpt, ...
   provider       String
   quantity       Int          @default(0)
   organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)

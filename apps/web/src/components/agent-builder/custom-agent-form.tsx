@@ -1,6 +1,6 @@
 "use client";
 
-import { DEFAULT_VOICE_SETTINGS, LANGUAGE_NAMES, MAX_BLOCK_CHARS, renderVariables, VOICE_PROVIDERS, type Voice, type VoiceLanguage, type VoiceSettings, voiceSettingsSchema } from "@spagai/core";
+import { DEFAULT_VOICE_SETTINGS, LANGUAGE_NAMES, MAX_BLOCK_CHARS, renderVariables, VOICE_PROVIDERS, type Voice, type VoiceLanguage, type VoiceSettings, voiceSettingsSchema, isRealVoice, REAL_VOICE_PROVIDERS } from "@spagai/core";
 import { History, Loader2, Settings2 } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 import { createCustomAgent } from "@/app/(app)/agents/actions";
@@ -128,8 +128,8 @@ export function CustomAgentForm({ voices, company, storageKey }: { voices: Voice
     });
   };
 
-  const real = forLanguage.filter((v) => v.provider === "fish_audio");
-  const demo = forLanguage.filter((v) => v.provider !== "fish_audio");
+  const real = forLanguage.filter(isRealVoice);
+  const demo = forLanguage.filter((v) => !isRealVoice(v));
 
   return (
     <form
@@ -164,11 +164,14 @@ export function CustomAgentForm({ voices, company, storageKey }: { voices: Voice
         <Label htmlFor="c-voice">Voice</Label>
         <div className="flex items-center gap-2">
           <Select id="c-voice" value={voiceId} onChange={(e) => setVoiceId(e.target.value)} className="max-w-md">
-            {real.length > 0 && (
-              <optgroup label={`Real voices (${VOICE_PROVIDERS.fish_audio})`}>
-                {real.map((v) => <option key={v.id} value={v.id}>{v.name} · {v.gender === "female" ? "Female" : "Male"} · {v.category}</option>)}
-              </optgroup>
-            )}
+            {REAL_VOICE_PROVIDERS.map((p) => {
+              const group = real.filter((v) => v.provider === p);
+              return group.length > 0 && (
+                <optgroup key={p} label={`Real voices (${VOICE_PROVIDERS[p]})`}>
+                  {group.map((v) => <option key={v.id} value={v.id}>{v.name} · {v.gender === "female" ? "Female" : "Male"} · {v.category}</option>)}
+                </optgroup>
+              );
+            })}
             {demo.length > 0 && (
               <optgroup label="Demo voices (browser speech)">
                 {demo.map((v) => <option key={v.id} value={v.id}>{v.name} · {v.gender === "female" ? "Female" : "Male"} · {v.category}</option>)}
@@ -196,7 +199,7 @@ export function CustomAgentForm({ voices, company, storageKey }: { voices: Voice
         </div>
       </div>
 
-      <VoiceSettingsControls value={settings} onChange={setSettings} voiceId={voice?.id} sampleText={spoken} realVoice={voice?.provider === "fish_audio"} />
+      <VoiceSettingsControls value={settings} onChange={setSettings} voiceId={voice?.id} sampleText={spoken} realVoice={voice?.provider === "fish_audio"} ignoresSettings={voice?.provider === "yarngpt"} />
 
       <Alert>
         <Settings2 className="size-4" /> The standard safety rules (saying it is an AI, calling hours, opting out, keeping data safe) are added to every agent and cannot be removed. Nothing else is added or changed.

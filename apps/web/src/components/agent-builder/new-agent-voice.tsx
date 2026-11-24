@@ -1,6 +1,6 @@
 "use client";
 
-import { VOICE_PROVIDERS, type Voice } from "@spagai/core";
+import { VOICE_PROVIDERS, type Voice, isRealVoice, REAL_VOICE_PROVIDERS } from "@spagai/core";
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -24,8 +24,8 @@ export function NewAgentVoiceInput() {
 
 export function NewAgentVoicePicker({ voices, company }: { voices: Voice[]; company: string }) {
   const { voiceId, setVoiceId } = useContext(VoiceChoice);
-  const real = voices.filter((v) => v.provider === "fish_audio");
-  const demo = voices.filter((v) => v.provider !== "fish_audio");
+  const real = voices.filter(isRealVoice);
+  const demo = voices.filter((v) => !isRealVoice(v));
   const chosen = voices.find((v) => v.id === voiceId);
   const label = (v: Voice) => `${v.name} · ${v.gender === "female" ? "Female" : "Male"} · ${v.category}`;
   return (
@@ -33,11 +33,14 @@ export function NewAgentVoicePicker({ voices, company }: { voices: Voice[]; comp
       <Label htmlFor="new-agent-voice">Voice</Label>
       <div className="flex items-center gap-2">
         <Select id="new-agent-voice" value={voiceId} onChange={(e) => setVoiceId(e.target.value)} className="max-w-md">
-          {real.length > 0 && (
-            <optgroup label={`Real voices (${VOICE_PROVIDERS.fish_audio})`}>
-              {real.map((v) => <option key={v.id} value={v.id}>{label(v)}</option>)}
-            </optgroup>
-          )}
+            {REAL_VOICE_PROVIDERS.map((p) => {
+            const group = real.filter((v) => v.provider === p);
+            return group.length > 0 && (
+              <optgroup key={p} label={`Real voices (${VOICE_PROVIDERS[p]})`}>
+                {group.map((v) => <option key={v.id} value={v.id}>{label(v)}</option>)}
+              </optgroup>
+            );
+          })}
           {demo.length > 0 && (
             <optgroup label="Demo voices (browser speech)">
               {demo.map((v) => <option key={v.id} value={v.id}>{label(v)}</option>)}

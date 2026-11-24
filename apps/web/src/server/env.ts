@@ -60,6 +60,11 @@ const schema = z.object({
     .transform((v) => v || undefined),
   /** Fish Audio speech model, sent in the "model" header. */
   FISH_AUDIO_MODEL: z.string().default("s1"),
+  /** YarnGPT (Nigerian voices that speak Pidgin, Yoruba, Hausa and Igbo). Without a key, its voices fall back to browser speech. */
+  YARNGPT_API_KEY: z
+    .string()
+    .optional()
+    .transform((v) => v || undefined),
   /** Cost guard: characters of real speech each workspace may generate per day (Lagos time). */
   VOICE_DAILY_CHAR_LIMIT: z.coerce.number().int().min(0).max(1_000_000).default(5000),
   /** Monthly budget for testing (AI brain + voice + listening at the providers), in US dollars; shown in the side panel. */

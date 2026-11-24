@@ -24,6 +24,7 @@ import { functionSpec, resultForAi, runCustomTool, toolsForAgent } from "@/serve
 import { knowledgeForReply } from "@/server/knowledge";
 import { mcpToolsForAgent, runMcpTool } from "@/server/mcp-client";
 import { recordUsage } from "@/server/usage";
+import { languageLine } from "@/lib/agent-language";
 import { getLlm, LlmLimitError, PHONE_CALL_RULES, todayLine, toolsLine } from "@/server/providers";
 import { RateLimiter } from "@/server/rate-limit";
 import { SpeechToTextError, transcribe } from "@/server/speech-to-text";
@@ -195,6 +196,9 @@ async function runTurn(organisationId: string, config: AgentConfig, input: z.inf
 
   const llm = getLlm();
   const { event } = input;
+  // The agent's Language setting (Pidgin, Yoruba, Hausa, Igbo) becomes a rule the AI always follows.
+  const language = languageLine(config.language);
+  const agentPrompt = language ? `${compiled.prompt}\n\n${language}` : compiled.prompt;
 
   if (event.type === "start") {
     const window = isWithinCallingWindow(now);
@@ -205,7 +209,7 @@ async function runTurn(organisationId: string, config: AgentConfig, input: z.inf
       // Calling hours only limit agents that call people; inbound agents answer whenever someone calls.
       callingWindow: config.direction === "inbound" ? { allowed: true, reason: null } : { allowed: window.allowed, reason: window.reason },
       // Exactly what a real model receives (the phone call rules are added for real models only).
-      prompt: llm.name === "mock" ? compiled.prompt : `${compiled.prompt}\n\n${PHONE_CALL_RULES}\n- ${todayLine(now)}\n- ${toolsLine([...activeBuiltInTools(config.tools), ...config.customTools, ...config.mcpTools])}`,
+      prompt: llm.name === "mock" ? compiled.prompt : `${agentPrompt}\n\n${PHONE_CALL_RULES}\n- ${todayLine(now)}\n- ${toolsLine([...activeBuiltInTools(config.tools), ...config.customTools, ...config.mcpTools])}`,
     };
   }
 
@@ -224,7 +228,7 @@ async function runTurn(organisationId: string, config: AgentConfig, input: z.inf
     const lastAgent = [...input.history].reverse().find((h) => h.role === "agent")?.text ?? "";
     const knowledge = opts.agent?.id ? await knowledgeForReply(opts.agent.id, `${event.text} ${lastAgent}`).catch(() => "") : "";
     const turn = await llm.reply({
-      systemPrompt: knowledge ? `${compiled.prompt}\n\n${knowledge}` : compiled.prompt,
+      systemPrompt: knowledge ? `${agentPrompt}\n\n${knowledge}` : agentPrompt,
       history: [...input.history, { role: "caller", text: event.text }],
       values,
       tools: activeBuiltInTools(config.tools),

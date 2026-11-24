@@ -1,6 +1,6 @@
 "use client";
 
-import { VOICE_PROVIDERS, type Voice } from "@spagai/core";
+import { VOICE_PROVIDERS, type Voice, isRealVoice, REAL_VOICE_PROVIDERS } from "@spagai/core";
 import { Check, Pause, Play } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -52,7 +52,7 @@ function VoiceRow({ v, selected, playing, onChoose, onPlay }: { v: Voice; select
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-center gap-1.5">
             <span className="truncate text-sm font-semibold">{v.name}</span>
-            <span className={cn("shrink-0 rounded px-1.5 py-px text-[10px] font-medium", v.provider === "fish_audio" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+            <span className={cn("shrink-0 rounded px-1.5 py-px text-[10px] font-medium", isRealVoice(v) ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
               {VOICE_PROVIDERS[v.provider] ?? v.provider}
             </span>
           </span>
@@ -77,13 +77,15 @@ export function VoicePicker({ voices, selectedId, playingId, onChoose, onPlay }:
   onChoose: (id: string) => void;
   onPlay: (v: Voice) => void;
 }) {
-  // Only working (real) voices are offered: Fish Audio. The other providers keep an empty tab
-  // until they are connected.
-  const PROVIDER_TABS = ["fish_audio", "elevenlabs", "cartesia", "openai"];
-  const active = voices.filter((v) => v.provider === "fish_audio" && v.status === "available");
+  // Only working (real) voices are offered: Fish Audio and YarnGPT. The other providers keep an
+  // empty tab until they are connected.
+  const PROVIDER_TABS = [...REAL_VOICE_PROVIDERS, "elevenlabs", "cartesia", "openai"];
+  const active = voices.filter((v) => isRealVoice(v) && v.status === "available");
   const providers = PROVIDER_TABS;
   const chosen = voices.find((v) => v.id === selectedId);
-  const [provider, setProvider] = useState("fish_audio");
+  // Open the tab of the chosen voice, else the first provider that has voices for this language
+  // (Pidgin agents: YarnGPT).
+  const [provider, setProvider] = useState<string>(() => (isRealVoice(chosen) ? chosen!.provider : REAL_VOICE_PROVIDERS.find((p) => active.some((v) => v.provider === p)) ?? "fish_audio"));
   const [gender, setGender] = useState<"" | "female" | "male">("");
   const shown = active.filter((v) => v.provider === provider && (!gender || v.gender === gender));
 
@@ -131,9 +133,9 @@ export function VoicePicker({ voices, selectedId, playingId, onChoose, onPlay }:
           );
         })}
       </div>
-      {chosen && chosen.provider !== "fish_audio" && (
+      {chosen && !isRealVoice(chosen) && (
         <p className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs">
-          This agent still uses <span className="font-medium">{chosen.name}</span> ({VOICE_PROVIDERS[chosen.provider] ?? chosen.provider}), a demo voice that is no longer offered. Choose a Fish Audio voice below.
+          This agent still uses <span className="font-medium">{chosen.name}</span> ({VOICE_PROVIDERS[chosen.provider] ?? chosen.provider}), a demo voice that is no longer offered. Choose a real voice below.
         </p>
       )}
 
@@ -143,13 +145,17 @@ export function VoicePicker({ voices, selectedId, playingId, onChoose, onPlay }:
             <VoiceRow key={v.id} v={v} selected={selectedId === v.id} playing={playingId === v.id} onChoose={() => onChoose(v.id)} onPlay={() => onPlay(v)} />
           ))}
         </div>
-      ) : provider !== "fish_audio" ? (
+      ) : !(REAL_VOICE_PROVIDERS as readonly string[]).includes(provider) ? (
         <div className="rounded-xl border border-dashed p-8 text-center">
           <p className="text-sm font-medium">{VOICE_PROVIDERS[provider] ?? provider} is not connected yet</p>
-          <p className="mt-1 text-xs text-muted-foreground">Its voices will appear here once it is connected. For now, use the Fish Audio voices.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Its voices will appear here once it is connected. For now, use the Fish Audio or YarnGPT voices.</p>
         </div>
       ) : (
-        <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No voices match this filter.</p>
+        <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+          {active.some((v) => v.provider === provider)
+            ? "No voices match this filter."
+            : `${VOICE_PROVIDERS[provider] ?? provider} has no voices in this agent's language yet.${provider === "fish_audio" ? " For Pidgin, try the YarnGPT tab." : provider === "yarngpt" ? " YarnGPT voices are listed under Nigerian Pidgin: set the agent's language to Pidgin to use them." : ""}`}
+        </p>
       )}
       <p className="text-xs text-muted-foreground">Press a voice&apos;s circle to hear it say your first message; press the name to use it.</p>
     </div>

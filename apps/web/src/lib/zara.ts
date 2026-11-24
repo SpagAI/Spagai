@@ -4,7 +4,7 @@
  * works without an AI service: it spots the kind of agent, the business name, the agent's name,
  * inbound or outbound, the voice and language, and fills in a ready-made template.
  */
-import { VOICE_CATALOGUE } from "@spagai/core";
+import { isRealVoice, orderVoices, VOICE_CATALOGUE } from "@spagai/core";
 
 export type ZaraMode = "plan" | "build";
 type Direction = "inbound" | "outbound";
@@ -120,8 +120,8 @@ const LANGUAGE_NAMES: Record<string, string> = { "en-NG": "English", pcm: "Pidgi
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function pickVoice(language: string, gender: Gender) {
-  // Real Fish Audio voices first (conversational ones suit calls best), then our demo voices.
-  const real = VOICE_CATALOGUE.filter((v) => v.provider === "fish_audio" && v.status === "available" && v.language === language && v.gender === gender);
+  // Real voices first (Fish Audio, then YarnGPT for Pidgin; conversational ones suit calls best), then our demo voices.
+  const real = orderVoices([]).filter((v) => isRealVoice(v) && v.status === "available" && v.language === language && v.gender === gender);
   const fish = real.find((x) => x.category === "Conversational") ?? real[0];
   if (fish) return { voiceId: fish.id, voiceName: fish.name, voiceGender: fish.gender };
   const own = VOICE_CATALOGUE.filter((v) => v.provider === "spagai" && v.status === "available");

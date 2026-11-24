@@ -29,3 +29,13 @@ describe("usage pricing", () => {
     expect(formatUsd(1.234)).toBe("$1.23");
   });
 });
+
+describe("YarnGPT usage", () => {
+  it("counts YarnGPT characters but leaves them out of the dollar total (paid in YarnGPT credits)", () => {
+    const s = summarise({ voice_characters: 1_000, yarngpt_characters: 2_500 });
+    expect(s.voice.yarngptCharacters).toBe(2_500);
+    expect(s.voice.characters).toBe(1_000);
+    expect(s.voice.usd).toBeCloseTo(0.015, 5);
+    expect(costUsd("yarngpt_characters", 1_000_000)).toBe(0);
+  });
+});

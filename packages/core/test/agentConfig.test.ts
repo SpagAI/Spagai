@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getPreset, normaliseAgentConfig, orderVoices, presetToAgentConfig, VOICE_CATALOGUE, getVoice } from "../src";
+import { getPreset, normaliseAgentConfig, orderVoices, presetToAgentConfig, VOICE_CATALOGUE, getVoice, isRealVoice } from "../src";
 
 const base = () => presetToAgentConfig(getPreset("clinic-booking")!);
 
@@ -77,6 +77,18 @@ describe("orderVoices", () => {
   it("puts Fish Audio voices first and lists each voice once", () => {
     const list = orderVoices([v("fish_audio:a", "fish_audio"), v("mine", "spagai")], [v("x", "spagai"), v("fish_audio:a", "fish_audio"), v("fish_audio:b", "fish_audio")]);
     expect(list.map((x) => x.id)).toEqual(["fish_audio:a", "fish_audio:b", "mine", "x"]);
+  });
+  it("puts YarnGPT voices right after Fish Audio, before demo voices", () => {
+    const list = orderVoices([], [v("x", "spagai"), v("yarngpt:idera", "yarngpt"), v("fish_audio:a", "fish_audio")]);
+    expect(list.map((x) => x.id)).toEqual(["fish_audio:a", "yarngpt:idera", "x"]);
+  });
+
+  it("has 16 YarnGPT voices built in, all Pidgin, half female and half male", () => {
+    const yarn = VOICE_CATALOGUE.filter((x) => x.provider === "yarngpt");
+    expect(yarn).toHaveLength(16);
+    expect(yarn.every((x) => x.language === "pcm" && x.status === "available" && isRealVoice(x))).toBe(true);
+    expect(yarn.filter((x) => x.gender === "female")).toHaveLength(8);
+    expect(getVoice("yarngpt:idera")?.providerVoiceId).toBe("idera");
   });
 });
 

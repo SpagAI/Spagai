@@ -42,6 +42,7 @@ Decision numbers (D…) point to [docs/DECISIONS.md](docs/DECISIONS.md), which s
 | Usage: what testing uses at Groq and Fish Audio and roughly what it costs (nothing is charged); part of Billing | `apps/web/src/server/usage.ts`, `apps/web/src/lib/usage-pricing.ts` | Done (D157, D161, D164) |
 | Knowledge base: write text, upload files (PDF, Word, text, CSV) or read a website; searched and used in every reply | `apps/web/src/app/(app)/knowledge`, `apps/web/src/server/knowledge.ts` | Done (D166 to D168) |
 | SIP trunk: connect a phone line from any provider (Africa's Talking, Twilio, Vonage, Telnyx, Plivo, others) | `apps/web/src/server/telephony.ts`, `apps/web/src/lib/sip-providers.ts` | Shell; the live audio part is not chosen yet (D165) |
+| Pidgin agents: 16 YarnGPT voices (real speech), and a firm "reply only in Pidgin" rule when an agent's Language is Pidgin (Yoruba, Hausa and Igbo get a lighter rule) | `apps/web/src/server/providers/yarngpt.ts`, `apps/web/src/lib/agent-language.ts` | Done (D172); listening to Pidgin callers still uses Whisper (see roadmap) |
 | Ship bell: a chime on your computer when an update goes live, and `/api/version` to see which update is live | `apps/web/src/app/ship-bell`, `apps/web/src/app/api/version` | Live (D132, D154) |
 | Real phone calls and Nigerian numbers | — | Needs accounts and a phone system: see `docs/DEVELOPER_HANDOFF.md` and `docs/ROADMAP.md` |
 
@@ -154,11 +155,14 @@ The build variables are only used while building. The running site needs its own
 | `DEMO_MODE` | Text | `true` |
 | `APP_URL` | Text | the site's address, e.g. `https://spagai-studio.<your-subdomain>.workers.dev` |
 | `FISH_AUDIO_API_KEY` | Secret | optional: your Fish Audio API key, for real voices (see below) |
+| `YARNGPT_API_KEY` | Secret | optional: your YarnGPT API key, for real Pidgin voices (see below) |
 | `VOICE_DAILY_CHAR_LIMIT` | Text | optional: characters of real speech per workspace per day (default `5000`) |
 
 Then open the address and press **Enter the demo workspace**.
 
 **Real voices (Fish Audio).** With `FISH_AUDIO_API_KEY` set, the Voices page shows the Fish Audio voice bank: search (for example "Nigerian"), play free samples, and **Add to my voices**. Added voices speak for real on the Voices page, in the Agent Builder and in the Lab. A daily limit per workspace (`VOICE_DAILY_CHAR_LIMIT`) protects your Fish Audio credit. Without a key, every voice falls back to the browser's built-in speech.
+
+**Pidgin voices (YarnGPT).** With `YARNGPT_API_KEY` set, 16 YarnGPT voices speak for real. They are listed under Nigerian Pidgin: set an agent's Language to Pidgin and they appear in its Voice tab, and the agent is told to reply only in Pidgin. They share the daily limit above. Without a key they fall back to the browser's built-in speech. Today the same YarnGPT key is used on Cloudflare and in the build workspace, so switching it off at YarnGPT stops both.
 
 **Good to know**
 - Pushes to other branches can get their own preview links: Worker → **Settings → Build → Branch control**, turn on builds for non-production branches.

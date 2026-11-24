@@ -33,8 +33,17 @@ export const VOICE_PROVIDERS: Record<string, string> = {
   cartesia: "Cartesia",
   openai: "OpenAI",
   fish_audio: "Fish Audio",
+  yarngpt: "YarnGPT",
   openai_compatible: "Your provider",
 };
+
+/** Providers whose voices speak for real (when their key is set), in the order pickers show them. */
+export const REAL_VOICE_PROVIDERS = ["fish_audio", "yarngpt"] as const;
+
+/** True for voices from a real provider (Fish Audio, YarnGPT), as opposed to demo voices. */
+export function isRealVoice(voice: Pick<Voice, "provider"> | null | undefined): boolean {
+  return (REAL_VOICE_PROVIDERS as readonly string[]).includes(voice?.provider ?? "");
+}
 
 export const VOICE_CATEGORIES = ["Conversational", "Customer service", "Sales", "Professional", "Narration"] as const;
 
@@ -54,10 +63,10 @@ export function getVoice(id: string | null | undefined): Voice | undefined {
 
 /**
  * One list for pickers: the workspace's own voices plus the catalogue, with each voice once
- * and real Fish Audio voices first. Otherwise keeps the order it was given.
+ * and real voices first (Fish Audio, then YarnGPT). Otherwise keeps the order it was given.
  */
 export function orderVoices(own: Voice[], catalogue: Voice[] = VOICE_CATALOGUE): Voice[] {
   const seen = new Set<string>();
   const unique = [...own, ...catalogue].filter((v) => !seen.has(v.id) && seen.add(v.id));
-  return [...unique.filter((v) => v.provider === "fish_audio"), ...unique.filter((v) => v.provider !== "fish_audio")];
+  return [...REAL_VOICE_PROVIDERS.flatMap((p) => unique.filter((v) => v.provider === p)), ...unique.filter((v) => !isRealVoice(v))];
 }

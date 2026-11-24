@@ -72,3 +72,11 @@ The real-time voice pipeline, telephony and Nigerian numbers, local-language voi
 
 - `WORKER_SHARED_SECRET` is a single shared secret. In production, rotate it, and consider mTLS or short-lived signed tokens between services.
 - Add a Content Security Policy once the payment and voice scripts are final (already noted in M2).
+
+## Production notes added for YarnGPT (D172)
+
+- **Concurrency:** YarnGPT allows only **3 conversation streams at once per account**, and its limits are the same on every plan and cannot be raised (yarngpt.ai/api-docs, "Rate limits"). Real Pidgin calls at volume need an agreement with YarnGPT (enterprise) or a fallback voice.
+- **One key in two places:** the same `YARNGPT_API_KEY` is on Cloudflare and in the build workspace. Use separate keys for production so one can be revoked without breaking the other (credit and limits are per account either way).
+- **Voices can change:** YarnGPT says its voice ids change over time. The 16 are built into `packages/core/data/voices.json`; a removed voice gives "YarnGPT no longer offers this voice". A production version should read `GET /api/v1/voices` and refresh the list.
+- **For phone lines:** the conversation route can return raw `pcm` (sample rate in the `Content-Type` header) to feed a telephony pipeline without decoding.
+

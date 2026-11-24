@@ -31,7 +31,16 @@ export async function UsageView({ organisationId }: { organisationId: string }) 
 
   const groups = [
     { icon: Brain, title: "AI brain", who: "Groq", usd: month.ai.usd, main: plural(month.ai.replies, "reply").replace("replys", "replies"), detail: `${n(month.ai.tokensIn)} tokens read · ${n(month.ai.tokensOut)} written` },
-    { icon: AudioLines, title: "Voice", who: "Fish Audio", usd: month.voice.usd, main: `${n(month.voice.characters)} characters spoken`, detail: "$15 per million characters" },
+    {
+      icon: AudioLines,
+      title: "Voice",
+      who: month.voice.yarngptCharacters > 0 ? "Fish Audio and YarnGPT" : "Fish Audio",
+      usd: month.voice.usd,
+      main: `${n(month.voice.characters)} characters spoken`,
+      detail: month.voice.yarngptCharacters > 0
+        ? `Fish Audio: $15 per million characters · YarnGPT: ${n(month.voice.yarngptCharacters)} characters, paid in YarnGPT credits (not in this total)`
+        : "$15 per million characters",
+    },
     { icon: Ear, title: "Listening", who: "Groq Whisper", usd: month.listening.usd, main: `${month.listening.minutes.toFixed(1)} minutes of speech`, detail: "$0.111 per hour (10 s minimum per recording)" },
   ];
 
@@ -83,6 +92,10 @@ export async function UsageView({ organisationId }: { organisationId: string }) 
             <a href="https://fish.audio" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">Top up <ExternalLink className="size-3.5" /></a>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
+            <span><span className="font-medium">YarnGPT</span> (Pidgin voices): paid in YarnGPT credits; see your balance and prices on your YarnGPT account page.</span>
+            <a href="https://yarngpt.ai/account" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">Open YarnGPT <ExternalLink className="size-3.5" /></a>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
             <span><span className="font-medium">Groq</span> (AI brain and listening): billed monthly for what you use; see usage and plan in the Groq console.</span>
             <a href="https://console.groq.com/settings/billing" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">Open Groq <ExternalLink className="size-3.5" /></a>
           </div>
@@ -104,7 +117,7 @@ export async function UsageView({ organisationId }: { organisationId: string }) 
                     <tr key={day}>
                       <td className="py-2">{dayLabel(day)}</td>
                       <td>{n(d.ai.replies)}</td>
-                      <td>{n(d.voice.characters)}</td>
+                      <td>{n(d.voice.characters + d.voice.yarngptCharacters)}</td>
                       <td>{d.listening.minutes.toFixed(1)} min</td>
                       <td className="text-right tabular-nums">{formatUsd(d.totalUsd)}</td>
                     </tr>

@@ -7,6 +7,7 @@ import { requireOrg } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { can } from "@/server/permissions";
 import { fishAudioConfigured } from "@/server/providers/fish-audio";
+import { yarngptConfigured } from "@/server/providers/yarngpt";
 import { listWorkspaceVoices, speechUsedToday } from "@/server/voices";
 
 export const metadata: Metadata = { title: "Voices" };
@@ -27,6 +28,7 @@ export default async function VoicesPage() {
     if (voiceId) (usedBy[voiceId] ??= []).push({ id: a.id, name: a.name });
   }
   const fishConnected = fishAudioConfigured();
+  const yarngptConnected = yarngptConfigured();
   const canEdit = can(ctx.role, "agent:edit");
 
   return (
@@ -34,13 +36,13 @@ export default async function VoicesPage() {
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">{t("voices.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("voices.intro")}</p>
-        {fishConnected && (
+        {(fishConnected || yarngptConnected) && (
           <p className="text-xs text-muted-foreground">
             Real voices today: {usage.used.toLocaleString("en-NG")} of {usage.limit.toLocaleString("en-NG")} characters used (resets at midnight, Lagos time).
           </p>
         )}
       </div>
-      <VoiceLibrary usedBy={usedBy} workspaceVoices={workspaceVoices} canEdit={canEdit} fishConnected={fishConnected} />
+      <VoiceLibrary usedBy={usedBy} workspaceVoices={workspaceVoices} canEdit={canEdit} fishConnected={fishConnected} yarngptConnected={yarngptConnected} />
       <VoiceBank configured={fishConnected} canEdit={canEdit} addedIds={orderVoices(workspaceVoices).filter((v) => v.provider === "fish_audio").map((v) => v.providerVoiceId)} />
     </div>
   );

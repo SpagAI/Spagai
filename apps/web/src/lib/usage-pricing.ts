@@ -3,7 +3,7 @@
  * tested. Estimates only: the real bills come from Groq and Fish Audio. See docs/DECISIONS.md D157.
  */
 
-export type UsageKind = "ai_input_tokens" | "ai_output_tokens" | "ai_replies" | "voice_characters" | "listening_seconds";
+export type UsageKind = "ai_input_tokens" | "ai_output_tokens" | "ai_replies" | "voice_characters" | "yarngpt_characters" | "listening_seconds";
 
 export interface PriceLine {
   provider: string;
@@ -39,11 +39,13 @@ export type UsageTotals = Partial<Record<UsageKind, number>>;
 export function summarise(totals: UsageTotals) {
   const q = (k: UsageKind) => totals[k] ?? 0;
   const ai = costUsd("ai_input_tokens", q("ai_input_tokens")) + costUsd("ai_output_tokens", q("ai_output_tokens"));
+  // YarnGPT is paid in YarnGPT credits whose price is only shown on its account page, so it has no
+  // dollar price here: its characters are counted and shown, but not added to the cost.
   const voice = costUsd("voice_characters", q("voice_characters"));
   const listening = costUsd("listening_seconds", q("listening_seconds"));
   return {
     ai: { usd: ai, replies: q("ai_replies"), tokensIn: q("ai_input_tokens"), tokensOut: q("ai_output_tokens") },
-    voice: { usd: voice, characters: q("voice_characters") },
+    voice: { usd: voice, characters: q("voice_characters"), yarngptCharacters: q("yarngpt_characters") },
     listening: { usd: listening, minutes: q("listening_seconds") / 60 },
     totalUsd: ai + voice + listening,
   };

@@ -15,6 +15,7 @@ import { RateLimiter } from "../rate-limit";
 import { recordUsage } from "../usage";
 import { releaseSpeechCharacters, reserveSpeechCharacters, resolveVoice } from "../voices";
 import { fishAudioConfigured, fishTextToSpeech, SpeechError } from "./fish-audio";
+import { yarngptConfigured, yarngptTextToSpeech } from "./yarngpt";
 import { parseChatReply, toChatMessages, toOpenAiTools } from "./openai-format";
 
 /**
@@ -196,7 +197,8 @@ const speechPerMinute = new RateLimiter(30, 60_000);
 
 /**
  * Every line goes through sanitiseForSpeech before any voice says it.
- * Fish Audio voices are spoken for real (when FISH_AUDIO_API_KEY is set); the built-in demo
+ * Fish Audio voices are spoken for real (when FISH_AUDIO_API_KEY is set), and so are YarnGPT voices
+ * (when YARNGPT_API_KEY is set); the built-in demo
  * voices, and any voice whose provider is not connected, use the browser's own speech.
  */
 export async function synthesise(organisationId: string, voiceId: string, rawText: string, settings?: VoiceSettings): Promise<SpeechResult> {
@@ -215,6 +217,24 @@ export async function synthesise(organisationId: string, voiceId: string, rawTex
     try {
       const audio = Buffer.from(await fishTextToSpeech(voice.providerVoiceId, text, settings)).toString("base64");
       await recordUsage(organisationId, "fish_audio", { voice_characters: text.length });
+      return { kind: "audio", text, src: `data:audio/mpeg;base64,${audio}` };
+    } catch (error) {
+      await releaseSpeechCharacters(organisationId, text.length);
+      return { kind: "error", message: error instanceof SpeechError ? error.message : "The voice could not be played. Please try again." };
+    }
+  }
+
+  if (voice.provider === "yarngpt") {
+    if (!yarngptConfigured()) return browser;
+    if (!speechPerMinute.check(organisationId).allowed) return { kind: "error", message: "Too many voice requests. Please wait a minute." };
+    // The same daily allowance as Fish Audio: it protects the YarnGPT credit too.
+    if (!(await reserveSpeechCharacters(organisationId, text.length))) {
+      return { kind: "error", message: `Today's real-voice allowance for this workspace (${env.VOICE_DAILY_CHAR_LIMIT.toLocaleString("en-NG")} characters) is used up. It resets at midnight, Lagos time.` };
+    }
+    try {
+      // YarnGPT has no speed, loudness or expressiveness settings, so the agent's voice settings are not sent.
+      const audio = Buffer.from(await yarngptTextToSpeech(voice.providerVoiceId, text)).toString("base64");
+      await recordUsage(organisationId, "yarngpt", { yarngpt_characters: text.length });
       return { kind: "audio", text, src: `data:audio/mpeg;base64,${audio}` };
     } catch (error) {
       await releaseSpeechCharacters(organisationId, text.length);

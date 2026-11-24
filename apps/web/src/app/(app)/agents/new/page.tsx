@@ -1,4 +1,4 @@
-import { orderVoices, PRESETS } from "@spagai/core";
+import { orderVoices, PRESETS, isRealVoice } from "@spagai/core";
 import type { Metadata } from "next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,8 +34,8 @@ export default async function NewAgentPage({ searchParams }: { searchParams: Pro
   if (!can(ctx.role, "agent:edit")) redirect("/agents");
   const start = (await searchParams).start;
   const t = await getT();
-  // Only working (real) voices are offered: Fish Audio.
-  const all = orderVoices(await listWorkspaceVoices(ctx.organisation.id)).filter((v) => v.status === "available" && v.provider === "fish_audio");
+  // Only working (real) voices are offered: Fish Audio and YarnGPT.
+  const all = orderVoices(await listWorkspaceVoices(ctx.organisation.id)).filter((v) => v.status === "available" && isRealVoice(v));
   // English voices, real Fish Audio voices first. A conversational one is picked to start with.
   const voices = all.filter((v) => v.language === "en-NG");
   const initial = (voices.find((v) => v.provider === "fish_audio" && v.category === "Conversational") ?? voices[0])?.id ?? "";

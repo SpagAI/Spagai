@@ -21,8 +21,8 @@ const PRESETS: [string, string][] = [
   ["Support", "I'm sorry about the delay. Let me check your order and get back to you right away."],
 ];
 
-/** Real Fish Audio voices come first. */
-const TABS = ["all", "fish_audio", "spagai", "elevenlabs", "cartesia", "openai"];
+/** Real voices (Fish Audio, YarnGPT) come first. */
+const TABS = ["all", "fish_audio", "yarngpt", "spagai", "elevenlabs", "cartesia", "openai"];
 
 /** A soft, distinct avatar background for each voice (from its id), in the brand purple range. */
 function avatarStyle(id: string) {
@@ -52,9 +52,12 @@ export interface VoiceLibraryProps {
   canEdit: boolean;
   /** True when real Fish Audio speech is switched on. */
   fishConnected: boolean;
+  /** True when real YarnGPT speech is switched on. */
+  yarngptConnected?: boolean;
 }
 
-export function VoiceLibrary({ usedBy, workspaceVoices, canEdit, fishConnected }: VoiceLibraryProps) {
+export function VoiceLibrary({ usedBy, workspaceVoices, canEdit, fishConnected, yarngptConnected = false }: VoiceLibraryProps) {
+  const realNames = [fishConnected && "Fish Audio", yarngptConnected && "YarnGPT"].filter(Boolean).join(" and ");
   const speaker = useSpeaker();
   const allVoices = useMemo(() => orderVoices(workspaceVoices), [workspaceVoices]);
   /** Only voices this workspace added can be removed; the built-in ones always stay. */
@@ -248,8 +251,8 @@ export function VoiceLibrary({ usedBy, workspaceVoices, canEdit, fishConnected }
 
       <p className="flex items-start gap-2 text-xs text-muted-foreground">
         <Info className="mt-0.5 size-3.5 shrink-0" />
-        {fishConnected
-          ? "Fish Audio voices are real voices. The other voices in this demo use your browser's built-in speech, so they show timing and wording, not the final voice quality."
+        {realNames
+          ? `${realNames} voices are real voices. The other voices in this demo use your browser's built-in speech, so they show timing and wording, not the final voice quality.`
           : "Previews in this demo use your browser's built-in speech, so they show timing and wording, not the final voice quality."}
       </p>
     </div>

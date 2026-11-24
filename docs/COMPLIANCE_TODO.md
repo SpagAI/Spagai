@@ -44,3 +44,5 @@ Updated in M4 and M5. Each item lists what the prototype currently does, so the 
 ## 9. Telephony (added in M5)
 - [ ] Confirm licensing and number registration needed to place automated calls from Nigerian numbers, and the caller-ID rules.
 - [ ] Confirm the wording the agent must use when a call is recorded or transcribed (see item 3), before real calls are switched on.
+- [ ] Confirm what is needed before sending call text and recordings to YarnGPT (Nigerian voice provider) for speech and transcription. *(YarnGPT says it is aligned with the Nigeria Data Protection Act and GDPR and offers a Data Processing Agreement on enterprise plans. Draft note only; needs legal review.)*
+
